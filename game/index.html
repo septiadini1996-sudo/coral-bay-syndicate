@@ -1,81 +1,164 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Coral Bay Syndicate</title>
+<title>Coral Bay Syndicate — an open-world crime game</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1210; font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif; }
-  canvas#game { display: block; width: 100%; height: 100%; }
-  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
-  #mapwrap { position: absolute; left: 18px; bottom: 18px; width: 176px; height: 176px; border-radius: 50%; overflow: hidden; border: 3px solid rgba(10, 24, 32, 0.85); box-shadow: 0 4px 24px rgba(0,0,0,0.45); background: #2b6f8e; }
-  #map { width: 176px; height: 176px; }
-  #topbar { position: absolute; top: 16px; right: 20px; text-align: right; }
-  #stars { font-size: 26px; letter-spacing: 3px; min-height: 30px; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
-  #cash { font-size: 30px; font-weight: 800; color: #7be495; text-shadow: 0 2px 8px rgba(0,0,0,0.65); }
-  #objective { position: absolute; top: 16px; left: 20px; max-width: 44vw; color: #ffe9b0; font-size: 17px; font-weight: 700; letter-spacing: 0.4px; text-shadow: 0 2px 6px rgba(0,0,0,0.7); transition: opacity 0.3s; }
-  #prompt { position: absolute; left: 50%; bottom: 12vh; transform: translateX(-50%); color: #fff; background: rgba(8, 20, 28, 0.72); padding: 8px 18px; border-radius: 999px; font-size: 16px; font-weight: 600; letter-spacing: 0.3px; transition: opacity 0.15s; opacity: 0; white-space: nowrap; }
-  #cross { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.9); font-size: 22px; font-weight: 300; text-shadow: 0 0 6px rgba(0,0,0,0.8); opacity: 0; transition: opacity 0.2s; }
-  #bustWrap { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); width: 240px; height: 10px; border-radius: 5px; background: rgba(0,0,0,0.55); opacity: 0; transition: opacity 0.2s; overflow: hidden; }
-  #bustFill { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #ef4444); }
-  #dialog { position: absolute; left: 50%; bottom: 5vh; transform: translateX(-50%); width: min(680px, 88vw); background: rgba(8, 18, 26, 0.88); border-left: 4px solid #ffc93c; border-radius: 8px; padding: 14px 20px; display: none; }
-  #dlgWho { color: #ffc93c; font-weight: 800; font-size: 14px; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 5px; }
-  #dlgText { color: #f4f1de; font-size: 17px; line-height: 1.45; }
-  #toast { position: absolute; left: 50%; top: 12vh; transform: translateX(-50%); color: #10222e; background: linear-gradient(180deg, #ffe9a8, #ffc93c); font-weight: 800; font-size: 17px; padding: 9px 22px; border-radius: 999px; opacity: 0; transition: opacity 0.35s; box-shadow: 0 6px 24px rgba(0,0,0,0.4); white-space: nowrap; }
-  #vig { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 52%, rgba(190, 18, 40, 0.5) 100%); opacity: 0; }
-  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: linear-gradient(180deg, rgba(24, 10, 8, 0.55), rgba(10, 16, 28, 0.82)); backdrop-filter: blur(2px); z-index: 5; }
-  .title { font-size: clamp(42px, 8vw, 84px); font-weight: 900; letter-spacing: 2px; line-height: 0.95; background: linear-gradient(180deg, #ffe9a8 15%, #ff9a5a 55%, #ef476f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 4px 18px rgba(239, 71, 111, 0.35)); }
-  .subtitle { color: #f4f1de; font-size: clamp(14px, 2vw, 19px); letter-spacing: 4px; text-transform: uppercase; margin: 10px 0 30px; opacity: 0.92; }
-  .btn { pointer-events: auto; cursor: pointer; border: 0; border-radius: 999px; padding: 13px 42px; margin: 6px; font-size: 18px; font-weight: 800; letter-spacing: 1px; color: #231303; background: linear-gradient(180deg, #ffe9a8, #ffb03a); box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
-  .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
-  .btn.ghost { background: rgba(244, 241, 222, 0.14); color: #f4f1de; border: 1px solid rgba(244,241,222,0.5); }
-  .controls { margin-top: 28px; color: rgba(244, 241, 222, 0.85); font-size: 14px; line-height: 1.9; letter-spacing: 0.4px; }
-  .controls b { color: #ffc93c; font-weight: 800; }
-  .big { font-size: clamp(40px, 7vw, 68px); font-weight: 900; letter-spacing: 6px; color: #f4f1de; }
-  .fine { color: rgba(244,241,222,0.9); font-size: 16px; margin: 12px 0 24px; max-width: 520px; line-height: 1.5; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1026; }
+  body { font-family: "Trebuchet MS", "Segoe UI", Verdana, sans-serif; color: #f4f1e8; }
+  #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #topleft { position: absolute; top: 14px; left: 14px; text-align: center; }
+  #minimap { width: 168px; height: 168px; border-radius: 50%; border: 3px solid rgba(255,217,77,.85);
+    box-shadow: 0 4px 18px rgba(0,0,0,.5); background: #1b6a8c; }
+  #district { margin-top: 5px; font-size: 13px; font-weight: bold; letter-spacing: .12em; text-transform: uppercase;
+    color: #ffe9a3; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+  #topright { position: absolute; top: 14px; right: 16px; text-align: right; }
+  #stars { font-size: 25px; letter-spacing: 3px; text-shadow: 0 2px 4px rgba(0,0,0,.7); min-height: 30px; }
+  #cash { font-size: 27px; font-weight: bold; color: #7be495; text-shadow: 0 2px 4px rgba(0,0,0,.75); }
+  #healthbar { margin-top: 6px; margin-left: auto; width: 168px; height: 11px; border-radius: 6px;
+    background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.35); overflow: hidden; }
+  #healthfill { height: 100%; width: 100%; background: #58d06a; transition: width .25s; }
+  #weapon { margin-top: 5px; font-size: 14px; font-weight: bold; color: #dfe9f2; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
+  #objective { position: absolute; top: 14px; left: 50%; transform: translateX(-50%); max-width: 560px;
+    background: rgba(8,24,34,.82); border: 1px solid rgba(46,230,200,.55); border-radius: 10px;
+    padding: 8px 16px; text-align: center; display: none; }
+  #obj-text { font-size: 15.5px; font-weight: bold; }
+  #obj-dist { color: #2ee6c8; font-weight: bold; margin-left: 9px; }
+  #obj-timer { color: #ffd94d; font-weight: bold; margin-left: 9px; }
+  #banner { position: absolute; top: 86px; left: 50%; transform: translate(-50%, -12px); width: min(620px, 86vw);
+    background: linear-gradient(135deg, rgba(64,28,64,.92), rgba(10,30,44,.92)); border: 1px solid rgba(255,217,77,.7);
+    border-radius: 12px; padding: 13px 20px; text-align: center; opacity: 0; transition: opacity .4s, transform .4s; }
+  #banner-title { font-size: 21px; font-weight: bold; color: #ffd94d; letter-spacing: .06em; }
+  #banner-text { font-size: 14.5px; margin-top: 3px; line-height: 1.35; }
+  #speedo { position: absolute; right: 20px; bottom: 20px; text-align: right; display: none;
+    text-shadow: 0 2px 5px rgba(0,0,0,.8); }
+  #speed-val { font-size: 46px; font-weight: bold; }
+  #speedo small { font-size: 15px; margin-left: 4px; }
+  #speed-name { font-size: 14px; color: #ffe9a3; font-weight: bold; }
+  #interact { position: absolute; left: 50%; bottom: 118px; transform: translateX(-50%); display: none;
+    background: rgba(8,24,34,.88); border: 1px solid rgba(255,217,77,.8); color: #ffe9a3; font-weight: bold;
+    font-size: 15.5px; border-radius: 9px; padding: 8px 16px; }
+  #toast { position: absolute; left: 50%; bottom: 66px; transform: translateX(-50%); max-width: 84vw; text-align: center;
+    background: rgba(8,24,34,.85); border-radius: 9px; padding: 8px 18px; font-size: 15px; opacity: 0; transition: opacity .3s; }
+  #bust-wrap { position: absolute; left: 50%; top: 34%; transform: translateX(-50%); width: 300px; display: none; text-align: center; }
+  #bust-label { font-size: 24px; font-weight: bold; color: #ff5a4d; letter-spacing: .3em; text-shadow: 0 2px 6px #000; }
+  #bust-bar { height: 13px; border-radius: 7px; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.4); overflow: hidden; }
+  #bust-fill { height: 100%; width: 0%; background: #ff5a4d; }
+  #btn-mute { position: absolute; left: 16px; bottom: 16px; pointer-events: auto; background: rgba(8,24,34,.8);
+    border: 1px solid rgba(255,255,255,.35); border-radius: 9px; font-size: 17px; padding: 5px 9px; cursor: pointer; }
+  #hurt { position: fixed; inset: 0; pointer-events: none; z-index: 6; opacity: 0;
+    background: radial-gradient(ellipse at center, transparent 42%, rgba(200,20,10,.55) 100%); }
+  .overlay { position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center;
+    flex-direction: column; text-align: center; background: linear-gradient(180deg, rgba(30,10,40,.55), rgba(5,15,25,.78)); }
+  .panel { background: rgba(8,22,32,.92); border: 1px solid rgba(255,217,77,.55); border-radius: 16px;
+    padding: 28px 36px; max-width: min(620px, 92vw); box-shadow: 0 12px 44px rgba(0,0,0,.6); }
+  h1.game-title { font-size: clamp(38px, 7vw, 68px); line-height: .98; letter-spacing: .02em;
+    background: linear-gradient(180deg, #ffe9a3 15%, #ff9a5c 55%, #ff4fa3 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 3px 10px rgba(0,0,0,.65)); }
+  .tagline { margin: 10px 0 20px; font-size: 16.5px; color: #dfe9f2; text-shadow: 0 1px 4px #000; }
+  .menu-btn { pointer-events: auto; display: block; width: 280px; margin: 8px auto; padding: 12px 18px; cursor: pointer;
+    font-family: inherit; font-size: 17px; font-weight: bold; color: #12222e; border: none; border-radius: 10px;
+    background: linear-gradient(180deg, #ffd94d, #f2a93d); box-shadow: 0 4px 14px rgba(0,0,0,.45); }
+  .menu-btn:hover { filter: brightness(1.09); }
+  .menu-btn.secondary { background: linear-gradient(180deg, #e8f2f2, #b9cdd4); }
+  #continue-note { font-size: 13.5px; color: #ffe9a3; margin-top: 2px; }
+  .controls-note { margin-top: 18px; font-size: 13.5px; color: rgba(240,244,248,.85); line-height: 1.5; text-shadow: 0 1px 3px #000; }
+  #card-title { font-size: 30px; color: #ffd94d; letter-spacing: .04em; }
+  #card-text { font-size: 16px; line-height: 1.5; margin: 12px 0 18px; }
+  #story-line { font-size: 15px; color: #2ee6c8; margin-bottom: 14px; }
+  .help-grid { text-align: left; font-size: 15px; line-height: 1.65; margin: 8px 0 16px; }
+  .help-grid b { color: #ffd94d; display: inline-block; min-width: 128px; }
+  h2.menu-head { font-size: 32px; color: #ffd94d; letter-spacing: .08em; margin-bottom: 8px; }
 </style>
 </head>
 <body>
-<canvas id="game"></canvas>
+<div id="app"></div>
 
-<div id="hud">
-  <div id="objective"></div>
-  <div id="topbar"><div id="stars"></div><div id="cash">$0</div></div>
-  <div id="mapwrap"><canvas id="map" width="176" height="176"></canvas></div>
-  <div id="prompt"></div>
-  <div id="cross">+</div>
-  <div id="bustWrap"><div id="bustFill"></div></div>
-  <div id="dialog"><div id="dlgWho"></div><div id="dlgText"></div></div>
+<div id="hud" style="display:none">
+  <div id="topleft">
+    <canvas id="minimap" width="204" height="204"></canvas>
+    <div id="district">Coral Bay</div>
+  </div>
+  <div id="topright">
+    <div id="stars"></div>
+    <div id="cash">$250</div>
+    <div id="healthbar"><div id="healthfill"></div></div>
+    <div id="weapon">Fists</div>
+  </div>
+  <div id="objective"><span id="obj-text"></span><span id="obj-dist"></span><span id="obj-timer"></span></div>
+  <div id="banner"><div id="banner-title"></div><div id="banner-text"></div></div>
+  <div id="speedo"><span id="speed-val">0</span><small>km/h</small><div id="speed-name"></div></div>
+  <div id="interact"></div>
   <div id="toast"></div>
+  <div id="bust-wrap"><div id="bust-label">BUSTED</div><div id="bust-bar"><div id="bust-fill"></div></div></div>
+  <button id="btn-mute" title="Mute (M)">🔊</button>
 </div>
-<div id="vig"></div>
+<div id="hurt"></div>
 
-<div id="menu" class="screen">
-  <div class="title">CORAL BAY<br>SYNDICATE</div>
-  <div class="subtitle">One bay. One wheelman. No questions.</div>
-  <button class="btn" id="continueBtn" style="display:none">CONTINUE</button>
-  <button class="btn" id="startBtn">NEW GAME</button>
-  <div class="controls">
-    <b>WASD</b> move / drive &nbsp;·&nbsp; <b>Mouse</b> camera (click to lock) &nbsp;·&nbsp; <b>Shift</b> sprint<br>
-    <b>E</b> talk / steal / enter &nbsp;·&nbsp; <b>F</b> punch — or fire when armed &nbsp;·&nbsp; <b>Space</b> hop / handbrake &nbsp;·&nbsp; <b>Esc</b> pause
+<div id="menu-title" class="overlay">
+  <h1 class="game-title">CORAL BAY<br>SYNDICATE</h1>
+  <p class="tagline">One fixer. One island city. Six jobs between Rico Solano and the whole bay.</p>
+  <button id="btn-continue" class="menu-btn" style="display:none">Continue</button>
+  <div id="continue-note"></div>
+  <button id="btn-new" class="menu-btn">New Game</button>
+  <button id="btn-help1" class="menu-btn secondary">How to Play</button>
+  <p class="controls-note">WASD drive &amp; walk · E enter cars &amp; talk · Space handbrake / jump · F or click fight &amp; shoot<br>
+  Q radio · 1/2 station · R/F helicopter up &amp; down · P pause · M mute · drag mouse to look</p>
+</div>
+
+<div id="menu-pause" class="overlay">
+  <div class="panel">
+    <h2 class="menu-head">PAUSED</h2>
+    <div id="story-line"></div>
+    <button id="btn-resume" class="menu-btn">Resume</button>
+    <button id="btn-restart" class="menu-btn secondary">Back to Safehouse</button>
+    <button id="btn-help2" class="menu-btn secondary">How to Play</button>
+    <button id="btn-quit" class="menu-btn secondary">Quit to Title</button>
   </div>
 </div>
 
-<div id="pauseScr" class="screen">
-  <div class="big">PAUSED</div>
-  <div class="fine">The bay waits for no one — but it will wait for you.</div>
-  <button class="btn" id="resumeBtn">RESUME</button>
-  <button class="btn ghost" id="saveBtn">SAVE GAME</button>
+<div id="menu-help" class="overlay">
+  <div class="panel">
+    <h2 class="menu-head">HOW TO PLAY</h2>
+    <div class="help-grid">
+      <div><b>WASD / arrows</b> walk and drive</div>
+      <div><b>Shift</b> sprint on foot</div>
+      <div><b>Space</b> jump on foot, handbrake in a car</div>
+      <div><b>E</b> steal / enter / exit vehicles, talk to contacts</div>
+      <div><b>F or click</b> punch, swing a weapon, fire the pistol</div>
+      <div><b>Q, 1, 2</b> car radio on/off and stations</div>
+      <div><b>R / F</b> helicopter climb / sink (WASD steer and move)</div>
+      <div><b>Mouse drag</b> orbit the camera · <b>wheel</b> zoom</div>
+      <div><b>P / Esc</b> pause · <b>M</b> mute</div>
+    </div>
+    <p style="font-size:14.5px;line-height:1.5">Follow the gold beacons to Celia, Marco and Don Falso and work the six-job
+    Syndicate chain. Stars bring Interceptors, roadblocks at three stars and a spotlight helicopter at four.
+    Get caught standing still and you are BUSTED; get flattened and you are WASTED. Progress saves automatically.</p>
+    <button id="btn-help-close" class="menu-btn">Back</button>
+  </div>
 </div>
 
-<div id="bustedScr" class="screen">
-  <div class="big" style="color:#ff5147">BUSTED</div>
-  <div class="fine" id="bustedFine"></div>
-  <button class="btn" id="bustedBtn">WALK FREE</button>
+<div id="card" class="overlay">
+  <div class="panel">
+    <h2 id="card-title"></h2>
+    <p id="card-text"></p>
+    <button id="btn-card" class="menu-btn">Continue</button>
+  </div>
 </div>
 
 <script src="vendor/three.min.js"></script>
-<script type="module" src="src/boot.js"></script>
+<script src="src/util.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/world.js"></script>
+<script src="src/people.js"></script>
+<script src="src/vehicles.js"></script>
+<script src="src/police.js"></script>
+<script src="src/missions.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/main.js"></script>
 </body>
 </html>
