@@ -1,5 +1,6 @@
-// Transient effects for Coral Bay Syndicate: bullet tracers, muzzle-flash light
-// and impact sparks, all pooled so gunfire never allocates in the frame loop.
+// Transient effects for Coral Bay Syndicate: bullet tracers, muzzle-flash light,
+// impact sparks, dust bursts at hard hits and a thin smoke thread that rises
+// off wrecked cars — every system pooled, so effects never allocate per frame.
 const THREE = window.THREE;
 
 export function createFX(scene) {
@@ -16,17 +17,44 @@ export function createFX(scene) {
   scene.add(flashLight);
   let flashTtl = 0;
 
-  const SPARKS = 240;
-  const sparkPos = new Float32Array(SPARKS * 3);
-  const sparkVel = new Float32Array(SPARKS * 3);
-  const sparkLife = new Float32Array(SPARKS);
-  const sparkGeo = new THREE.BufferGeometry();
-  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
-  const sparks = new THREE.Points(sparkGeo, new THREE.PointsMaterial({ color: 0xffcf7a, size: 0.14, transparent: true, opacity: 0.95 }));
-  sparks.frustumCulled = false;
-  scene.add(sparks);
-  let sparkIdx = 0;
-  for (let i = 0; i < SPARKS; i++) sparkPos[i * 3 + 1] = -50;
+  // One pooled point cloud: positions, velocities and lifetimes in flat arrays.
+  function makeCloud(count, matOpts) {
+    const pos = new Float32Array(count * 3);
+    const vel = new Float32Array(count * 3);
+    const life = new Float32Array(count);
+    for (let i = 0; i < count; i++) pos[i * 3 + 1] = -60;
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const points = new THREE.Points(geo, new THREE.PointsMaterial(matOpts));
+    points.frustumCulled = false;
+    scene.add(points);
+    return { count, pos, vel, life, geo, idx: 0 };
+  }
+  const sparks = makeCloud(240, { color: 0xffcf7a, size: 0.14, transparent: true, opacity: 0.95 });
+  const dust = makeCloud(180, { color: 0xd9ba8a, size: 0.42, transparent: true, opacity: 0.55, depthWrite: false });
+  const smoke = makeCloud(170, { color: 0x848b93, size: 2.6, transparent: true, opacity: 0.3, depthWrite: false });
+
+  function spawn(cloud, x, y, z, vx, vy, vz, life) {
+    const i = cloud.idx++ % cloud.count;
+    cloud.pos[i * 3] = x; cloud.pos[i * 3 + 1] = y; cloud.pos[i * 3 + 2] = z;
+    cloud.vel[i * 3] = vx; cloud.vel[i * 3 + 1] = vy; cloud.vel[i * 3 + 2] = vz;
+    cloud.life[i] = life;
+  }
+  function stepCloud(cloud, dt, gravity, drag) {
+    let any = false;
+    for (let i = 0; i < cloud.count; i++) {
+      if (cloud.life[i] <= 0) continue;
+      any = true;
+      cloud.life[i] -= dt;
+      cloud.vel[i * 3 + 1] += gravity * dt;
+      if (drag) { cloud.vel[i * 3] *= drag; cloud.vel[i * 3 + 2] *= drag; }
+      cloud.pos[i * 3] += cloud.vel[i * 3] * dt;
+      cloud.pos[i * 3 + 1] += cloud.vel[i * 3 + 1] * dt;
+      cloud.pos[i * 3 + 2] += cloud.vel[i * 3 + 2] * dt;
+      if (cloud.life[i] <= 0 || cloud.pos[i * 3 + 1] < -1) cloud.pos[i * 3 + 1] = -60;
+    }
+    if (any) cloud.geo.attributes.position.needsUpdate = true;
+  }
 
   return {
     tracer(from, to, color = 0xffe9a8) {
@@ -47,12 +75,21 @@ export function createFX(scene) {
     },
     spark(point) {
       for (let n = 0; n < 9; n++) {
-        const i = sparkIdx++ % SPARKS;
-        sparkPos[i * 3] = point.x; sparkPos[i * 3 + 1] = point.y; sparkPos[i * 3 + 2] = point.z;
-        sparkVel[i * 3] = (Math.random() - 0.5) * 4.4;
-        sparkVel[i * 3 + 1] = Math.random() * 3.6 + 0.6;
-        sparkVel[i * 3 + 2] = (Math.random() - 0.5) * 4.4;
-        sparkLife[i] = 0.32;
+        spawn(sparks, point.x, point.y, point.z,
+          (Math.random() - 0.5) * 4.4, Math.random() * 3.6 + 0.6, (Math.random() - 0.5) * 4.4, 0.32);
+      }
+    },
+    dust(x, y, z) {
+      for (let n = 0; n < 14; n++) {
+        const a = Math.random() * Math.PI * 2, r = Math.random() * 2.6;
+        spawn(dust, x, y + Math.random() * 0.4, z,
+          Math.cos(a) * r, Math.random() * 1.8 + 0.5, Math.sin(a) * r, 0.5 + Math.random() * 0.25);
+      }
+    },
+    smoke(x, y, z) {
+      for (let n = 0; n < 2; n++) {
+        spawn(smoke, x + (Math.random() - 0.5) * 0.7, y, z + (Math.random() - 0.5) * 0.7,
+          0.35 + Math.random() * 0.3, 1.5 + Math.random() * 0.9, (Math.random() - 0.5) * 0.3, 1.7 + Math.random() * 0.5);
       }
     },
     update(dt) {
@@ -60,18 +97,9 @@ export function createFX(scene) {
         if (t.ttl > 0) { t.ttl -= dt; if (t.ttl <= 0) t.line.visible = false; }
       }
       if (flashTtl > 0) { flashTtl -= dt; if (flashTtl <= 0) flashLight.intensity = 0; }
-      let any = false;
-      for (let i = 0; i < SPARKS; i++) {
-        if (sparkLife[i] <= 0) continue;
-        any = true;
-        sparkLife[i] -= dt;
-        sparkVel[i * 3 + 1] -= 11 * dt;
-        sparkPos[i * 3] += sparkVel[i * 3] * dt;
-        sparkPos[i * 3 + 1] += sparkVel[i * 3 + 1] * dt;
-        sparkPos[i * 3 + 2] += sparkVel[i * 3 + 2] * dt;
-        if (sparkLife[i] <= 0 || sparkPos[i * 3 + 1] < 0) sparkPos[i * 3 + 1] = -50;
-      }
-      if (any) sparkGeo.attributes.position.needsUpdate = true;
+      stepCloud(sparks, dt, -11, 0);
+      stepCloud(dust, dt, -2.6, 0.92);
+      stepCloud(smoke, dt, 0.55, 0);   // smoke buoyantly rises instead of falling
     },
   };
 }

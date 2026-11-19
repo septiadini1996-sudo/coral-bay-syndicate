@@ -25,7 +25,10 @@ export function createCarMesh(color, kind = 'car', nameIndex = 0) {
     { geo: boxGeo(0.34, 0.14, 0.06), x: 0.6, y: 0.62, z: -2.31, color: 0xff4040 },
   ];
   if (kind === 'taxi') parts.push({ geo: boxGeo(0.7, 0.22, 0.4), x: 0, y: 1.5, z: -0.25, color: 0xffd23e });
-  const body = new THREE.Mesh(mergeParts(parts), vertexColorMaterial());
+  // Glossy paint: a Phong body with a tight specular highlight from the sun
+  // reads as polished metal and clearcoat where flat Lambert looked matte.
+  const body = new THREE.Mesh(mergeParts(parts),
+    new THREE.MeshPhongMaterial({ vertexColors: true, shininess: 80, specular: 0x93a7ba }));
   body.castShadow = true;
   group.add(body);
 

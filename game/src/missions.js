@@ -38,6 +38,17 @@ export function createMissions(G) {
     targetCar: null, jobCd: 0, stats: { deliveries: 0, races: 0 },
   };
 
+  // Story beats run on a game-clock scheduler, not wall-clock timers:
+  // M.update only ticks while the game is playing, so pausing the game
+  // pauses the story with it (a setTimeout would fire through the pause).
+  const pending = [];
+  function after(seconds, fn) { pending.push({ at: G.time + seconds, fn }); }
+  function runPending() {
+    for (let i = pending.length - 1; i >= 0; i--) {
+      if (G.time >= pending[i].at) { const due = pending.splice(i, 1)[0]; due.fn(); }
+    }
+  }
+
   function setObjective(o) {
     M.objective = o;
     if (o) {
@@ -90,10 +101,10 @@ export function createMissions(G) {
     setObjective(null);
     if (M.storyIndex >= 3) {
       M.storyComplete = true;
-      setTimeout(() => G.hud.banner('SYNDICATE MADE', 'Story complete — the bay is yours. Rings pay cash.'), 2600);
+      after(2.6, () => G.hud.banner('SYNDICATE MADE', 'Story complete — the bay is yours. Rings pay cash.'));
     } else {
       M.awaitingNext = true;
-      setTimeout(() => { M.awaitingNext = false; if (!M.side && !M.objective) startStoryMission(M.storyIndex); }, 2600);
+      after(2.6, () => { M.awaitingNext = false; if (!M.side && !M.objective) startStoryMission(M.storyIndex); });
     }
     G.saveGame();
   }
@@ -149,6 +160,7 @@ export function createMissions(G) {
 
   /* ---------------- per-frame ---------------- */
   M.update = (dt) => {
+    runPending();
     beacon.material.opacity = 0.2 + Math.sin(G.time * 3.2) * 0.05;
     const pulse = 1 + Math.sin(G.time * 2.4) * 0.05;
     for (const r of rings) r.scale.set(pulse, pulse, 1);

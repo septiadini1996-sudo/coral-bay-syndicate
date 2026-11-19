@@ -49,13 +49,16 @@ export function resolveCollisions(pos, radius, colliders) {
   }
 }
 
-function facadeTexture(rand, glassy) {
+// One facade style per district: window grid, wall and glass colours differ,
+// and at golden hour a fifth of the windows burn warm — the lit fraction is
+// what sells the hour on a shrunken screenshot.
+function facadeTexture(rand, { base, win, cols, rows }) {
   return canvasTexture(128, 256, (g, w, h) => {
-    g.fillStyle = glassy ? '#c3ced4' : '#e6dfd0'; g.fillRect(0, 0, w, h);
-    const cols = 5, rows = 10, cw = w / cols, ch = h / rows;
+    g.fillStyle = base; g.fillRect(0, 0, w, h);
+    const cw = w / cols, ch = h / rows;
     for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
-      const lit = rand() < 0.12;
-      g.fillStyle = lit ? '#ffd98a' : (glassy ? '#1f4258' : '#2c4a63');
+      const lit = rand() < 0.2;
+      g.fillStyle = lit ? '#ffe9a8' : win;
       g.fillRect(i * cw + 4, j * ch + 5, cw - 8, ch - 10);
     }
     g.fillStyle = 'rgba(0,0,0,0.14)'; g.fillRect(0, h - 10, w, 10);
@@ -80,14 +83,14 @@ export function buildCity(scene, rand) {
   /* ----- sky, light, fog ----- */
   const skyTex = canvasTexture(4, 512, (g, w, h) => {
     const gr = g.createLinearGradient(0, 0, 0, h);
-    gr.addColorStop(0, '#2b5ea6'); gr.addColorStop(0.45, '#79aede');
-    gr.addColorStop(0.72, '#f7c489'); gr.addColorStop(1, '#ff9e6b');
+    gr.addColorStop(0, '#17457e'); gr.addColorStop(0.34, '#4f96d6');
+    gr.addColorStop(0.58, '#f2b879'); gr.addColorStop(0.8, '#ff9a5c'); gr.addColorStop(1, '#ff7e47');
     g.fillStyle = gr; g.fillRect(0, 0, w, h);
   });
   scene.background = skyTex;
-  scene.fog = new THREE.Fog(0xf2b183, 210, 640);
-  scene.add(new THREE.HemisphereLight(0x9fd0f0, 0xe0a06a, 0.6));
-  const sun = new THREE.DirectionalLight(0xffbe78, 1.65);
+  scene.fog = new THREE.Fog(0xf7a56b, 210, 640);
+  scene.add(new THREE.HemisphereLight(0x9fd0f0, 0xe08a4e, 0.62));
+  const sun = new THREE.DirectionalLight(0xffab5e, 1.85);
   sun.position.set(-190, 130, 150);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
@@ -141,10 +144,13 @@ export function buildCity(scene, rand) {
     for (let i = 0; i < 9; i++) { g.beginPath(); const y = rand() * h; g.moveTo(0, y); g.bezierCurveTo(w * 0.3, y + 5, w * 0.6, y - 5, w, y); g.stroke(); }
   }, true);
   waterTex.repeat.set(30, 14);
-  const water = new THREE.Mesh(new THREE.PlaneGeometry(560, 260), new THREE.MeshPhongMaterial({ map: waterTex, color: 0x9fd8e8, shininess: 90, transparent: true, opacity: 0.94 }));
+  const water = new THREE.Mesh(new THREE.PlaneGeometry(560, 260), new THREE.MeshPhongMaterial({ map: waterTex, color: 0x9fd8e8, shininess: 160, specular: 0xd8f4ff, emissive: 0x0d3542, transparent: true, opacity: 0.94 }));
   water.rotation.x = -Math.PI / 2; water.position.set(0, -0.35, WATER_Z + 128);
   scene.add(water);
-  updaters.push((dt, t) => { waterTex.offset.y = (t * 0.014) % 1; waterTex.offset.x = Math.sin(t * 0.05) * 0.02; });
+  updaters.push((dt, t) => {
+    waterTex.offset.y = (t * 0.014) % 1; waterTex.offset.x = Math.sin(t * 0.05) * 0.02;
+    water.material.opacity = 0.92 + Math.sin(t * 0.8) * 0.03;   // the surface breathes and glints
+  });
 
   /* ----- roads & sidewalks ----- */
   const asphaltTex = canvasTexture(64, 128, (g, w, h) => {
@@ -154,7 +160,9 @@ export function buildCity(scene, rand) {
     g.fillStyle = '#f5d76e'; g.fillRect(w / 2 - 2, 8, 4, 42); g.fillRect(w / 2 - 2, 78, 4, 42);
   }, true);
   const roadMat = new THREE.MeshLambertMaterial({ map: asphaltTex });
-  const walkMat = new THREE.MeshLambertMaterial({ color: 0xd8c6a4 });
+  const walkTex = noiseTex('#d3c2a0', 'rgba(120,95,60,0.18)');
+  walkTex.repeat.set(2, 44);
+  const walkMat = new THREE.MeshLambertMaterial({ map: walkTex });
   for (const l of STREET_LINES) {
     for (const vertical of [true, false]) {
       const walk = new THREE.Mesh(new THREE.PlaneGeometry(20, 452), walkMat);
@@ -169,7 +177,13 @@ export function buildCity(scene, rand) {
   }
 
   /* ----- buildings by district ----- */
-  const facades = [facadeTexture(rand, false), facadeTexture(rand, false), facadeTexture(rand, true)];
+  const FACADES = {
+    tower: facadeTexture(rand, { base: '#bfccd4', win: '#17384e', cols: 6, rows: 12 }),  // downtown glass
+    mid: facadeTexture(rand, { base: '#e6dfd0', win: '#2c4a63', cols: 5, rows: 10 }),     // warm stucco
+    brick: facadeTexture(rand, { base: '#d9b48f', win: '#33506b', cols: 5, rows: 9 }),    // old-town brick
+    beach: facadeTexture(rand, { base: '#fdf3e3', win: '#3a6a8a', cols: 4, rows: 7 }),    // low beachfront
+  };
+  const facadeFor = (centre, r) => centre <= 28 ? FACADES.tower : centre <= 84 ? (r < 0.6 ? FACADES.mid : FACADES.brick) : FACADES.beach;
   const PASTEL = [0xffd9c0, 0xffe9a8, 0xc7e8c3, 0xa8d8ea, 0xffb7c5, 0xe6ccff, 0xfff6e5, 0xf9c784, 0xb5ead7, 0xffc8a2];
   const roofParts = [];
   for (const bx of BLOCK_CENTERS) for (const bz of BLOCK_CENTERS) {
@@ -185,7 +199,7 @@ export function buildCity(scene, rand) {
     const plots = layout < 0.4 ? [[0, 0, 30, 30]] : layout < 0.75 ? [[-9, -9, 15, 15], [9, 9, 15, 15], [-9, 9, 15, 15], [9, -9, 15, 15]] : [[-9, 0, 15, 32], [10, 0, 13, 32]];
     for (const [ox, oz, w, d] of plots) {
       const h = Math.max(5, tall * randRange(rand, 0.55, 1.1));
-      const b = buildingMesh(w, h, d, randPick(rand, facades), randPick(rand, PASTEL));
+      const b = buildingMesh(w, h, d, facadeFor(centre, rand()), randPick(rand, PASTEL));
       b.position.set(bx + ox, h / 2 + 0.05, bz + oz);
       scene.add(b);
       colliders.push({ x1: bx + ox - w / 2, x2: bx + ox + w / 2, z1: bz + oz - d / 2, z2: bz + oz + d / 2, h });
@@ -197,6 +211,7 @@ export function buildCity(scene, rand) {
   roofs.castShadow = true; scene.add(roofs);
 
   /* ----- palms & street lights (one merged mesh) ----- */
+  const glowParts = [];   // lamp heads: unlit-bright material, so they read as ON at dusk
   const palmAt = (x, z, s) => {
     const lean = randRange(rand, -0.09, 0.09), parts = [];
     let px = x, pz = z;
@@ -214,14 +229,36 @@ export function buildCity(scene, rand) {
   for (let i = 0; i < 9; i++) palmAt(-28 + randRange(rand, -17, 17), -28 + randRange(rand, -17, 17), randRange(rand, 0.8, 1.2));
   for (const l of STREET_LINES) for (const m of STREET_LINES) {
     statics.push({ geo: cylGeo(0.09, 0.11, 5.6, 6), x: l + 9.6, y: 2.8, z: m + 9.6, color: 0x5a6068 });
-    statics.push({ geo: sphGeo(0.3, 8), x: l + 9.6, y: 5.7, z: m + 9.6, color: 0xfff2b0 });
+    glowParts.push({ geo: sphGeo(0.3, 8), x: l + 9.6, y: 5.7, z: m + 9.6, color: 0xffe9a8 });
   }
   // beach umbrellas
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 16; i++) {
     const x = randRange(rand, -200, 200), z = randRange(rand, 204, 218);
     if (Math.abs(x - PIER_X) < 10) continue;
     statics.push({ geo: cylGeo(0.05, 0.05, 2.2, 5), x, y: 1.1, z, color: 0xe8e2d4 });
     statics.push({ geo: coneGeo(1.7, 0.7, 8), x, y: 2.3, z, color: randPick(rand, [0xff5e78, 0xffb347, 0x3ec6dd, 0xffd23e]) });
+  }
+  // lifeguard towers: white-and-red silhouettes the whole beach reads by
+  for (const lx of [-84, 84]) {
+    for (const [dx, dz] of [[-1.1, -0.9], [1.1, -0.9], [-1.1, 0.9], [1.1, 0.9]])
+      statics.push({ geo: boxGeo(0.26, 3.6, 0.26), x: lx + dx, y: 1.8, z: 210 + dz, color: 0xf4f1e8 });
+    statics.push({ geo: boxGeo(3.2, 0.25, 2.8), x: lx, y: 3.7, z: 210, color: 0xe8e2d4 });
+    statics.push({ geo: boxGeo(3, 2.1, 2.5), x: lx, y: 4.9, z: 210, color: 0xffffff });
+    statics.push({ geo: boxGeo(3.5, 0.3, 3), x: lx, y: 6.1, z: 210, color: 0xe33f4e });
+    statics.push({ geo: boxGeo(2.6, 0.9, 0.12), x: lx, y: 4.9, z: 211.3, color: 0x2c4a63 });
+  }
+  // promenade benches facing the water
+  for (let x = -195; x <= 195; x += 26) {
+    if (Math.abs(x - PIER_X) < 9) continue;
+    statics.push({ geo: boxGeo(2.2, 0.12, 0.55), x, y: 0.55, z: 196.5, color: 0x9a7b52 });
+    statics.push({ geo: boxGeo(2.2, 0.5, 0.1), x, y: 0.95, z: 196.2, color: 0x9a7b52 });
+    statics.push({ geo: boxGeo(0.14, 0.55, 0.5), x: x - 0.9, y: 0.27, z: 196.5, color: 0x5a6068 });
+    statics.push({ geo: boxGeo(0.14, 0.55, 0.5), x: x + 0.9, y: 0.27, z: 196.5, color: 0x5a6068 });
+  }
+  // crates and barrels stacked by the docks garage
+  for (const [cx, cz, s] of [[-128, 183, 1.3], [-126.4, 183.4, 1.1], [-127.2, 183.2, 1], [-112, 184, 1.2], [-110.5, 183.5, 0.9]]) {
+    statics.push({ geo: boxGeo(1.3 * s, 1.3 * s, 1.3 * s), x: cx, y: 0.65 * s, z: cz, color: 0xa8825a });
+    statics.push({ geo: cylGeo(0.42, 0.42, 1.1, 8), x: cx + 1.6, y: 0.55, z: cz + 0.4, color: 0x3e6b8c });
   }
 
   /* ----- marina: pier, posts, boats ----- */
@@ -239,10 +276,12 @@ export function buildCity(scene, rand) {
   const staticMesh = new THREE.Mesh(mergeParts(statics), vertexColorMaterial());
   staticMesh.castShadow = true; staticMesh.receiveShadow = true;
   scene.add(staticMesh);
+  const glowMesh = new THREE.Mesh(mergeParts(glowParts), new THREE.MeshBasicMaterial({ vertexColors: true }));
+  scene.add(glowMesh);
 
   /* ----- landmark buildings & signs ----- */
   const landmark = (x, z, w, h, d, tint, label, labelY) => {
-    const b = buildingMesh(w, h, d, facades[2], tint);
+    const b = buildingMesh(w, h, d, FACADES.tower, tint);
     b.position.set(x, h / 2 + 0.05, z); scene.add(b);
     colliders.push({ x1: x - w / 2, x2: x + w / 2, z1: z - d / 2, z2: z + d / 2, h });
     const s = textSprite(label, { scale: 1.15, color: '#ffe9a8' });

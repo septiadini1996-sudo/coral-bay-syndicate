@@ -9,6 +9,13 @@ import { createCarMesh, makeVehicle, stepVehicle, flashLightBar } from './vehicl
 
 const UNITS_BY_STARS = [0, 1, 2, 3, 4, 6];
 
+// Scratch objects reused every frame: the pursuit loop must not allocate.
+// stepVehicle skips the vehicle being stepped, so one shared "everyone" list
+// can be handed to every unit instead of a fresh filtered copy per unit.
+const scratchOthers = [];
+const shotFrom = new THREE.Vector3();
+const shotTo = new THREE.Vector3();
+
 export function createPolice(scene, city, rand) {
   const police = {
     units: [], heat: 0, bustMeter: 0, lastSeen: -99, spawnCd: 0, nearestDist: 999,
@@ -64,6 +71,13 @@ export function createPolice(scene, city, rand) {
       spawnUnit(G); police.spawnCd = 1.4;
     }
 
+    // Build the shared collision list once per frame (traffic + every unit +
+    // the player's car); each unit's own vehicle is skipped inside stepVehicle.
+    scratchOthers.length = 0;
+    for (const c of G.traffic.cars) scratchOthers.push(c);
+    for (const u of police.units) scratchOthers.push(u.vehicle);
+    if (G.player.car) scratchOthers.push(G.player.car);
+
     let bustPressure = false;
     for (let i = police.units.length - 1; i >= 0; i--) {
       const u = police.units[i], v = u.vehicle;
@@ -91,9 +105,7 @@ export function createPolice(scene, city, rand) {
         steer: clamp(diff * 1.9, -1, 1),
         boost: dist > 110, handbrake: false,
       };
-      const others = [...G.traffic.cars, ...police.units.filter((o) => o !== u).map((o) => o.vehicle)];
-      if (G.player.car) others.push(G.player.car);
-      const impact = stepVehicle(v, ctrl, dt, city.carColliders, others);
+      const impact = stepVehicle(v, ctrl, dt, city.carColliders, scratchOthers);
       if (impact > 6 && dist < 6) { G.audio.crash(impact * 0.8); if (G.player.mode === 'foot') G.player.takeDamage(impact * 0.5, G); }
 
       // Officers open fire at two stars and up.
@@ -101,9 +113,9 @@ export function createPolice(scene, city, rand) {
         u.shootCd -= dt;
         if (u.shootCd <= 0) {
           u.shootCd = randRange(rand, 0.8, 1.4);
-          const from = new THREE.Vector3(v.x, 1.35, v.z);
-          const to = new THREE.Vector3(px + randRange(rand, -0.7, 0.7), 1.1, pz + randRange(rand, -0.7, 0.7));
-          G.fx.tracer(from, to, 0xffb3a0); G.fx.flash(from);
+          shotFrom.set(v.x, 1.35, v.z);
+          shotTo.set(px + randRange(rand, -0.7, 0.7), 1.1, pz + randRange(rand, -0.7, 0.7));
+          G.fx.tracer(shotFrom, shotTo, 0xffb3a0); G.fx.flash(shotFrom);
           G.audio.shoot(0.35);
           if (rand() < 0.55 - dist * 0.007) {
             if (G.player.mode === 'car') { G.player.car.health -= 4; G.player.takeDamage(2.2, G); }

@@ -40,13 +40,13 @@ const G = {
   scene, camera, renderer,
   time: 0, state: shotName ? 'shot' : 'menu',
   keys: {}, mouseDown: false, money: 0,
-  shotMode: !!shotName, shotCam: null, lastGunshot: null, lastCrimeShot: -9,
+  shotMode: !!shotName, shotCam: null, lastGunshot: null, lastCrash: null, lastCrimeShot: -9,
   rand: mulberry32(seed * 31 + 5),
 };
 window.__game = G;
 
 G.city = buildCity(scene, mulberry32(seed * 7919 + 13));
-G.traffic = createTraffic(scene, mulberry32(seed * 104729 + 3), 14);
+G.traffic = createTraffic(scene, mulberry32(seed * 104729 + 3), 18, { onHonk: () => { if (G.audio) G.audio.honk(); } });
 G.peds = createPedestrians(scene, mulberry32(seed * 31337 + 9), 34);
 G.player = createPlayer(scene);
 G.police = createPolice(scene, G.city, mulberry32(seed * 5557 + 1));
@@ -68,6 +68,10 @@ G.addMoney = (n) => { G.money += n; };
 G.onCarImpact = (impact, playerCar) => {
   playerCar.health -= impact * 0.75;
   if (playerCar.health <= 0) playerCar.disabled = true;
+  // The world reacts: dust at the hit, a crash the crowd and traffic notice.
+  G.lastCrash = { x: G.player.x, z: G.player.z, t: G.time };
+  G.fx.dust(G.player.x, 0.7, G.player.z);
+  if (impact > 13) G.fx.smoke(G.player.x, 1.1, G.player.z);
   if (G.time - lastImpactCrime < 1.2) return;
   let nearest = null, nd = 6;
   for (const v of G.traffic.cars) {
@@ -124,7 +128,7 @@ G.saveGame = () => {
 const $ = (id) => document.getElementById(id);
 function lockPointer() {
   try {
-    const r = lockPointer();
+    const r = canvas.requestPointerLock();
     if (r && typeof r.catch === 'function') r.catch(() => {});
   } catch { /* pointer lock unavailable (headless, iframe): play continues */ }
 }
@@ -236,6 +240,7 @@ if (G.shotMode) {
 /* ---------------- the loop ---------------- */
 const clock = new THREE.Clock();
 let saveCd = 10;
+let smokeCd = 0;
 let shotFrames = 0;
 function frame() {
   // Screenshot mode renders a bounded run of frames, then holds the last one:
@@ -250,16 +255,18 @@ function frame() {
 
   if (G.state === 'play') {
     P.update(dt, G);
-    G.traffic.update(dt, P, false);
+    G.traffic.update(dt, P, false, trafficCtx());
     G.peds.update(dt, pedCtx());
     G.police.update(dt, G);
     G.missions.update(dt);
     updatePrompt();
     saveCd -= dt;
     if (saveCd <= 0) { saveCd = 15; G.saveGame(); }
+    smokeCd -= dt;
+    if (smokeCd <= 0) { smokeCd = 0.14; emitWreckSmoke(); }
   } else if (G.shotMode) {
     // The staged scene: world systems idle and breathe, the camera is placed.
-    G.traffic.update(dt, P, true);
+    G.traffic.update(dt, P, true, null);
     G.peds.update(dt, pedCtx());
     G.police.update(dt, G);
     if (G.shotCam) {
@@ -272,7 +279,7 @@ function frame() {
     const t = G.time * 0.05;
     camera.position.set(Math.sin(t) * 150, 42 + Math.sin(G.time * 0.13) * 6, Math.cos(t) * 150 + 40);
     camera.lookAt(0, 4, 30);
-    G.traffic.update(dt, { x: 9999, z: 9999 }, false);
+    G.traffic.update(dt, { x: 9999, z: 9999 }, false, null);
     G.peds.update(dt, pedCtx());
   }
 
@@ -290,10 +297,48 @@ function frame() {
   renderer.render(scene, camera);
 }
 
-function pedCtx() {
-  const recent = G.lastGunshot && G.time - G.lastGunshot.t < 2.5 ? G.lastGunshot : null;
+// Damaged and wrecked cars breathe a thin thread of smoke.
+function emitWreckSmoke() {
+  const P = G.player;
+  if (P.car && (P.car.disabled || P.car.health < 30)) G.fx.smoke(P.x, 1.1, P.z);
+  let used = 0;
+  for (const u of G.police.units) {
+    if (used >= 2) break;
+    if (u.vehicle.disabled) { G.fx.smoke(u.vehicle.x, 1.1, u.vehicle.z); used++; }
+  }
+  for (const v of G.traffic.cars) {
+    if (used >= 2) break;
+    if (v.disabled && Math.hypot(v.group.position.x - P.x, v.group.position.z - P.z) < 70) {
+      G.fx.smoke(v.group.position.x, 1.1, v.group.position.z); used++;
+    }
+  }
+}
+
+function trafficCtx() {
   return {
-    gunshotAt: recent,
+    playerCar: G.player.mode === 'car' ? G.player.car : null,
+    crashAt: G.lastCrash && G.time - G.lastCrash.t < 2.5 ? G.lastCrash : null,
+    time: G.time,
+  };
+}
+
+function pedCtx() {
+  const recentShot = G.lastGunshot && G.time - G.lastGunshot.t < 2.5 ? G.lastGunshot : null;
+  const recentCrash = G.lastCrash && G.time - G.lastCrash.t < 2.5 ? G.lastCrash : null;
+  let policeAt = null;
+  if (G.police.stars > 0) {
+    let bd = 46;
+    for (const u of G.police.units) {
+      const d = Math.hypot(u.vehicle.x - G.player.x, u.vehicle.z - G.player.z);
+      if (d < bd) { bd = d; policeAt = { x: u.vehicle.x, z: u.vehicle.z }; }
+    }
+  }
+  return {
+    gunshotAt: recentShot,
+    crashAt: recentCrash,
+    policeAt,
+    wanted: G.police.stars,
+    playerCar: G.player.mode === 'car' ? G.player.car : null,
     playerCarPos: G.player.mode === 'car' ? G.player : null,
     playerCarSpeed: G.player.mode === 'car' ? Math.abs(G.player.car.speed) : 0,
   };
@@ -304,8 +349,10 @@ function updatePrompt() {
   if (P.mode === 'car') { G.hud.prompt('E', 'Exit vehicle'); return; }
   let best = null, bd = 4.1;
   for (const v of G.traffic.cars) {
+    if (v.driver === 'player') continue;
     const d = Math.hypot(v.group.position.x - P.x, v.group.position.z - P.z);
-    if (d < bd) { bd = d; best = v; }
+    // Offer only cars the E handler would actually accept (near and slow).
+    if (d < bd && Math.abs(v.speed ?? 0) < 7) { bd = d; best = v; }
   }
   if (best) { G.hud.prompt('E', `Enter the ${best.group.userData.name}`); return; }
   const nearRing = [LANDMARKS.marina, LANDMARKS.race].some((s) => Math.hypot(P.x - s.x, P.z - s.z) < 4.4);

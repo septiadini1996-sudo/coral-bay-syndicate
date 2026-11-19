@@ -1,6 +1,9 @@
 // Traffic for Coral Bay Syndicate: civilian cars that cruise the street grid on
 // proper right-hand lanes, slow for the car ahead, turn at intersections, plus
 // parked cars lining the streets — every one of them stealable by the player.
+// The drivers are not clockwork: they honk when the player cuts them up, swerve
+// a half-lane away from a car bearing down on them, and freeze for a breath
+// after a big crash nearby before they dare move again.
 const THREE = window.THREE;
 import { mulberry32, randRange, randPick, clamp, wrapAngle } from './util.js';
 import { STREET_LINES } from './city.js';
@@ -18,7 +21,7 @@ function railHeading(seg) {
   return seg.dir > 0 ? Math.PI / 2 : -Math.PI / 2;
 }
 
-export function createTraffic(scene, rand, count = 14) {
+export function createTraffic(scene, rand, count = 18, hooks = {}) {
   const cars = [];       // every world car: traffic, parked, or the player's ride
   const movers = [];     // the subset currently driven by traffic AI
 
@@ -49,6 +52,9 @@ export function createTraffic(scene, rand, count = 14) {
     v.cruise = randRange(rand, 8.5, 12.5);
     v.speed = v.cruise;
     v.stopped = 0;
+    v.honkCd = randRange(rand, 2, 8);   // driver temperament: how soon they lean on the horn
+    v.panicT = 0;                       // frozen after a nearby crash
+    v.lat = 0; v.latT = 0;              // lateral swerve offset off the rail centre
     cars.push(v); movers.push(v);
     placeOnRail(v, 0);
     return v;
@@ -70,6 +76,7 @@ export function createTraffic(scene, rand, count = 14) {
       heading = heading + wrapAngle(h2 - heading) * e;
       if (t >= 1) { v.seg = v.turnSeg; v.s = along; v.turnSeg = null; v.turnCooldown = 3; }
     }
+    if (v.lat) { if (v.seg.axis === 'v') p.x += v.lat; else p.z += v.lat; }
     v.group.position.set(p.x, 0.06, p.z);
     v.heading = heading;
     v.group.rotation.set(0, heading, 0);
@@ -87,7 +94,7 @@ export function createTraffic(scene, rand, count = 14) {
   ];
   for (const [x, z, h] of parkSpots) spawnParked(x, z, h);
 
-  function update(dt, playerPos, frozen) {
+  function update(dt, playerPos, frozen, ctx) {
     for (const v of movers) {
       if (v.driver !== 'traffic') continue;
       // Keep spacing with the car ahead on the same rail.
@@ -101,7 +108,43 @@ export function createTraffic(scene, rand, count = 14) {
       }
       // Brake for the player sitting in the lane.
       const p = railPoint(v.seg, v.s + 9);
-      if (Math.hypot(playerPos.x - p.x, playerPos.z - p.z) < 5.5) target = 0;
+      const blockedByPlayer = Math.hypot(playerPos.x - p.x, playerPos.z - p.z) < 5.5;
+      if (blockedByPlayer) target = 0;
+
+      if (!frozen && ctx) {
+        v.honkCd -= dt;
+        const vx = v.group.position.x, vz = v.group.position.z;
+        // A fresh crash nearby: freeze, stare, maybe honk — then creep on.
+        if (ctx.crashAt && ctx.time - ctx.crashAt.t < 1 && !v.panicT) {
+          const cd = Math.hypot(vx - ctx.crashAt.x, vz - ctx.crashAt.z);
+          if (cd < 20) {
+            v.panicT = randRange(rand, 1.2, 2.6);
+            if (cd < 13 && v.honkCd <= 0) { hooks.onHonk?.(); v.honkCd = randRange(rand, 3, 6); }
+          }
+        }
+        if (v.panicT > 0) { v.panicT -= dt; target = 0; }
+        const pc = ctx.playerCar;
+        if (pc && pc !== v) {
+          const dx = pc.group.position.x - vx, dz = pc.group.position.z - vz;
+          const dist = Math.hypot(dx, dz);
+          const fX = Math.sin(v.heading), fZ = Math.cos(v.heading);
+          const ahead = dist > 0.01 ? (dx * fX + dz * fZ) / dist : 0;
+          const side = (dx * fZ - dz * fX) / (dist || 1);
+          // Cut up or tailgated hard: one indignant honk, on a long cooldown.
+          if (v.honkCd <= 0 && ((dist < 9 && ahead > 0.7 && Math.abs(side) < 0.45) || dist < 3.4 || blockedByPlayer)) {
+            hooks.onHonk?.();
+            v.honkCd = randRange(rand, 3.5, 7);
+          }
+          // The player's car bearing down on us: shy a half-lane away from it.
+          const pX = Math.sin(pc.heading), pZ = Math.cos(pc.heading);
+          const toward = dist > 0.01 ? -(dx * pX + dz * pZ) / dist : 0;
+          if (dist < 13 && Math.abs(pc.speed) > 12 && toward > 0.75) {
+            v.latT = v.seg.axis === 'v' ? -Math.sign(dx || 1) * 1.15 : -Math.sign(dz || 1) * 1.15;
+          } else v.latT = 0;
+        } else v.latT = 0;
+        v.lat += (v.latT - v.lat) * Math.min(1, dt * 2.6);
+      }
+
       v.speed += clamp(target - v.speed, -18 * dt * 3, 6 * dt) * (frozen ? 0 : 1);
       if (frozen) v.speed = 0;
       v.s += v.speed * dt;

@@ -60,6 +60,7 @@ export function createAudio() {
     pickup() { tone({ freq: 880, dur: 0.09, type: 'triangle', gain: 0.22 }); tone({ freq: 1320, dur: 0.12, type: 'triangle', gain: 0.2, delay: 0.06 }); },
     chime() { [660, 880, 1100, 1320].forEach((f, i) => tone({ freq: f, dur: 0.22, type: 'triangle', gain: 0.18, delay: i * 0.07 })); },
     denied() { tone({ freq: 180, dur: 0.16, type: 'square', gain: 0.12 }); },
+    honk() { tone({ freq: 370, dur: 0.17, type: 'square', gain: 0.06 }); tone({ freq: 466, dur: 0.17, type: 'square', gain: 0.05 }); },
 
     setEngine(on, ratio = 0) {
       if (!ensure()) return;

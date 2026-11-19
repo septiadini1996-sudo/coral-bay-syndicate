@@ -59,6 +59,7 @@ export function applyShotScene(name, G) {
     P.camYaw = 2.36; P.aimT = 1; P.armPivot.rotation.x = -1.45;
     asUnit(stageCar(G, 14.5, 1.5, -2.25, 0xffffff, 'police'));
     asUnit(stageCar(G, -7, -15, 0.6, 0xffffff, 'police'));
+    stageCar(G, 34, -3.4, Math.PI / 2, 0x59c2b8);   // a civilian caught mid-escape
     G.police.heat = 3;
     mapObjective(90, -49.5);
     G.hud.setObjective('HOT METAL', 'Steal the pink Flamingo GT in Coral Heights', 118);
@@ -77,6 +78,9 @@ export function applyShotScene(name, G) {
   cops.push(stageCar(G, -14, 174.8, Math.PI / 2, 0xffffff, 'police'));
   cops.push(stageCar(G, -12.5, 165.6, Math.PI / 2 + 0.14, 0xffffff, 'police'));
   for (const c of cops) { c.speed = 22; asUnit(c); }
+  // Civilian traffic sharing the Mile, so the street reads alive.
+  stageCar(G, 26, 165.2, Math.PI / 2, 0x3ec6dd);
+  stageCar(G, 38, 176.8, -Math.PI / 2, 0xffd23e, 'taxi');
   G.police.heat = 4;
   beaconAt(LANDMARKS.hotel.x, LANDMARKS.hotel.z);
   mapObjective(LANDMARKS.hotel.x, LANDMARKS.hotel.z);
