@@ -53,6 +53,7 @@ function bindInput() {
 	dom.addEventListener("mousedown", (e) => {
 		if (G.cutscene) { skipCutscene(); return; }
 		mouseDown = true; mouseMoved = 0; mouseDownAt = performance.now(); sfxInit();
+		if (G.mode === "play" && G.onFoot && isGun(G.weapon)) playerAttack();
 	});
 	addEventListener("mousemove", (e) => {
 		if (!mouseDown) return;
@@ -62,7 +63,7 @@ function bindInput() {
 		lastDragT = G.time;
 	});
 	addEventListener("mouseup", () => {
-		if (mouseDown && mouseMoved < 6 && performance.now() - mouseDownAt < 350 && G.mode === "play" && G.onFoot) playerAttack();
+		if (mouseDown && mouseMoved < 6 && performance.now() - mouseDownAt < 350 && G.mode === "play" && G.onFoot && !isGun(G.weapon)) playerAttack();
 		mouseDown = false;
 	});
 	dom.addEventListener("wheel", (e) => { G.camDist = clamp(G.camDist + Math.sign(e.deltaY) * 1.4, 5.5, 22); }, { passive: true });

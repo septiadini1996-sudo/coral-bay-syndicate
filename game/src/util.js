@@ -46,7 +46,7 @@ const G = {
 	weather: "clear",
 	weatherTimer: 40,
 	cash: 250, health: 100, wanted: 0, wantedCalm: 0,
-	weapon: "fists", ammo: 0,
+	weapon: "fists", guns: { pistol: false, smg: false }, ammoP: 0, ammoS: 0,
 	player: null,
 	onFoot: true, vehicle: null,
 	vehicles: [], peds: [], dogs: [], gulls: [], police: [], traffic: [],
@@ -78,6 +78,7 @@ function saveGame() {
 		localStorage.setItem(SAVE_KEY, JSON.stringify({
 			cash: G.cash, jobIndex: G.jobIndex, jobsDone: G.jobsDone,
 			raceBest: G.raceBest, radioStation: G.radioStation,
+			guns: G.guns, ammoP: G.ammoP, ammoS: G.ammoS,
 		}));
 	} catch (e) {  }
 }

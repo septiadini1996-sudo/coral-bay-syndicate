@@ -79,7 +79,10 @@ function sfxClick() { sfxTone(660, 0.07, "square", 0.12); }
 function sfxPickup() { sfxTone(880, 0.09, "sine", 0.2); sfxTone(1320, 0.14, "sine", 0.2, 0, 0.07); }
 function sfxCash() { sfxTone(990, 0.08, "triangle", 0.22); sfxTone(1320, 0.1, "triangle", 0.22, 0, 0.06); sfxTone(1760, 0.16, "triangle", 0.2, 0, 0.12); }
 function sfxPunch() { sfxNoise(0.09, 0.3, 500); sfxTone(120, 0.1, "sine", 0.3, 55); }
-function sfxShot() { sfxNoise(0.14, 0.4, 3200); sfxTone(220, 0.12, "square", 0.18, 60); }
+function sfxShot(kind) {
+	if (kind === "smg") { sfxNoise(0.09, 0.34, 4300); sfxTone(300, 0.09, "square", 0.15, 85); }
+	else { sfxNoise(0.14, 0.4, 3200); sfxTone(220, 0.12, "square", 0.18, 60); }
+}
 function sfxCrash(strength) { sfxNoise(0.25, clamp(0.1 + strength * 0.02, 0.1, 0.45), 700); sfxTone(90, 0.2, "sine", 0.25, 40); }
 function sfxSting(kind) {
 	if (kind === "good") { [523, 659, 784, 1046].forEach((f, i) => sfxTone(f, 0.22, "triangle", 0.2, 0, i * 0.09)); }

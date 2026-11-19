@@ -82,8 +82,10 @@ function updateHUD() {
 	st.style.color = G.wanted > 0 ? "#ffcf3f" : "rgba(255,255,255,0.35)";
 	el("healthfill").style.width = clamp(G.health, 0, 100) + "%";
 	el("healthfill").style.background = G.health > 35 ? "#58d06a" : "#e84a3c";
-	const wname = { fists: "Fists", bat: "Baseball bat", pipe: "Lead pipe", pistol: "Pistol" }[G.weapon];
-	el("weapon").textContent = G.weapon === "pistol" ? wname + " · " + G.ammo : wname;
+	const wname = { fists: "Fists", bat: "Baseball bat", pipe: "Lead pipe", pistol: "Pistol", smg: "SMG" }[G.weapon];
+	el("weapon").textContent = G.weapon === "pistol" ? wname + " · " + G.ammoP : G.weapon === "smg" ? wname + " · " + G.ammoS : wname;
+	el("crosshair").style.display = isGun(G.weapon) && G.onFoot && G.mode === "play" ? "block" : "none";
+	if (G.gunMesh) { G.gunMesh.visible = isGun(G.weapon) && G.onFoot; G.gunMesh.scale.z = G.weapon === "smg" ? 1.45 : 1; }
 	const driving = !G.onFoot && G.vehicle;
 	el("speedo").style.display = driving ? "block" : "none";
 	if (driving) {
@@ -229,6 +231,7 @@ function showTitle() {
 function startNewGame() {
 	clearSave();
 	G.cash = 250; G.jobIndex = 0; G.jobsDone = 0; G.raceBest = 0;
+	G.guns = { pistol: false, smg: false }; G.ammoP = 0; G.ammoS = 0; G.weapon = "fists";
 	beginPlay();
 	showBanner("Coral Bay Syndicate", "Rico Solano, fixer. Celia is waiting at the marina — follow the gold marker. Build the syndicate, job by job.", 7);
 }
@@ -237,6 +240,7 @@ function continueGame() {
 	if (save) {
 		G.cash = save.cash; G.jobIndex = save.jobIndex; G.jobsDone = save.jobsDone;
 		G.raceBest = save.raceBest || 0; G.radioStation = save.radioStation || 0;
+		if (save.guns) { G.guns = save.guns; G.ammoP = save.ammoP || 0; G.ammoS = save.ammoS || 0; }
 	}
 	beginPlay();
 	showToast(G.jobIndex < JOBS.length ? "Welcome back. Next job: " + JOBS[G.jobIndex].title : "Welcome back, boss. The bay is yours.");

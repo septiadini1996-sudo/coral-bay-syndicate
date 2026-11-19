@@ -92,6 +92,8 @@ function buildCast(scene) {
 	rico.mesh.position.set(SPOTS.safehouse.x, 0, SPOTS.safehouse.z);
 	scene.add(rico.mesh);
 	G.player = rico; rico.heading = Math.PI; rico.vy = 0; rico.y = 0; rico.attackT = 0;
+	const gunMesh = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.14, 0.46), lam(0x1c1f24));
+	gunMesh.position.set(0, -0.82, 0.14); gunMesh.visible = false; rico.ra.add(gunMesh); G.gunMesh = gunMesh;
 	const plate = textSprite("Rico Solano", "#ffe9a3");
 	plate.position.set(0, 3.35, 0); plate.scale.set(6.4, 1.4, 1);
 	rico.mesh.add(plate); rico.namePlate = plate;
@@ -180,18 +182,19 @@ function buildPickups(scene) {
 	const defs = [
 		{ kind: "bat", x: -148, z: 52, color: 0xb08954 },
 		{ kind: "pipe", x: 300, z: 296, color: 0x9aa0a3 },
-		{ kind: "pistol", x: -636, z: -44, color: 0x30343a },
-		{ kind: "pistol", x: 128, z: 596, color: 0x30343a },
+		{ kind: "pistol", x: 88, z: 330, color: 0x30343a },
+		{ kind: "smg", x: 424, z: 452, color: 0x23272e },
+		{ kind: "pistol", x: -448, z: -330, color: 0x30343a },
 	];
 	for (const d of defs) {
 		const grp = new THREE.Group();
-		const item = new THREE.Mesh(new THREE.BoxGeometry(d.kind === "pistol" ? 0.7 : 1.1, 0.22, 0.22), lam(d.color));
+		const item = new THREE.Mesh(new THREE.BoxGeometry(d.kind === "pistol" ? 0.7 : d.kind === "smg" ? 0.95 : 1.1, 0.22, 0.22), lam(d.color));
 		item.position.y = 1.1; grp.add(item);
 		const glow = glowDisc(0x2ee6c8, 0.9);
 		glow.position.y = 0.1; grp.add(glow);
 		grp.position.set(d.x, 0, d.z);
 		scene.add(grp);
-		G.pickups.push({ kind: d.kind, grp, x: d.x, z: d.z, taken: false });
+		G.pickups.push({ kind: d.kind, grp, x: d.x, z: d.z, taken: false, respawnT: 0 });
 	}
 }
 function updatePeds(dt) {
@@ -259,13 +262,26 @@ function updatePeds(dt) {
 		g.mesh.userData.wl.rotation.x = flap; g.mesh.userData.wr.rotation.x = -flap;
 	}
 	for (const pk of G.pickups) {
-		if (pk.taken) continue;
+		if (pk.taken) {
+			pk.respawnT -= dt;
+			if (pk.respawnT <= 0) { pk.taken = false; pk.grp.visible = true; }
+			continue;
+		}
 		pk.grp.rotation.y += dt * 1.6;
 		if (G.onFoot && dist2d(pp.x, pp.z, pk.x, pk.z) < 2.1) {
-			pk.taken = true; pk.grp.visible = false;
-			G.weapon = pk.kind; if (pk.kind === "pistol") G.ammo = 24;
-			showToast(pk.kind === "pistol" ? "Picked up a pistol (24 rounds) — click to fire" : "Picked up a " + pk.kind + " — F or click to swing");
-			sfxPickup(); updateHUD();
+			pk.taken = true; pk.grp.visible = false; pk.respawnT = 30;
+			if (isGun(pk.kind)) {
+				const ak = pk.kind === "pistol" ? "ammoP" : "ammoS", amt = pk.kind === "pistol" ? 24 : 60;
+				G[ak] += amt;
+				if (!G.guns[pk.kind]) {
+					G.guns[pk.kind] = true; G.weapon = pk.kind;
+					showToast(pk.kind === "pistol" ? "Picked up a PISTOL (" + amt + " rounds) — click to fire, Q holsters" : "Picked up an SMG (" + amt + " rounds) — hold click to fire, Q holsters");
+				} else showToast((pk.kind === "pistol" ? "Pistol" : "SMG") + " ammo +" + amt + " (" + G[ak] + ")");
+			} else {
+				G.weapon = pk.kind;
+				showToast("Picked up a " + pk.kind + " — F or click to swing");
+			}
+			sfxPickup(); saveGame(); updateHUD();
 		}
 	}
 }
@@ -317,29 +333,53 @@ function updatePlayerOnFoot(dt) {
 		if (key("KeyE")) { G.keys["KeyE"] = false; enterVehicle(near); }
 	} else if (G.giverPrompt) setInteract(G.giverPrompt);
 	else setInteract(null);
+	if (key("Digit1")) { G.keys["Digit1"] = false; if (G.guns.pistol && G.weapon !== "pistol") { G.weapon = "pistol"; sfxClick(); updateHUD(); } }
+	if (key("Digit2")) { G.keys["Digit2"] = false; if (G.guns.smg && G.weapon !== "smg") { G.weapon = "smg"; sfxClick(); updateHUD(); } }
+	if (key("Digit0") || key("KeyQ")) { G.keys["Digit0"] = false; G.keys["KeyQ"] = false; if (isGun(G.weapon)) { G.weapon = "fists"; sfxClick(); updateHUD(); } }
 	if (key("KeyF")) { G.keys["KeyF"] = false; playerAttack(); }
+}
+function isGun(w) { return w === "pistol" || w === "smg"; }
+let gunCd = 0, lastCrimeT = -9, flashMesh = null, flashT = 0;
+function showFlash(x, z, fx, fz) {
+	if (!flashMesh) { flashMesh = new THREE.Mesh(new THREE.SphereGeometry(0.16, 6, 5), BM(0xffd94d)); G.scene.add(flashMesh); }
+	flashMesh.position.set(x + fx * 0.8, 1.55, z + fz * 0.8);
+	flashMesh.visible = true; flashT = 0.045;
+}
+function fireGun() {
+	const p = G.player, m = p.mesh;
+	if (gunCd > 0 || G.cutscene) return;
+	const smg = G.weapon === "smg", ak = smg ? "ammoS" : "ammoP";
+	if (G[ak] <= 0) { gunCd = 0.3; showToast("Out of ammo — grab a glowing ammo pickup"); return; }
+	G[ak]--; gunCd = smg ? 0.11 : 0.26; p.attackT = 0.18;
+	sfxShot(smg ? "smg" : "pistol");
+	const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y), range = smg ? 42 : 34, cone = smg ? 0.9 : 0.93;
+	let best = null, bestD = range;
+	for (const q of G.peds) {
+		if (q.dead > 0) continue;
+		const dx = q.mesh.position.x - m.position.x, dz = q.mesh.position.z - m.position.z;
+		const d = Math.sqrt(dx * dx + dz * dz);
+		if (d < bestD && (dx * fx + dz * fz) / Math.max(1, d) > cone) { best = q; bestD = d; }
+	}
+	let hitD = best ? bestD : range, copHit = false, witness = false;
+	for (const c of G.police) {
+		const dx = c.mesh.position.x - m.position.x, dz = c.mesh.position.z - m.position.z;
+		const d = Math.sqrt(dx * dx + dz * dz);
+		if (d < 100) witness = true;
+		if (d < range + 2 && (dx * fx + dz * fz) / Math.max(1, d) > 0.9) { copHit = true; if (d < hitD) hitD = d; }
+	}
+	showTracer(m.position.x, m.position.z, fx, fz, hitD);
+	showFlash(m.position.x, m.position.z, fx, fz);
+	panicAt(m.position.x, m.position.z, 26);
+	if (best) hurtPed(best, smg ? 1 : 2, true);
+	if ((best || copHit || witness) && G.time - lastCrimeT > 1.1) { lastCrimeT = G.time; setWanted(Math.min(5, G.wanted + 1)); G.wantedCalm = 0; }
+	updateHUD();
 }
 function playerAttack() {
 	const p = G.player;
 	if (G.mode !== "play" || !G.onFoot || G.cutscene) return;
+	if (isGun(G.weapon)) { fireGun(); return; }
 	p.attackT = 0.18;
 	const m = p.mesh, fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y);
-	if (G.weapon === "pistol") {
-		if (G.ammo <= 0) { showToast("Out of ammo"); return; }
-		G.ammo--; sfxShot(); updateHUD();
-		let best = null, bestD = 34;
-		for (const q of G.peds) {
-			if (q.dead > 0) continue;
-			const dx = q.mesh.position.x - m.position.x, dz = q.mesh.position.z - m.position.z;
-			const d = Math.sqrt(dx * dx + dz * dz);
-			if (d < bestD && (dx * fx + dz * fz) / Math.max(1, d) > 0.93) { best = q; bestD = d; }
-		}
-		showTracer(m.position.x, m.position.z, fx, fz, best ? bestD : 30);
-		panicAt(m.position.x, m.position.z, 26);
-		if (best) hurtPed(best, 2);
-		addCrime(1);
-		return;
-	}
 	sfxPunch();
 	for (const q of G.peds) {
 		if (q.dead > 0) continue;
@@ -347,12 +387,13 @@ function playerAttack() {
 		if (dx * dx + dz * dz < 5.3 && dx * fx + dz * fz > 0) { hurtPed(q, G.weapon === "fists" ? 1 : 2); break; }
 	}
 }
-function hurtPed(q, dmg) {
+function hurtPed(q, dmg, gun) {
 	q.hp -= dmg; q.fleeT = 3; q.fleeX = G.player.mesh.position.x; q.fleeZ = G.player.mesh.position.z;
 	panicAt(q.mesh.position.x, q.mesh.position.z, 12);
 	if (q.hp <= 0 && q.dead <= 0) {
 		q.dead = 5; q.mesh.rotation.x = -Math.PI / 2; q.mesh.position.y = 0.3;
-		addCrime(1); showToast("You flattened a pedestrian!");
+		if (!gun) addCrime(1);
+		showToast("You flattened a pedestrian!");
 	}
 }
 let tracerMesh = null, tracerT = 0;
@@ -368,4 +409,7 @@ function showTracer(x, z, fx, fz, len) {
 }
 function updateCombatFx(dt) {
 	if (tracerT > 0) { tracerT -= dt; if (tracerT <= 0 && tracerMesh) tracerMesh.visible = false; }
+	if (flashT > 0) { flashT -= dt; if (flashT <= 0 && flashMesh) flashMesh.visible = false; }
+	if (gunCd > 0) gunCd -= dt;
+	if (mouseDown && G.weapon === "smg" && G.mode === "play" && G.onFoot && !G.cutscene) fireGun();
 }
