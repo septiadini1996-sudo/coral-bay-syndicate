@@ -66,7 +66,7 @@ function saveGame() {
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 function collideCircle(x, z, r) {
   const half = G.citySize / 2 - 6;
-  x = clamp(x, -half, half); z = clamp(z, -half, half);
+  if (!isLand(x, z)) { x = clamp(x, -half, half); z = clamp(z, -half, half); }
   for (let i = 0; i < G.colliders.length; i++) {
     const c = G.colliders[i];
     if (x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r) {
