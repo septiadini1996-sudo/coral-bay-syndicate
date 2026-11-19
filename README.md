@@ -4,16 +4,34 @@
 [![rank](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-**Coral Bay Syndicate** is an original 3D open-world crime game that runs entirely in the browser — no downloads, no server, just static files and Three.js. You are Rico Solano, a driver working for fixer Celia Marrow in Coral Bay, a pastel coastal city of six districts with a marina, beaches and a downtown canyon.
+**Coral Bay Syndicate** is an original open-world crime game that plays
+entirely in the browser from static files — no build step, no network.
+Coral Bay is a pastel, Miami-flavoured bay city at golden hour: six
+districts of glass towers, brick old town, beachfront hotels, suburbia,
+a working marina and the docks. You are Rico Solano, driver for fixer
+Celia Marrow.
 
-Explore on foot or steal any parked car and drive: rail-based traffic AI keeps to the right-hand lanes, brakes, honks, swerves and panics; pedestrians stroll, wait, check their phones, watch police chases, cower at gunfire and flee danger, each with their own behaviour. Commit crimes and the heat rises through a five-star wanted system — interceptors pursue, set up roadblocks and open fire; lose them in the alleys or pay the price in a WASTED or BUSTED screen. Take on three story missions (First Run, Hot Metal, The Coral Run) plus timed deliveries and checkpoint races, with a live minimap, synthesized engine and city audio, and progress saved in your browser.
+Explore on foot or steal any parked car and drive: civilian traffic
+keeps its lanes, honks, swerves and panics; pedestrians stroll, wait,
+check their phones, watch trouble, cower at gunfire and run. Crimes
+raise a five-star wanted level — Interceptors pursue with predicted
+intercepts, shoot at three stars, set roadblocks at four, and bust you
+if they pin you. Work Celia's three story jobs (a package run, a marked
+car lift, a checkpoint race around the bay), then keep earning with
+endless deliveries and checkpoint dashes. HUD with a live minimap,
+synthesised engine/siren/gunshot audio, and progress saved locally.
 
 ## Run it
 
 ```sh
-python3 -m http.server 8000 --directory game
-# then open http://localhost:8000 in a desktop browser
+node serve.ts
+# or serve the game/ folder with any static file server, e.g.
+#   cd game && python3 -m http.server 8080
+# then open http://localhost:8080 in desktop Chrome
 ```
+
+Controls: WASD walk/drive, mouse look, Shift sprint, E steal/enter/exit
+car, Space brake, click to shoot, Esc pause.
 
 ---
 
