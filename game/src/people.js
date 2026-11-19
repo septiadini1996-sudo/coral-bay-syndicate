@@ -113,12 +113,13 @@ function buildCast(scene) {
 	contact("celia", { skin: 0xf2c09a, shirtTex: 5, skirt: 0xc93a2e, hair: 0x4a2a12 }, SPOTS.celia, "Celia");
 	contact("marco", { skin: 0xa96f3f, shirt: 0x2e4053, pants: 0x30343a, hat: "fedora", shades: true, chain: true }, SPOTS.marco, "Marco");
 	contact("don", { skin: 0xffd9b3, shirtTex: 3, pants: 0xe8e4da, hat: "panama", shades: true, chain: true }, SPOTS.don, "Don Falso");
-	for (let i = 0; i < 24; i++) {
+	for (let i = 0; i < 32; i++) {
 		const p = makePerson({
 			hat: rng() > 0.55 ? pick(["fedora", "panama"]) : null,
 			shades: rng() > 0.6, chain: rng() > 0.8,
 			skirt: rng() > 0.72 ? pick(SHIRT_COLORS) : null,
 		});
+		p.mesh.scale.setScalar(0.84 * (0.9 + (i % 9) * 0.0275));
 		const s = sidePt();
 		p.mesh.position.set(s.x, 0, s.z);
 		p.target = sidePt();
@@ -128,8 +129,23 @@ function buildCast(scene) {
 	buildDogs(scene); buildGulls(scene); buildPickups(scene);
 }
 function sidePt() {
+	const r = rng();
+	if (r < 0.16) return { x: rand(688, 812), z: rand(-800, 800) };
+	if (r < 0.32) return { x: rand(-836, -596), z: rand(-344, 344) };
 	const road = pick(ROAD_LINES), side = rng() > 0.5 ? 20.5 : -20.5, along = rand(-800, 800);
 	return rng() > 0.5 ? { x: road + side, z: along } : { x: along, z: road + side };
+}
+function panicAt(x, z, r) {
+	for (const p of G.peds) {
+		if (p.dead > 0) continue;
+		if (dist2d(p.mesh.position.x, p.mesh.position.z, x, z) < r) {
+			p.fleeT = Math.max(p.fleeT, rand(1.6, 3)); p.fleeX = x; p.fleeZ = z;
+		}
+	}
+	for (const k in G.contacts) {
+		const ct = G.contacts[k];
+		if (dist2d(ct.person.mesh.position.x, ct.person.mesh.position.z, x, z) < r) ct.duckT = 2.6;
+	}
 }
 function buildDogs(scene) {
 	G.dogs = [];
@@ -181,21 +197,43 @@ function buildPickups(scene) {
 function updatePeds(dt) {
 	const pp = G.player.mesh.position;
 	for (const p of G.peds) {
-		if (p.dead > 0) { p.dead -= dt; if (p.dead <= 0) { const s = sidePt(); p.mesh.position.set(s.x, 0, s.z); p.mesh.rotation.x = 0; p.hp = 3; } continue; }
+		if (p.dead > 0) {
+			p.dead -= dt;
+			const op = clamp(p.dead / 2, 0, 1);
+			p.mesh.traverse((o) => { if (o.material) { o.material.transparent = true; o.material.opacity = op; } });
+			if (p.dead <= 0) {
+				const s = sidePt(); p.mesh.position.set(s.x, 0, s.z); p.mesh.rotation.x = 0; p.hp = 3;
+				p.mesh.traverse((o) => { if (o.material) o.material.opacity = 1; });
+			}
+			continue;
+		}
 		let tx = p.target.x, tz = p.target.z, sp = p.walkSpeed;
+		if (!G.onFoot && G.vehicle && Math.abs(G.vehicle.speed) > 6) {
+			const vp = G.vehicle.mesh.position;
+			if (dist2d(p.mesh.position.x, p.mesh.position.z, vp.x, vp.z) < 11) {
+				p.fleeT = Math.max(p.fleeT, 0.7); p.fleeX = vp.x; p.fleeZ = vp.z;
+			}
+		}
 		if (p.fleeT > 0) {
 			p.fleeT -= dt; sp = 6.4;
-			tx = p.mesh.position.x + (p.mesh.position.x - pp.x);
-			tz = p.mesh.position.z + (p.mesh.position.z - pp.z);
+			const sx = p.fleeX !== undefined ? p.fleeX : pp.x, sz = p.fleeZ !== undefined ? p.fleeZ : pp.z;
+			tx = p.mesh.position.x + (p.mesh.position.x - sx);
+			tz = p.mesh.position.z + (p.mesh.position.z - sz);
 		} else if (dist2d(p.mesh.position.x, p.mesh.position.z, tx, tz) < 2.5) {
 			p.target = sidePt(); continue;
 		}
 		movePerson(p, tx, tz, sp, dt);
 	}
 	for (const key of ["celia", "marco", "don"]) {
-		const ct = G.contacts[key];
-		ct.person.phase += dt * 1.4;
-		ct.person.inner.position.y = Math.sin(ct.person.phase) * 0.02;
+		const ct = G.contacts[key], cp = ct.person, mp = cp.mesh.position;
+		cp.phase += dt * 1.4;
+		if (ct.duckT > 0) {
+			ct.duckT -= dt;
+			movePerson(cp, mp.x + (mp.x - pp.x) * 2, mp.z + (mp.z - pp.z) * 2, 2.6, dt);
+			cp.inner.position.y = -0.5;
+		} else if (dist2d(mp.x, mp.z, ct.spot.x, ct.spot.z) > 0.6) {
+			movePerson(cp, ct.spot.x, ct.spot.z, 2.4, dt);
+		} else cp.inner.position.y = Math.sin(cp.phase) * 0.02;
 		ct.ring.rotation.z += dt * 0.8;
 		const vis = contactHasJob(key) && !G.cutscene;
 		ct.beacon.visible = vis; ct.ring.visible = vis;
@@ -297,6 +335,7 @@ function playerAttack() {
 			if (d < bestD && (dx * fx + dz * fz) / Math.max(1, d) > 0.93) { best = q; bestD = d; }
 		}
 		showTracer(m.position.x, m.position.z, fx, fz, best ? bestD : 30);
+		panicAt(m.position.x, m.position.z, 26);
 		if (best) hurtPed(best, 2);
 		addCrime(1);
 		return;
@@ -309,7 +348,8 @@ function playerAttack() {
 	}
 }
 function hurtPed(q, dmg) {
-	q.hp -= dmg; q.fleeT = 3;
+	q.hp -= dmg; q.fleeT = 3; q.fleeX = G.player.mesh.position.x; q.fleeZ = G.player.mesh.position.z;
+	panicAt(q.mesh.position.x, q.mesh.position.z, 12);
 	if (q.hp <= 0 && q.dead <= 0) {
 		q.dead = 5; q.mesh.rotation.x = -Math.PI / 2; q.mesh.position.y = 0.3;
 		addCrime(1); showToast("You flattened a pedestrian!");

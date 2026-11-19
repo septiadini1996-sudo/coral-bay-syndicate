@@ -294,6 +294,7 @@ function damageVehicle(v, amt) {
 			showToast("The " + v.name + " is wrecked!");
 			exitVehicle();
 		}
+		panicAt(v.mesh.position.x, v.mesh.position.z, 30);
 		onVehicleWrecked(v);
 	}
 }
@@ -342,6 +343,7 @@ function collideVehicles(dt) {
 			if (!VEHICLE_KINDS[b.kind].heli || b.alt < 3) { b.mesh.position.x += ux * push; b.mesh.position.z += uz * push; }
 			const rel = Math.abs(a.speed - b.speed);
 			if (rel > 7) {
+				panicAt((a.mesh.position.x + b.mesh.position.x) / 2, (a.mesh.position.z + b.mesh.position.z) / 2, 24);
 				damageVehicle(a, rel * 0.3); damageVehicle(b, rel * 0.3);
 				if (a.driver === "player" || b.driver === "player") { sfxCrash(rel); addCrime(0); }
 				a.speed *= 0.55; b.speed *= 0.55;
