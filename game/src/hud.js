@@ -20,6 +20,30 @@ function hudInit() {
     if (Sfx.master) Sfx.master.gain.value = G.muted ? 0 : 0.55;
     el("btn-mute").textContent = G.muted ? "🔇" : "🔊";
   });
+  el("minimap").addEventListener("click", () => { if (G.mode === "play") toggleBigMap(true); });
+  el("btn-map").addEventListener("click", () => { sfxClick(); if (G.mode === "play" || G.mode === "map") toggleBigMap(); });
+  el("btn-missions").addEventListener("click", () => { sfxClick(); if (G.mode === "play" || G.mode === "missions") toggleMissions(); });
+  el("bigmap").addEventListener("click", () => { if (G.mode === "map") toggleBigMap(false); });
+  el("btn-missions-close").addEventListener("click", () => { sfxClick(); toggleMissions(false); });
+  buildTokoh();
+}
+
+// The pause menu's TOKOH panel: the four faces of the Syndicate.
+function buildTokoh() {
+  const wrap = el("tokoh-list");
+  if (!wrap || wrap.children.length) return;
+  for (const key of ["rico", "celia", "marco", "don"]) {
+    const ch = CHARACTERS[key];
+    const fig = document.createElement("div");
+    fig.className = "tokoh-item";
+    const cv = document.createElement("canvas");
+    cv.width = 96; cv.height = 96; cv.className = "tokoh-face";
+    fig.appendChild(cv);
+    const nm = document.createElement("div"); nm.className = "tokoh-name"; nm.textContent = ch.name; fig.appendChild(nm);
+    const rl = document.createElement("div"); rl.className = "tokoh-role"; rl.textContent = ch.role; fig.appendChild(rl);
+    wrap.appendChild(fig);
+    drawPortrait(cv, key);
+  }
 }
 
 function showToast(text, dur) {
@@ -83,6 +107,44 @@ function updateHUD() {
   const f = focusPoint();
   const dname = districtAt(f.x, f.z);
   if (dname !== lastDistrict) { lastDistrict = dname; el("district").textContent = dname; }
+  refreshTracker(f);
+}
+
+// --- the persistent mission tracker ---
+let trkCache = "";
+function chapterGiverKey() {
+  if (G.job) return JOBS[G.job.i].giver;
+  if (G.jobIndex < JOBS.length) return JOBS[G.jobIndex].giver;
+  return null;
+}
+function refreshTracker(f) {
+  if (G.stage) { el("tracker").style.display = "none"; return; }
+  el("tracker").style.display = "block";
+  let head, obj, tx = null, tz = null;
+  if (G.job) {
+    head = "CHAPTER " + (G.job.i + 1) + " — " + JOBS[G.job.i].title;
+    obj = el("obj-text").textContent;
+    if (G.objectivePos) { tx = G.objectivePos.x; tz = G.objectivePos.z; }
+  } else if (G.hustle) {
+    head = "SIDE HUSTLE — " + (G.hustle.type === "race" ? "Bay Runner Rematch" : "Special Delivery");
+    obj = el("obj-text").textContent;
+    if (G.objectivePos) { tx = G.objectivePos.x; tz = G.objectivePos.z; }
+  } else if (G.jobIndex < JOBS.length) {
+    const def = JOBS[G.jobIndex], key = def.giver, spot = G.contacts[key].spot;
+    head = "CHAPTER " + (G.jobIndex + 1) + " — " + def.title;
+    obj = "Meet " + giverName(key) + " — " + districtAt(spot.x, spot.z);
+    tx = spot.x; tz = spot.z;
+  } else {
+    head = "STORY COMPLETE — Coral Bay is yours";
+    obj = "Free roam: Celia's deliveries & the Bay Runner rematch keep paying";
+  }
+  const dist = tx !== null ? Math.round(dist2d(f.x, f.z, tx, tz)) + "m" : "";
+  const sig = head + "|" + obj + "|" + dist;
+  if (sig === trkCache) return;
+  trkCache = sig;
+  el("trk-chapter").textContent = head;
+  el("trk-obj").textContent = obj;
+  el("trk-dist").textContent = dist;
 }
 
 function drawMinimap() {
@@ -105,11 +167,20 @@ function drawMinimap() {
   const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
   for (const c of G.police) dot(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", 4);
   if (typeof policeHeli !== "undefined" && policeHeli) dot(policeHeli.mesh.position.x, policeHeli.mesh.position.z, "#ff3b30", 4);
-  // job givers in gold
+  // job givers in gold; the next chapter's giver carries its chapter number
+  const cgKey = chapterGiverKey();
   for (const key of ["celia", "marco", "don"]) {
     if (contactHasJob(key)) {
       const ct = G.contacts[key];
       dot(ct.spot.x, ct.spot.z, "#ffd94d", 5.5);
+      if (key === cgKey && !G.job) {
+        const dx = (ct.spot.x - px) * scale, dz = (ct.spot.z - pz) * scale;
+        if (dx * dx + dz * dz < (S / 2 - 8) * (S / 2 - 8)) {
+          ctx.fillStyle = "#ffd94d"; ctx.beginPath(); ctx.arc(S / 2 + dx, S / 2 + dz, 8, 0, 7); ctx.fill();
+          ctx.fillStyle = "#12222e"; ctx.font = "bold 10px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
+          ctx.fillText(String(G.jobIndex + 1), S / 2 + dx, S / 2 + dz + 3.5);
+        }
+      }
     }
   }
   // objective in pulsing teal
@@ -179,6 +250,7 @@ function beginPlay() {
   updateHUD();
 }
 function togglePause(force) {
+  if (G.cutscene) return;
   const show = force !== undefined ? force : G.mode === "play";
   if (show && G.mode === "play") {
     G.mode = "pause";
@@ -216,4 +288,117 @@ function showCard(title, text, btnText) {
 function hideCard() {
   el("card").style.display = "none";
   if (G.mode === "card") G.mode = "play";
+}
+
+// --- the full-screen map (M, or click the minimap) ---
+function toggleBigMap(force) {
+  const show = force !== undefined ? force : G.mode !== "map";
+  if (show && G.mode === "play") {
+    G.mode = "map";
+    el("bigmap").style.display = "flex";
+    drawBigMap();
+  } else if (!show && G.mode === "map") {
+    G.mode = "play";
+    el("bigmap").style.display = "none";
+  }
+}
+function drawBigMap() {
+  const cv = el("bigmap-canvas");
+  if (!cv || !G.groundCanvas) return;
+  const ctx = cv.getContext("2d"), S = cv.width, W = G.citySize;
+  const w2m = (x) => (x + W / 2) / W * S;
+  ctx.clearRect(0, 0, S, S);
+  ctx.drawImage(G.groundCanvas, 0, 0, S, S);
+  // district names over the painted island
+  ctx.textAlign = "center";
+  ctx.font = "bold " + Math.round(S * 0.021) + "px Trebuchet MS, sans-serif";
+  const labels = [[0, -60, "DOWNTOWN"], [-735, 30, "THE MARINA"], [712, 0, "BEACHFRONT"],
+    [-390, -505, "PALMERA HEIGHTS"], [395, 395, "INDUSTRIAL YARDS"], [0, 705, "CORAL BAY AIRPORT"]];
+  for (const [x, z, name] of labels) {
+    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,25,35,0.75)";
+    ctx.strokeText(name, w2m(x), w2m(z));
+    ctx.fillStyle = "#ffe9a3"; ctx.fillText(name, w2m(x), w2m(z));
+  }
+  function blip(x, z, color, r) {
+    // clamp to the sheet: Celia's pier reaches past the painted island edge
+    const bx = clamp(w2m(x), r + 2, S - r - 2), bz = clamp(w2m(z), r + 2, S - r - 2);
+    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(bx, bz, r, 0, 7); ctx.fill();
+    ctx.lineWidth = 2; ctx.strokeStyle = "rgba(10,25,35,0.8)"; ctx.stroke();
+    return [bx, bz];
+  }
+  const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
+  for (const c of G.police) blip(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", S * 0.008);
+  if (typeof policeHeli !== "undefined" && policeHeli) blip(policeHeli.mesh.position.x, policeHeli.mesh.position.z, "#ff3b30", S * 0.008);
+  // every story giver, named; the next chapter's giver wears its number
+  const cgKey = chapterGiverKey();
+  ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
+  for (const key of ["celia", "marco", "don"]) {
+    const ct = G.contacts[key];
+    const isNext = key === cgKey && !G.job;
+    const [bx, bz] = blip(ct.spot.x, ct.spot.z, "#ffd94d", isNext ? S * 0.017 : S * 0.011);
+    if (isNext) {
+      ctx.fillStyle = "#12222e"; ctx.font = "bold " + Math.round(S * 0.02) + "px Trebuchet MS, sans-serif";
+      ctx.fillText(String(G.jobIndex + 1), bx, bz + S * 0.007);
+      ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
+    }
+    const nx = clamp(bx, 48, S - 48);
+    ctx.lineWidth = 3.5; ctx.strokeStyle = "rgba(10,25,35,0.8)";
+    ctx.strokeText(giverName(key), nx, bz - S * 0.02);
+    ctx.fillStyle = "#ffffff"; ctx.fillText(giverName(key), nx, bz - S * 0.02);
+  }
+  if (G.objectivePos) {
+    const pulse = S * 0.013 + Math.sin(G.time * 5) * S * 0.003;
+    blip(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
+  }
+  // Rico's arrow
+  const f = focusPoint();
+  const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
+  ctx.save();
+  ctx.translate(clamp(w2m(f.x), 16, S - 16), clamp(w2m(f.z), 16, S - 16)); ctx.rotate(Math.PI - heading);
+  const as = S * 0.016;
+  ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#12303f"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(0, -as); ctx.lineTo(as * 0.68, as * 0.8); ctx.lineTo(0, as * 0.42); ctx.lineTo(-as * 0.68, as * 0.8); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+// --- the mission menu (Tab / J) ---
+function toggleMissions(force) {
+  const show = force !== undefined ? force : G.mode !== "missions";
+  if (show && G.mode === "play") {
+    buildMissionList();
+    G.mode = "missions";
+    el("menu-missions").style.display = "flex";
+  } else if (!show && G.mode === "missions") {
+    G.mode = "play";
+    el("menu-missions").style.display = "none";
+  }
+}
+function buildMissionList() {
+  const wrap = el("mission-list");
+  wrap.innerHTML = "";
+  JOBS.forEach((def, i) => {
+    const spot = G.contacts[def.giver].spot;
+    let status, cls;
+    if (i < G.jobIndex) { status = "Selesai ✓"; cls = "done"; }
+    else if (G.job && G.job.i === i) { status = "Aktif"; cls = "active"; }
+    else if (i === G.jobIndex) { status = "Berikutnya"; cls = "next"; }
+    else { status = "Terkunci"; cls = "locked"; }
+    const row = document.createElement("div");
+    row.className = "mission-row " + cls;
+    let html = "<div class='mission-head'><span class='mission-chip'>CHAPTER " + (i + 1) + "</span>" +
+      "<span class='mission-title'>" + def.title + "</span>" +
+      "<span class='mission-status " + cls + "'>" + status + "</span></div>" +
+      "<div class='mission-meta'>" + giverName(def.giver) + " · " + districtAt(spot.x, spot.z) + " · " + fmtCash(def.payout) + "</div>";
+    if (cls === "active") html += "<div class='mission-obj'>Tujuan: " + (el("obj-text").textContent || def.brief) + "</div>";
+    else if (cls === "next") html += "<div class='mission-obj'>" + def.brief + "</div>";
+    row.innerHTML = html;
+    wrap.appendChild(row);
+  });
+  if (G.jobIndex >= JOBS.length) {
+    const note = document.createElement("div");
+    note.className = "mission-note";
+    note.textContent = "Cerita selesai — Coral Bay milikmu. Pekerjaan sampingan tetap buka: antar paket untuk Celia, atau Bay Runner rematch di garis start pantai ($400).";
+    wrap.appendChild(note);
+  }
 }

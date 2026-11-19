@@ -1,5 +1,6 @@
 // main.js — boot, input, camera, the frame loop, and the screenshot staging
-// scenes (?scene=chase|drive|marina|rico) the entry's screenshots are taken in.
+// scenes (?scene=chase|drive|marina|rico|cutscene) the entry's screenshots
+// are taken in.
 "use strict";
 
 function bootGame() {
@@ -37,18 +38,32 @@ let mouseDown = false, mouseMoved = 0, mouseDownAt = 0, lastDragT = -9;
 function bindInput() {
   addEventListener("keydown", (e) => {
     G.keys[e.code] = true;
-    if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.code)) e.preventDefault();
-    if (e.code === "KeyP" || e.code === "Escape") {
+    if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(e.code)) e.preventDefault();
+    if (G.cutscene) { // a cutscene owns the keys: Enter / Esc skips it
+      if (e.code === "Enter" || e.code === "Escape") skipCutscene();
+      sfxInit();
+      return;
+    }
+    if (e.code === "Escape") {
+      if (G.mode === "map") toggleBigMap(false);
+      else if (G.mode === "missions") toggleMissions(false);
+      else if (el("menu-help").style.display === "flex") el("menu-help").style.display = "none";
+      else if (G.mode === "play" || G.mode === "pause") togglePause();
+    } else if (e.code === "KeyP") {
       if (el("menu-help").style.display === "flex") el("menu-help").style.display = "none";
       else if (G.mode === "play" || G.mode === "pause") togglePause();
     }
-    if (e.code === "KeyM") el("btn-mute").click();
+    if (e.code === "KeyM" && (G.mode === "play" || G.mode === "map")) toggleBigMap();
+    if ((e.code === "Tab" || e.code === "KeyJ") && (G.mode === "play" || G.mode === "missions")) toggleMissions();
     sfxInit();
   });
   addEventListener("keyup", (e) => { G.keys[e.code] = false; });
   addEventListener("blur", () => { G.keys = {}; });
   const dom = G.renderer.domElement;
-  dom.addEventListener("mousedown", (e) => { mouseDown = true; mouseMoved = 0; mouseDownAt = performance.now(); sfxInit(); });
+  dom.addEventListener("mousedown", (e) => {
+    if (G.cutscene) { skipCutscene(); return; }
+    mouseDown = true; mouseMoved = 0; mouseDownAt = performance.now(); sfxInit();
+  });
   addEventListener("mousemove", (e) => {
     if (!mouseDown) return;
     mouseMoved += Math.abs(e.movementX) + Math.abs(e.movementY);
@@ -125,6 +140,11 @@ function frameLoop(now) {
   }
 
   if (G.stage) { stageTick(dt); }
+  else if (G.cutscene) {
+    updateCutscene(dt);
+    updatePeds(dt);
+    updateTraffic(dt);
+  }
   else if (G.mode === "play") {
     updateMissions(dt);
     if (G.onFoot) updatePlayerOnFoot(dt); else updatePlayerVehicle(dt);
@@ -140,11 +160,11 @@ function frameLoop(now) {
   }
   updateSmoke(dt);
   updateSkyAndWeather(dt);
-  if (G.mode !== "stage") updateCamera(dt);
+  if (G.mode !== "stage" && !G.cutscene) updateCamera(dt);
   hudTick(dt);
-  if (G.mode === "play" || G.mode === "pause") {
+  if (G.mode === "play" || G.mode === "pause" || G.mode === "map" || G.mode === "missions") {
     hudAccum += dt;
-    if (hudAccum > 0.08) { hudAccum = 0; updateHUD(); drawMinimap(); }
+    if (hudAccum > 0.08) { hudAccum = 0; updateHUD(); drawMinimap(); if (G.mode === "map") drawBigMap(); }
   }
   sfxUpdate(dt);
   G.renderer.render(G.scene, G.camera);
@@ -205,6 +225,15 @@ function setupStage(name) {
     G.camYaw = 0.35;
     setObjective("Meet Celia at the marina", SPOTS.celia.x, SPOTS.celia.z);
     cam.position.set(-868, 2.8, 108);
+  } else if (name === "cutscene") {
+    G.hour = 17.8; G.weather = "clear";
+    // Chapter 1's opening scene at the marina, frozen on Celia's third line:
+    // Rico and Celia face each other on the pier, subtitle bar up.
+    G.player.mesh.position.set(-879, 0, 70);
+    startCutscene(0, null);
+    G.cutscene.line = 2; csShowLine();
+    csApplyCamera(G.cutscene, 0);
+    setObjective("Meet Celia at the marina", SPOTS.celia.x, SPOTS.celia.z);
   } else if (name === "rico") {
     G.hour = 17.6; G.weather = "clear";
     G.player.mesh.position.set(-352, 0, -300);
@@ -244,6 +273,9 @@ function stageTick(dt) {
       cam.position.set(lead.mesh.position.x - 7.5, 2.5, lead.mesh.position.z + 12.5);
       cam.lookAt(lead.mesh.position.x + 7, 1, lead.mesh.position.z - 18);
     }
+  } else if (G.stage === "cutscene") {
+    if (G.cutscene) csApplyCamera(G.cutscene, dt);
+    animatePerson(G.player, 0, dt);
   } else if (G.stage === "marina") {
     cam.lookAt(-905, 1.5, 70);
     animatePerson(G.player, 0, dt);
@@ -256,7 +288,7 @@ function stageTick(dt) {
   hudAccum += dt;
   if (hudAccum > 0.12) { hudAccum = 0; updateHUD(); drawMinimap(); }
 }
-function seatSyncStage() { /* the player rides inside the posed Comet; nothing to sync */ }
+function seatSyncStage() { if (G.vehicle) seatPlayerInVehicle(G.vehicle); }
 
 // Debug and staging hooks: the build's own test console.
 window.CBS = {
@@ -280,6 +312,9 @@ window.CBS = {
       onFoot: G.onFoot, vehicle: G.vehicle ? G.vehicle.kind : null,
       weapon: G.weapon, x: Math.round(f.x), z: Math.round(f.z),
       hour: G.hour, weather: G.weather,
+      cutscene: G.cutscene ? G.cutscene.idx + ":" + G.cutscene.line : null,
+      playerVisible: G.player.mesh.visible,
+      playerPos: [Math.round(G.player.mesh.position.x * 10) / 10, Math.round(G.player.mesh.position.y * 10) / 10, Math.round(G.player.mesh.position.z * 10) / 10],
     };
   },
 };

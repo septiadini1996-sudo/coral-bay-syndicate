@@ -69,19 +69,26 @@ function startJob(i) {
 }
 function completeJob() {
   const def = JOBS[G.job.i];
+  const doneIdx = G.job.i;
   G.cash += def.payout;
   G.jobIndex++; G.jobsDone = G.jobIndex;
-  const wasFinale = G.job.i === JOBS.length - 1;
+  const wasFinale = doneIdx === JOBS.length - 1;
   G.job = null; hideMarker(); setObjective(null);
   sfxCash(); sfxSting("good");
   saveGame(); updateHUD();
   if (wasFinale) {
-    showCard("CORAL BAY IS YOURS",
-      "Every crew pays, every cop knows the name. Rico Solano runs Coral Bay now. Final payout: " + fmtCash(def.payout) +
-      ". The city stays open — deliveries and the Bay Runner rematch keep paying.", "Long live the Syndicate");
+    // the Don comes to the safehouse himself for the closing scene
+    const don = G.contacts.don.person;
+    don.mesh.position.set(G.player.mesh.position.x + 3, 0, G.player.mesh.position.z + 1);
+    startCutscene(6, () => {
+      don.mesh.position.set(SPOTS.don.x, 0, SPOTS.don.z);
+      showCard("CORAL BAY IS YOURS",
+        "Every crew pays, every cop knows the name. Rico Solano runs Coral Bay now. Final payout: " + fmtCash(def.payout) +
+        ". The city stays open — deliveries and the Bay Runner rematch keep paying.", "Long live the Syndicate");
+    });
   } else {
-    showCard("JOB COMPLETE — " + def.title,
-      "Paid " + fmtCash(def.payout) + ". Next: " + JOBS[G.jobIndex].title + " — see " + giverName(JOBS[G.jobIndex].giver) + ".", "Back to the streets");
+    showBanner("CHAPTER " + (doneIdx + 1) + " COMPLETE · +" + fmtCash(def.payout),
+      "Next: Chapter " + (G.jobIndex + 1) + " — " + JOBS[G.jobIndex].title + ", from " + giverName(JOBS[G.jobIndex].giver) + ".", 5.5);
   }
 }
 function failJob(reason) {
@@ -298,7 +305,8 @@ function updateMissions(dt) {
         else G.giverPrompt = "E — Ask Celia for a delivery run";
         if (G.keys["KeyE"]) {
           G.keys["KeyE"] = false; sfxInit(); sfxClick();
-          if (G.jobIndex < JOBS.length) startJob(G.jobIndex); else startDelivery();
+          if (G.jobIndex < JOBS.length) { const i = G.jobIndex; startCutscene(i, () => startJob(i)); }
+          else startDelivery();
         }
         break;
       }

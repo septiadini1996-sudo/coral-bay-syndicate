@@ -33,7 +33,9 @@ function makeVehicleMesh(kind, color) {
   const g = new THREE.Group();
   const wheels = [], steer = [];
   const paint = vehicleMaterial(color);
-  const dark = vehicleMaterial(0x22262a), glass = vehicleMaterial(0x9fd4e8);
+  const dark = vehicleMaterial(0x22262a);
+  // cabin glass is translucent so the seated driver reads through it
+  const glass = new THREE.MeshLambertMaterial({ color: 0x9fd4e8, transparent: true, opacity: 0.55 });
   function box(w, h, d, mat, x, y, z, ry) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
     m.position.set(x, y, z); if (ry) m.rotation.y = ry;
@@ -89,6 +91,7 @@ function makeVehicleMesh(kind, color) {
     const h = kind === "van" ? 2.2 : 0.78, len = kind === "pickup" ? 5.2 : 4.7;
     box(2.05, h, len, paint, 0, kind === "van" ? 1.35 : 0.68, 0);
     if (kind !== "van") box(1.85, 0.52, 2.2, glass, 0, 1.28, -0.15);
+    else box(1.8, 0.7, 0.12, glass, 0, 1.8, len / 2 - 0.02); // the van gets a windshield
     if (kind === "pickup") box(1.9, 0.5, 1.9, dark, 0, 1.05, -1.5);
     if (kind === "interceptor") {
       box(2.06, 0.3, len * 0.5, vehicleMaterial(0xf2f2f2), 0, 0.7, 0.4);
@@ -170,11 +173,35 @@ function nearestVehicle(x, z, maxD) {
   return best;
 }
 
+// Driver-seat anchor per kind, in vehicle-local space. Rico's mesh is placed
+// here every frame while he drives — he rides IN the machine, never kerbside.
+const SEATS = {
+  comet: { x: -0.48, y: -0.36, z: 0.05 }, roadster: { x: -0.45, y: -0.1, z: -0.3 },
+  crusher: { x: -0.55, y: 1.12, z: -0.2 },
+  sedan: { x: -0.48, y: -0.4, z: 0 }, pickup: { x: -0.48, y: -0.4, z: 0 },
+  van: { x: -0.48, y: 0.42, z: 1.45 }, interceptor: { x: -0.48, y: -0.4, z: 0 },
+  heli: { x: -0.55, y: 0.5, z: 2.2 },
+};
+function seatPlayerInVehicle(v) {
+  const s = SEATS[v.kind]; if (!s || !G.player) return;
+  const m = v.mesh, p = G.player.mesh;
+  const c = Math.cos(m.rotation.y), sn = Math.sin(m.rotation.y);
+  p.position.set(
+    m.position.x + s.x * c + s.z * sn,
+    m.position.y + s.y,
+    m.position.z - s.x * sn + s.z * c);
+  p.rotation.set(0, m.rotation.y, 0);
+  p.visible = true;
+  if (G.player.namePlate) G.player.namePlate.visible = false;
+  posePlayerSeated(true);
+}
+
 function enterVehicle(v) {
   G.onFoot = false; G.vehicle = v; v.driver = "player"; v.speed = 0;
+  setInteract(null);
   const kind = VEHICLE_KINDS[v.kind];
-  if (kind.open) { G.player.mesh.visible = true; }
-  else G.player.mesh.visible = false;
+  G.player.mesh.visible = true;
+  if (kind.bike) seatPlayerOnBike(v); else seatPlayerInVehicle(v);
   G.camDist = v.kind === "heli" ? 17 : (kind.bike ? 7.5 : 10.5);
   sfxInit();
   showToast("Driving the " + v.name + " — WASD to drive, Space handbrake, E to exit" +
@@ -190,6 +217,8 @@ function exitVehicle() {
   G.player.mesh.position.set(fixed.x, 0, fixed.z);
   G.player.mesh.visible = true;
   G.player.mesh.rotation.set(0, m.rotation.y, 0);
+  G.player.y = 0; G.player.vy = 0;
+  if (G.player.namePlate) G.player.namePlate.visible = true;
   posePlayerSeated(false);
   G.onFoot = true; G.vehicle = null;
   G.camDist = 9;
@@ -235,7 +264,10 @@ function driveVehicle(v, dt, input) {
     const targetRoll = -v.steer * clamp(Math.abs(v.speed) / K.top, 0, 1) * 0.55;
     m.rotation.z = lerp(m.rotation.z, targetRoll, clamp(dt * 6, 0, 1));
     if (v.driver === "player") seatPlayerOnBike(v);
-  } else m.rotation.z = lerp(m.rotation.z, 0, dt * 5);
+  } else {
+    m.rotation.z = lerp(m.rotation.z, 0, dt * 5);
+    if (v.driver === "player") seatPlayerInVehicle(v);
+  }
   vehicleSmoke(v, dt);
 }
 
@@ -244,6 +276,8 @@ function seatPlayerOnBike(v) {
   p.position.copy(m.position);
   p.position.y = m.position.y + 0.62;
   p.rotation.set(0, m.rotation.y, m.rotation.z * 0.9);
+  p.visible = true;
+  if (G.player.namePlate) G.player.namePlate.visible = false;
   posePlayerSeated(true);
 }
 
@@ -266,6 +300,7 @@ function flyHelicopter(v, dt, input) {
   v.alt = clamp(v.alt + v.vy * dt, 0, 130);
   m.position.y = v.alt;
   m.rotation.x = lerp(m.rotation.x, clamp(v.speed * 0.006, -0.2, 0.28), dt * 3);
+  if (v.driver === "player") seatPlayerInVehicle(v);
   vehicleSmoke(v, dt);
 }
 

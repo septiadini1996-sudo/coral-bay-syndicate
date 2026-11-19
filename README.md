@@ -1,7 +1,8 @@
 # Coral Bay Syndicate
 
-[![make.fun gta6-01 entry](https://make.fun/api/competitions/gta6-01/badge.svg?submission=pending)](https://make.fun/bounty/gta6-01/leaderboard)
-[![make.fun gta6-01 practice grade](https://make.fun/api/competitions/gta6-01/grade-badge.svg?submission=pending)](https://make.fun/bounty/gta6-01/leaderboard)
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
 An original 3D open-world crime game that runs entirely from static files in
 the browser — no build step, no network, no downloaded assets. You are
@@ -36,6 +37,28 @@ the browser between visits.
 After the chain, the city keeps paying: Celia always has a **delivery run**
 ($150), and the **Bay Runner rematch** board at the beachfront start line
 pays $400 for beating the clock again.
+
+## The story, told in cutscenes
+
+- Every chapter opens with a short **in-engine cutscene**: the camera glides
+  around Rico and his contact while their dialogue plays as **Indonesian
+  subtitles** with a hand-drawn-in-code **face portrait** and name for every
+  speaker — Rico, Celia, Marco and Don Falso. Enter or a click skips.
+- A persistent **mission tracker** under the minimap always shows the current
+  chapter ("CHAPTER 2 — Paper Trail"), its objective and the live distance.
+- The **mission menu** (Tab / J, or the 📋 button) lists all six chapters with
+  their status — Selesai ✓ / Aktif / Berikutnya / Terkunci — giver, district
+  and payout; finishing a chapter flashes a **CHAPTER COMPLETE +$450** card.
+- Press **M** (or click the minimap) for the **full-screen map**: the whole
+  island from the same painted ground canvas, district names, a legend,
+  police blips, the objective, and the next chapter's giver wearing its
+  **chapter number** — the minimap badges the number too.
+- The pause menu's **TOKOH** panel introduces the four faces of the Syndicate
+  with portraits, names and roles; in the world, every named character wears
+  a floating name plate when you come within talking distance.
+- And a fix the bay demanded: Rico now truly **sits in the driver's seat** of
+  everything he steals — fedora, shades and all, visible through the glass —
+  and steps out at the door when he leaves. No more kerbside ghosts.
 
 ## The law
 
@@ -81,8 +104,9 @@ Vehicles dent, smoke, and wreck.
 
 WASD/arrows to walk and drive · Shift sprint · Space jump / handbrake ·
 E steal, enter, exit, talk · F or click to fight and shoot · Q and 1/2 for
-the radio · R/F helicopter climb and sink · mouse drag to orbit the camera,
-wheel to zoom · P pause · M mute.
+the radio · R/F helicopter climb and sink · M full-screen map · Tab/J mission
+menu · Enter skip cutscene · mouse drag to orbit the camera, wheel to zoom ·
+P pause.
 
 ## Tech
 

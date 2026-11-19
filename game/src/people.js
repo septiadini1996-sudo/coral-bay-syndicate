@@ -102,6 +102,9 @@ function buildCast(scene) {
   rico.mesh.position.set(SPOTS.safehouse.x, 0, SPOTS.safehouse.z);
   scene.add(rico.mesh);
   G.player = rico; rico.heading = Math.PI; rico.vy = 0; rico.y = 0; rico.attackT = 0;
+  const plate = textSprite("Rico Solano", "#ffe9a3");
+  plate.position.set(0, 3.35, 0); plate.scale.set(6.4, 1.4, 1);
+  rico.mesh.add(plate); rico.namePlate = plate;
 
   function contact(key, style, spot, name) {
     const p = makePerson(style);
@@ -117,7 +120,7 @@ function buildCast(scene) {
       new THREE.MeshBasicMaterial({ color: 0xffd94d, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
     ring.rotation.x = -Math.PI / 2; ring.position.set(spot.x, 0.15, spot.z); scene.add(ring);
     G.contacts = G.contacts || {};
-    G.contacts[key] = { person: p, beacon, ring, spot, name };
+    G.contacts[key] = { person: p, beacon, ring, spot, name, label };
     return p;
   }
   contact("celia", { skin: 0xf2c09a, shirtTex: 5, skirt: 0xc93a2e, hair: 0x4a2a12 }, SPOTS.celia, "Celia");
@@ -213,8 +216,11 @@ function updatePeds(dt) {
     ct.person.phase += dt * 1.4;
     ct.person.inner.position.y = Math.sin(ct.person.phase) * 0.02;
     ct.ring.rotation.z += dt * 0.8;
-    const vis = contactHasJob(key);
+    const vis = contactHasJob(key) && !G.cutscene;
     ct.beacon.visible = vis; ct.ring.visible = vis;
+    // name plates read when you are close enough to talk story (~25 m);
+    // they hide while a cutscene's camera is close (billboards would fill it)
+    ct.label.visible = !G.cutscene && dist2d(pp.x, pp.z, ct.spot.x, ct.spot.z) < 25;
   }
   for (const d of G.dogs) {
     if (d.pauseT > 0) { d.pauseT -= dt; continue; }
@@ -303,7 +309,7 @@ function updatePlayerOnFoot(dt) {
 
 function playerAttack() {
   const p = G.player;
-  if (G.mode !== "play" || !G.onFoot) return;
+  if (G.mode !== "play" || !G.onFoot || G.cutscene) return;
   p.attackT = 0.18;
   const m = p.mesh, fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y);
   if (G.weapon === "pistol") {
