@@ -119,11 +119,16 @@ function buildGroundCanvas() {
 	G.groundCanvas = cv;
 	return cv;
 }
-const WT = [0xdfe8ee, 0xf3e3c2, 0xcfe0ea, 0xf6d9d0];
+const WT = [0xdfe8ee, 0xf3e3c2, 0xcfe0ea, 0xf6d9d0, 0xe8dcc8, 0xc4d4c0];
 function bTex(w, h, base) {
 	const cv = DC.createElement("canvas"); cv.width = 64; cv.height = 128;
 	const c = cv.getContext("2d");
 	c.fillStyle = base; c.fillRect(0, 0, 64, 128);
+	c.fillStyle = "rgba(0,0,0,0.13)";
+	for (let i = 1; i < 4; i++) c.fillRect(i * 16, 0, 1, 128);
+	for (let j = 4; j < 128; j += 16) c.fillRect(0, j, 64, 2);
+	c.fillStyle = "rgba(0,0,0,0.3)"; c.fillRect(0, 108, 64, 20);
+	c.fillStyle = "rgba(255,255,255,0.35)"; c.fillRect(0, 106, 64, 2);
 	const ec = DC.createElement("canvas"); ec.width = 64; ec.height = 128;
 	const g2 = ec.getContext("2d");
 	g2.fillStyle = "#000"; g2.fillRect(0, 0, 64, 128);
@@ -166,21 +171,21 @@ function buildWorld() {
 	buildSky(scene);
 	buildRain(scene);
 }
-function aBld(scene, x, z, w, d, h, tex, tint) {
+function aBld(scene, x, z, w, d, h, tex, tint, y0) {
 	const mat = new T3.MeshLambertMaterial({ map: tex, color: tint });
 	if (tex.userData.e) { mat.emissive = new T3.Color(0xffc37a); mat.emissiveMap = tex.userData.e; mat.emissiveIntensity = 0; }
 	const m = new T3.Mesh(new T3.BoxGeometry(w, h, d), mat);
-	m.position.set(x, h / 2, z);
+	m.position.set(x, (y0 || 0) + h / 2, z);
 	m.castShadow = true; m.receiveShadow = true;
 	scene.add(m);
-	G.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
+	if (!y0) G.colliders.push({ minX: x - w / 2, maxX: x + w / 2, minZ: z - d / 2, maxZ: z + d / 2 });
 	G.buildingMats.push(mat);
 	return m;
 }
 function buildDistricts(scene) {
 	G.buildingMats = [];
-	const towerTex = [bTex(70, 100, "#b8c4cc"), bTex(60, 80, "#d8c9ae"), bTex(80, 115, "#aebfd0")];
-	const midTex = [bTex(40, 30, "#e3d7c3"), bTex(36, 24, "#d5dee2")];
+	const towerTex = [bTex(70, 100, "#b8c4cc"), bTex(60, 80, "#d8c9ae"), bTex(80, 115, "#aebfd0"), bTex(66, 92, "#c9b8a6"), bTex(58, 84, "#9fb4a8")];
+	const midTex = [bTex(40, 30, "#e3d7c3"), bTex(36, 24, "#d5dee2"), bTex(38, 27, "#d9c6b0")];
 	const houseTex = bTex(20, 12, "#f0e6d2");
 	const roofs = new Bucket();
 	for (const bx of BC) for (const bz of BC) {
@@ -189,9 +194,22 @@ function buildDistricts(scene) {
 		if (d === "Downtown") {
 			const n = rng() > 0.4 ? 1 : 2;
 			for (let i = 0; i < n; i++) {
-				const w = rand(44, 66), dep = rand(44, 66), h = rand(42, 112);
+				const w = rand(44, 66), dep = rand(44, 66), h = rand(34, 126) * (i === 1 ? rand(0.5, 0.8) : 1);
 				const ox = n === 2 ? (i === 0 ? -32 : 32) : rand(-8, 8), oz = rand(-10, 10);
-				aBld(scene, bx + ox, bz + oz, w, dep, h, pick(towerTex), pick(WT));
+				const tx = pick(towerTex), tn = pick(WT);
+				aBld(scene, bx + ox, bz + oz, w, dep, h, tx, tn);
+				const r2 = rng();
+				if (r2 < 0.4) aBld(scene, bx + ox, bz + oz, w * 0.62, dep * 0.62, rand(5, 11), tx, tn, h);
+				else if (r2 < 0.55) roofs.box(bx + ox, h + 0.5, bz + oz, w + 1.6, 1, dep + 1.6, 0x3a4046);
+				else if (r2 < 0.65) roofs.add(new T3.ConeGeometry(1, 1, 4), bx + ox, h + 3, bz + oz, { sx: w * 0.55, sy: 6, sz: dep * 0.55, color: 0x596066, ry: M.PI / 4 });
+				if (h > 45) {
+					roofs.box(bx + ox + rand(-w / 4, w / 4), h + 1, bz + oz + rand(-dep / 4, dep / 4), rand(4, 7), 2, rand(4, 6), 0x9aa0a3);
+					if (rng() > 0.5) {
+						roofs.add(new T3.CylinderGeometry(2, 2, 4.5, 8), bx + ox - w / 4, h + 2.2, bz + oz, { color: 0xb5502e });
+						roofs.add(new T3.ConeGeometry(2.6, 1.6, 8), bx + ox - w / 4, h + 5.2, bz + oz, { color: 0x8a4a2a });
+					}
+					if (rng() > 0.55) roofs.box(bx + ox, h + rand(4, 8), bz + oz, 0.4, rand(8, 15), 0.4, 0xd8d3c3);
+				}
 				if (bx === 240 && bz === 80 && i === 0) pSgn("COMET GT", "DEALER", bx + ox, h * 0.72, bz + oz + dep / 2 + 0.4, 30, 5.5, "#ffffff", "#8c1f28", 0);
 			}
 		} else if (d === "Palmera Heights") {
@@ -410,9 +428,13 @@ function billboard(text, sub, x, z, fg, bg, ry, w, h, cy) {
 	G.colliders.push({ minX: x - 1, maxX: x + 1, minZ: z - 1, maxZ: z + 1 });
 }
 function buildSigns(scene) {
-	aBld(scene, 736, -160, 44, 44, 64, bTex(70, 100, "#b8c4cc"), 0xdfe8ee);
+	const htx = bTex(70, 100, "#b8c4cc");
+	aBld(scene, 736, -160, 44, 44, 64, htx, 0xdfe8ee);
+	aBld(scene, 736, -160, 30, 30, 12, htx, 0xdfe8ee, 64);
 	pSgn("HOTEL CORALIA", "ON THE BEACH", 713.6, 50, -160, 40, 7.5, "#7df9ff", "#0b2038", -M.PI / 2);
-	aBld(scene, 30, -300, 48, 34, 26, bTex(40, 30, "#4a3550"), 0xf3e3c2);
+	const ctx2 = bTex(40, 30, "#4a3550");
+	aBld(scene, 30, -300, 48, 34, 26, ctx2, 0xf3e3c2);
+	aBld(scene, 30, -300, 34, 24, 10, ctx2, 0xf3e3c2, 26);
 	pSgn("CASINO", "CORAL BAY", 30, 19, -317.4, 40, 6.5, "#ffd94d", "#2a0a2e", M.PI);
 	aBld(scene, -690, 20, 46, 34, 14, bTex(40, 14, "#d8dee2"), 0xffe9a3);
 	pSgn("BANCO DEL MAR", null, -666.6, 10.5, 20, 34, 5.5, "#ffe9a3", "#0e2a1e", M.PI / 2);
