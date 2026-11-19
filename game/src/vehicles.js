@@ -7,6 +7,7 @@ const VEHICLE_KINDS = {
 	falco: { name: "Falco RR", top: 54, accel: 33, radius: 0.8, open: true, bike: true },
 	bicycle: { name: "Beach Cruiser", top: 13.5, accel: 10, radius: 0.7, open: true, bike: true, pedal: true },
 	sedan: { name: "Sedan", top: 30, accel: 15, radius: 1.9, open: false },
+	taxi: { name: "Taxi", top: 32, accel: 16, radius: 1.9, open: false },
 	pickup: { name: "Pickup", top: 28, accel: 14, radius: 2, open: false },
 	van: { name: "Van", top: 26, accel: 13, radius: 2.1, open: false },
 	interceptor: { name: "Interceptor", top: 49, accel: 28, radius: 1.9, open: false },
@@ -81,12 +82,23 @@ function makeVehicleMesh(kind, color) {
 		const tailRotor = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.7, 0.3), dark);
 		tailRotor.position.set(0.45, 3.1, -6.5); g.add(tailRotor);
 		g.userData.rotor = rotor; g.userData.tailRotor = tailRotor;
+	} else if (kind === "taxi") {
+		box(2.05, 0.78, 4.7, paint, 0, 0.68, 0);
+		box(2.07, 0.26, 4.7, dark, 0, 0.62, 0);
+		box(1.85, 0.52, 2.2, glass, 0, 1.28, -0.15);
+		box(1.1, 0.3, 0.55, vMat(0xf3ead2), 0, 1.68, -0.15);
+		wheel4(1, 1.5, 0.42, 0.28);
 	} else {
 		const h = kind === "van" ? 2.2 : 0.78, len = kind === "pickup" ? 5.2 : 4.7;
 		box(2.05, h, len, paint, 0, kind === "van" ? 1.35 : 0.68, 0);
 		if (kind !== "van") box(1.85, 0.52, 2.2, glass, 0, 1.28, -0.15);
 		else box(1.8, 0.7, 0.12, glass, 0, 1.8, len / 2 - 0.02);
-		if (kind === "pickup") box(1.9, 0.5, 1.9, dark, 0, 1.05, -1.5);
+		if (kind === "pickup") {
+			box(1.9, 0.14, 1.3, dark, 0, 0.99, -1.9);
+			box(0.14, 0.5, 1.3, paint, -0.95, 1.28, -1.9);
+			box(0.14, 0.5, 1.3, paint, 0.95, 1.28, -1.9);
+			box(1.9, 0.5, 0.14, paint, 0, 1.28, -2.53);
+		}
 		if (kind === "interceptor") {
 			box(2.06, 0.3, len * 0.5, vMat(0xf2f2f2), 0, 0.7, 0.4);
 			const bar = box(1.3, 0.2, 0.5, dark, 0, 1.68, -0.15);
@@ -131,11 +143,16 @@ function buildVehicles(scene) {
 	spawnVehicle("bicycle", SPOTS.bicycle.x, SPOTS.bicycle.z, 0, 0x39b5a6);
 	spawnVehicle("marlin", -596, -216, 0.3, 0x58a05c);
 	spawnVehicle("heli", SPOTS.airportHeli.x, SPOTS.airportHeli.z, 0, 0xe8e4da);
-	const parkedSpots = [[150, -20], [-330, 130], [90, 480], [-20, -330], [490, -90], [-490, -490], [250, 250], [-90, 90]];
-	for (const s of parkedSpots) spawnVehicle(pick(["sedan", "pickup", "van", "sedan"]), s[0], s[1], rand(0, 6.28));
-	for (let i = 0; i < 13; i++) {
+	const parkedSpots = [[150, -20], [-330, 130], [90, 480], [-20, -330], [490, -90], [-490, -490], [250, 250], [-90, 90], [330, 330], [-250, -60]];
+	let pi = 0;
+	for (const s of parkedSpots) {
+		const pk = pi++ === 8 ? "taxi" : pick(["sedan", "pickup", "van", "sedan", "taxi"]);
+		spawnVehicle(pk, s[0], s[1], rand(0, 6.28), pk === "taxi" ? 0xf7b731 : undefined);
+	}
+	for (let i = 0; i < 22; i++) {
 		const road = pick(ROAD_LINES), along = rand(-760, 760), horiz = rng() > 0.5;
-		const v = spawnVehicle(pick(["sedan", "pickup", "van"]), horiz ? along : road, horiz ? road : along, 0, undefined, "traffic");
+		const tk = pick(["sedan", "pickup", "van", "taxi", "sedan"]);
+		const v = spawnVehicle(tk, horiz ? along : road, horiz ? road : along, 0, tk === "taxi" ? 0xf7b731 : undefined, "traffic");
 		v.mesh.rotation.y = horiz ? (rng() > 0.5 ? Math.PI / 2 : -Math.PI / 2) : (rng() > 0.5 ? 0 : Math.PI);
 		v.aiTarget = nextTrafficPoint(v);
 	}
@@ -164,7 +181,7 @@ function nearestVehicle(x, z, maxD) {
 const SEATS = {
 	comet: { x: -0.48, y: -0.36, z: 0.05 }, roadster: { x: -0.45, y: -0.1, z: -0.3 },
 	crusher: { x: -0.55, y: 1.12, z: -0.2 },
-	sedan: { x: -0.48, y: -0.4, z: 0 }, pickup: { x: -0.48, y: -0.4, z: 0 },
+	sedan: { x: -0.48, y: -0.4, z: 0 }, taxi: { x: -0.48, y: -0.4, z: 0 }, pickup: { x: -0.48, y: -0.4, z: 0 },
 	van: { x: -0.48, y: 0.42, z: 1.45 }, interceptor: { x: -0.48, y: -0.4, z: 0 },
 	heli: { x: -0.55, y: 0.5, z: 2.2 },
 };
