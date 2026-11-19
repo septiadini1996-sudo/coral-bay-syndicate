@@ -167,8 +167,8 @@ function setupStage(name) {
     comet.mesh.position.set(0, 0, 215); comet.mesh.rotation.set(0, Math.PI, 0);
     enterVehicle(comet); comet.speed = 15;
     setWanted(4);
-    const i1 = spawnVehicle("interceptor", -3.4, 224, Math.PI, 0x30343a, "police");
-    const i2 = spawnVehicle("interceptor", 3.6, 230, Math.PI, 0x30343a, "police");
+    const i1 = spawnVehicle("interceptor", -2.85, 217.2, Math.PI, 0x30343a, "police");
+    const i2 = spawnVehicle("interceptor", 5, 217.6, Math.PI, 0x30343a, "police");
     i1.speed = 15; i2.speed = 15;
     G.police.push(i1, i2); // minimap blips; the police AI stays off in staging
     // clear ambient traffic out of the chase corridor so the shot stays clean
@@ -180,7 +180,7 @@ function setupStage(name) {
     stageRig = { cars: [comet, i1, i2], speed: 15 };
     setObjective("Outrun the Interceptors — reach the safehouse", SPOTS.safehouse.x, SPOTS.safehouse.z);
     setMarker(SPOTS.safehouse.x, SPOTS.safehouse.z, 0x2ee6c8);
-    cam.position.set(11, 2.8, 222);
+    cam.position.set(4.8, 1.5, 223.6);
   } else if (name === "drive") {
     G.hour = 17.9; G.weather = "clear";
     const falco = findVehicle("falco");
@@ -192,6 +192,14 @@ function setupStage(name) {
     cam.position.set(632, 2.5, 312);
   } else if (name === "marina") {
     G.hour = 21.5; G.weather = "rain";
+    // staging-only moonlight lift: the still needs the boats, pier and Celia
+    // to read at night, so the portrait gets extra light the game itself
+    // never sees (these lights exist only in this staging branch)
+    const moonBoost = new THREE.DirectionalLight(0xbdd2ff, 1.15);
+    moonBoost.position.set(-780, 160, 20);
+    moonBoost.target.position.set(-920, 0, 78);
+    G.scene.add(moonBoost); G.scene.add(moonBoost.target);
+    G.scene.add(new THREE.AmbientLight(0x5a6f96, 0.8));
     G.player.mesh.position.set(-876, 0, 86);
     G.player.mesh.rotation.y = 0.35;
     G.camYaw = 0.35;
@@ -220,8 +228,10 @@ function stageTick(dt) {
     }
     const lead = stageRig.cars[0];
     if (G.stage === "chase") {
-      cam.position.set(lead.mesh.position.x + 13, 3.2, lead.mesh.position.z + 20);
-      cam.lookAt(lead.mesh.position.x - 2, 1.1, lead.mesh.position.z - 16);
+      // low, tight rear three-quarter: the Comet fills the centre of the
+      // frame with an Interceptor tucked at each rear quarter
+      cam.position.set(lead.mesh.position.x + 4.8, 1.5, lead.mesh.position.z + 8.6);
+      cam.lookAt(lead.mesh.position.x - 2.2, 1, lead.mesh.position.z - 10);
       const flash = Math.floor(G.time * 2.4) % 2 === 0;
       for (const c of stageRig.cars.slice(1)) {
         const bar = c.mesh.userData.lightBar;
