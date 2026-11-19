@@ -3,14 +3,14 @@ function bootGame() {
 	const params = new URLSearchParams(location.search);
 	const seedParam = parseInt(params.get("seed") || "", 10);
 	if (!Number.isNaN(seedParam)) rng = mulberry32(seedParam);
-	G.scene = new THREE.Scene();
-	G.camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 6000);
-	G.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+	G.scene = new T3.Scene();
+	G.camera = new T3.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 6000);
+	G.renderer = new T3.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 	G.renderer.setSize(innerWidth, innerHeight);
 	G.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
 	G.renderer.shadowMap.enabled = true;
-	G.renderer.shadowMap.type = THREE.PCFShadowMap;
-	G.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+	G.renderer.shadowMap.type = T3.PCFShadowMap;
+	G.renderer.toneMapping = T3.ACESFilmicToneMapping;
 	G.renderer.toneMappingExposure = 1.12;
 	el("app").appendChild(G.renderer.domElement);
 	buildWorld();
@@ -35,16 +35,16 @@ function bindInput() {
 			return;
 		}
 		if (e.code === "Escape") {
-			if (G.mode === "map") toggleBigMap(false);
-			else if (G.mode === "missions") toggleMissions(false);
+			if (G.mode === "map") tMap(false);
+			else if (G.mode === "missions") tMis(false);
 			else if (el("menu-help").style.display === "flex") el("menu-help").style.display = "none";
-			else if (G.mode === "play" || G.mode === "pause") togglePause();
+			else if (G.mode === "play" || G.mode === "pause") tPau();
 		} else if (e.code === "KeyP") {
 			if (el("menu-help").style.display === "flex") el("menu-help").style.display = "none";
-			else if (G.mode === "play" || G.mode === "pause") togglePause();
+			else if (G.mode === "play" || G.mode === "pause") tPau();
 		}
-		if (e.code === "KeyM" && (G.mode === "play" || G.mode === "map")) toggleBigMap();
-		if ((e.code === "Tab" || e.code === "KeyJ") && (G.mode === "play" || G.mode === "missions")) toggleMissions();
+		if (e.code === "KeyM" && (G.mode === "play" || G.mode === "map")) tMap();
+		if ((e.code === "Tab" || e.code === "KeyJ") && (G.mode === "play" || G.mode === "missions")) tMis();
 		sfxInit();
 	});
 	addEventListener("keyup", (e) => { G.keys[e.code] = false; });
@@ -73,7 +73,7 @@ function bindInput() {
 		G.renderer.setSize(innerWidth, innerHeight);
 	});
 }
-const camTargetPos = new THREE.Vector3();
+const cTgP = new T3.Vector3();
 function updateCamera(dt) {
 	const cam = G.camera;
 	if (G.mode === "title") {
@@ -82,7 +82,7 @@ function updateCamera(dt) {
 		cam.lookAt(60, 8, -40);
 		return;
 	}
-	const f = focusPoint();
+	const f = fPt();
 	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
 	const moving = G.onFoot ? (G.player.speed || 0) > 0.5 : Math.abs(G.vehicle.speed) > 1;
 	if (moving && G.time - lastDragT > 2.2) {
@@ -91,15 +91,15 @@ function updateCamera(dt) {
 	}
 	const dist = G.camDist, pitch = G.camPitch;
 	const bx = Math.sin(G.camYaw), bz = Math.cos(G.camYaw);
-	camTargetPos.set(
+	cTgP.set(
 		f.x - bx * Math.cos(pitch) * dist,
 		(f.y || 0) + 1.7 + Math.sin(pitch) * dist,
 		f.z - bz * Math.cos(pitch) * dist
 	);
-	const fixed = collideCircle(camTargetPos.x, camTargetPos.z, 1.2);
-	camTargetPos.x = fixed.x; camTargetPos.z = fixed.z;
-	camTargetPos.y = Math.max(camTargetPos.y, 1.1);
-	cam.position.lerp(camTargetPos, clamp(dt * 7, 0, 1));
+	const fixed = colC(cTgP.x, cTgP.z, 1.2);
+	cTgP.x = fixed.x; cTgP.z = fixed.z;
+	cTgP.y = Math.max(cTgP.y, 1.1);
+	cam.position.lerp(cTgP, clamp(dt * 7, 0, 1));
 	const lead = !G.onFoot && G.vehicle ? clamp(Math.abs(G.vehicle.speed) * 0.14, 0, 5) : 0;
 	cam.lookAt(f.x + bx * lead, (f.y || 0) + 2.1, f.z + bz * lead);
 }
@@ -125,12 +125,12 @@ function frameLoop(now) {
 	else if (G.cutscene) {
 		updateCutscene(dt);
 		updatePeds(dt);
-		updateTraffic(dt);
+		uTraf(dt);
 	}
 	else if (G.mode === "play") {
 		updateMissions(dt);
 		if (G.onFoot) updatePlayerOnFoot(dt); else updatePlayerVehicle(dt);
-		updateTraffic(dt);
+		uTraf(dt);
 		collideVehicles(dt);
 		updatePolice(dt);
 		updatePeds(dt);
@@ -138,7 +138,7 @@ function frameLoop(now) {
 		checkHealth(dt);
 	} else if (G.mode === "title") {
 		updatePeds(dt);
-		updateTraffic(dt);
+		uTraf(dt);
 	}
 	updateSmoke(dt);
 	updateSkyAndWeather(dt);
@@ -146,7 +146,7 @@ function frameLoop(now) {
 	hudTick(dt);
 	if (G.mode === "play" || G.mode === "pause" || G.mode === "map" || G.mode === "missions") {
 		hudAccum += dt;
-		if (hudAccum > 0.08) { hudAccum = 0; updateHUD(); drawMinimap(); if (G.mode === "map") drawBigMap(); }
+		if (hudAccum > 0.08) { hudAccum = 0; uHud(); drawMinimap(); if (G.mode === "map") drawBigMap(); }
 	}
 	sfxUpdate(dt);
 	G.renderer.render(G.scene, G.camera);
@@ -163,12 +163,12 @@ function setupStage(name) {
 	const cam = G.camera;
 	if (name === "chase") {
 		G.hour = 17.7; G.weather = "clear";
-		const comet = findVehicle("comet");
+		const comet = fVeh("comet");
 		comet.mesh.position.set(0, 0, 215); comet.mesh.rotation.set(0, Math.PI, 0);
 		enterVehicle(comet); comet.speed = 15;
 		setWanted(4);
-		const i1 = spawnVehicle("interceptor", -2.85, 217.2, Math.PI, 0x30343a, "police");
-		const i2 = spawnVehicle("interceptor", 5, 217.6, Math.PI, 0x30343a, "police");
+		const i1 = spV("interceptor", -2.85, 217.2, Math.PI, 0x30343a, "police");
+		const i2 = spV("interceptor", 5, 217.6, Math.PI, 0x30343a, "police");
 		i1.speed = 15; i2.speed = 15;
 		G.police.push(i1, i2);
 		for (const t of G.traffic) {
@@ -177,29 +177,29 @@ function setupStage(name) {
 			}
 		}
 		stageRig = { cars: [comet, i1, i2], speed: 15 };
-		setObjective("Outrun the Interceptors — reach the safehouse", SPOTS.safehouse.x, SPOTS.safehouse.z);
-		setMarker(SPOTS.safehouse.x, SPOTS.safehouse.z, 0x2ee6c8);
+		sObj("Outrun the Interceptors — reach the safehouse", SPOTS.safehouse.x, SPOTS.safehouse.z);
+		sMrk(SPOTS.safehouse.x, SPOTS.safehouse.z, 0x2ee6c8);
 		cam.position.set(4.8, 1.5, 223.6);
 	} else if (name === "drive") {
 		G.hour = 17.9; G.weather = "clear";
-		const falco = findVehicle("falco");
+		const falco = fVeh("falco");
 		falco.mesh.position.set(640, 0, 300); falco.mesh.rotation.set(0, Math.PI, 0);
 		enterVehicle(falco); falco.speed = 17;
 		stageRig = { cars: [falco], speed: 17 };
-		setObjective("Bay Runner — checkpoint run down the coast", 640, -420);
-		setMarker(640, -100, 0x2ee6c8);
+		sObj("Bay Runner — checkpoint run down the coast", 640, -420);
+		sMrk(640, -100, 0x2ee6c8);
 		cam.position.set(632, 2.5, 312);
 	} else if (name === "marina") {
 		G.hour = 21.5; G.weather = "rain";
-		const moonBoost = new THREE.DirectionalLight(0xbdd2ff, 1.15);
+		const moonBoost = new T3.DirectionalLight(0xbdd2ff, 1.15);
 		moonBoost.position.set(-780, 160, 20);
 		moonBoost.target.position.set(-920, 0, 78);
 		G.scene.add(moonBoost); G.scene.add(moonBoost.target);
-		G.scene.add(new THREE.AmbientLight(0x5a6f96, 0.8));
+		G.scene.add(new T3.AmbientLight(0x5a6f96, 0.8));
 		G.player.mesh.position.set(-876, 0, 86);
 		G.player.mesh.rotation.y = 0.35;
 		G.camYaw = 0.35;
-		setObjective("Meet Celia at the marina", SPOTS.celia.x, SPOTS.celia.z);
+		sObj("Meet Celia at the marina", SPOTS.celia.x, SPOTS.celia.z);
 		cam.position.set(-868, 2.8, 108);
 	} else if (name === "cutscene") {
 		G.hour = 17.8; G.weather = "clear";
@@ -207,18 +207,18 @@ function setupStage(name) {
 		startCutscene(0, null);
 		G.cutscene.line = 2; csShowLine();
 		csApplyCamera(G.cutscene, 0);
-		setObjective("Meet Celia at the marina", SPOTS.celia.x, SPOTS.celia.z);
+		sObj("Meet Celia at the marina", SPOTS.celia.x, SPOTS.celia.z);
 	} else if (name === "rico") {
 		G.hour = 17.6; G.weather = "clear";
 		G.player.mesh.position.set(-352, 0, -300);
 		G.player.mesh.rotation.y = -1.02;
-		const comet = findVehicle("comet");
+		const comet = fVeh("comet");
 		comet.mesh.position.set(-346, 0, -312); comet.mesh.rotation.set(0, -0.5, 0);
-		const crusher = findVehicle("crusher");
+		const crusher = fVeh("crusher");
 		crusher.mesh.position.set(-326, 0, -304); crusher.mesh.rotation.set(0, -0.5, 0);
 		cam.position.set(-358.5, 1.8, -296);
 	}
-	updateHUD(); drawMinimap();
+	uHud(); drawMinimap();
 }
 function stageTick(dt) {
 	const cam = G.camera;
@@ -241,26 +241,26 @@ function stageTick(dt) {
 			if (G.vehicle) seatSyncStage();
 		} else if (G.stage === "drive") {
 			lead.mesh.rotation.z = -0.34;
-			seatPlayerOnBike(lead);
+			seatB(lead);
 			cam.position.set(lead.mesh.position.x - 7.5, 2.5, lead.mesh.position.z + 12.5);
 			cam.lookAt(lead.mesh.position.x + 7, 1, lead.mesh.position.z - 18);
 		}
 	} else if (G.stage === "cutscene") {
 		if (G.cutscene) csApplyCamera(G.cutscene, dt);
-		animatePerson(G.player, 0, dt);
+		aPrs(G.player, 0, dt);
 	} else if (G.stage === "marina") {
 		cam.lookAt(-905, 1.5, 70);
-		animatePerson(G.player, 0, dt);
+		aPrs(G.player, 0, dt);
 	} else if (G.stage === "rico") {
 		cam.lookAt(-352, 1.3, -300);
-		animatePerson(G.player, 0, dt);
+		aPrs(G.player, 0, dt);
 	}
 	updatePeds(dt);
-	if (G.stage === "marina" || G.stage === "rico") updateTraffic(dt);
+	if (G.stage === "marina" || G.stage === "rico") uTraf(dt);
 	hudAccum += dt;
-	if (hudAccum > 0.12) { hudAccum = 0; updateHUD(); drawMinimap(); }
+	if (hudAccum > 0.12) { hudAccum = 0; uHud(); drawMinimap(); }
 }
-function seatSyncStage() { if (G.vehicle) seatPlayerInVehicle(G.vehicle); }
+function seatSyncStage() { if (G.vehicle) seatV(G.vehicle); }
 window.CBS = {
 	G,
 	warp(x, z) {
@@ -271,10 +271,10 @@ window.CBS = {
 	setWeather(w) { G.weather = w; G.weatherTimer = 9999; },
 	startJob(i) { if (!G.job) startJob(i); },
 	talk() { const k = G.jobIndex < JOBS.length ? JOBS[G.jobIndex].giver : "celia"; const ct = G.contacts[k]; G.player.mesh.position.set(ct.spot.x + 2, 0, ct.spot.z + 2); },
-	enterKind(kind) { const v = findVehicle(kind); if (v) { if (!G.onFoot) exitVehicle(); G.player.mesh.position.set(v.mesh.position.x + 2, 0, v.mesh.position.z); enterVehicle(v); } return !!v; },
-	cash(n) { G.cash = n; updateHUD(); },
+	enterKind(kind) { const v = fVeh(kind); if (v) { if (!G.onFoot) exitVehicle(); G.player.mesh.position.set(v.mesh.position.x + 2, 0, v.mesh.position.z); enterVehicle(v); } return !!v; },
+	cash(n) { G.cash = n; uHud(); },
 	state() {
-		const f = focusPoint();
+		const f = fPt();
 		return {
 			mode: G.mode, cash: G.cash, wanted: G.wanted, health: Math.round(G.health),
 			jobIndex: G.jobIndex, job: G.job ? G.job.i : -1, step: G.job ? G.job.step : -1,

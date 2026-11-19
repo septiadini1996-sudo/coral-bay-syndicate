@@ -106,7 +106,7 @@ function startCutscene(idx, onDone) {
 	G.cutscene = { idx, lines: CUTSCENES[idx], line: 0, t: 0, giverKey, onDone: onDone || null };
 	G.giverPrompt = null;
 	if (G.player.namePlate) G.player.namePlate.visible = false;
-	setInteract(null);
+	sInt(null);
 	csShowLine();
 	sfxSting("start");
 }
@@ -139,7 +139,7 @@ function csApplyCamera(cs, dt) {
 function updateCutscene(dt) {
 	const cs = G.cutscene; if (!cs) return;
 	cs.t += dt;
-	animatePerson(G.player, 0, dt);
+	aPrs(G.player, 0, dt);
 	if (cs.t >= CUT_LINE_SECONDS) {
 		cs.t = 0; cs.line++;
 		if (cs.line >= cs.lines.length) { finishCutscene(); return; }

@@ -1,4 +1,5 @@
 "use strict";
+const T3 = THREE;
 function mulberry32(seed) {
 	let a = seed >>> 0;
 	return function () {
@@ -19,20 +20,20 @@ function angWrap(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI)
 function angLerp(a, b, t) { return a + angWrap(b - a) * clamp(t, 0, 1); }
 function el(id) { return document.getElementById(id); }
 function key(c) { return !!G.keys[c]; }
-function BM(c, o) { return new THREE.MeshBasicMaterial(Object.assign({ color: c }, o || {})); }
+function BM(c, o) { return new T3.MeshBasicMaterial(Object.assign({ color: c }, o || {})); }
 function glowDisc(color, r, op) {
-	return new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.14, 14),
+	return new T3.Mesh(new T3.CylinderGeometry(r, r, 0.14, 14),
 		BM(color, { transparent: true, opacity: op === undefined ? 0.55 : op }));
 }
 function beam(r, h, color, op) {
-	const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, h, 12, 1, true),
-		BM(color, { transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false }));
+	const m = new T3.Mesh(new T3.CylinderGeometry(r, r, h, 12, 1, true),
+		BM(color, { transparent: true, opacity: op, side: T3.DoubleSide, depthWrite: false }));
 	m.position.y = h / 2;
 	return m;
 }
 function ringM(r0, r1, color, op) {
-	const m = new THREE.Mesh(new THREE.RingGeometry(r0, r1, 24),
-		BM(color, { transparent: true, opacity: op, side: THREE.DoubleSide }));
+	const m = new T3.Mesh(new T3.RingGeometry(r0, r1, 24),
+		BM(color, { transparent: true, opacity: op, side: T3.DoubleSide }));
 	m.rotation.x = -Math.PI / 2;
 	return m;
 }
@@ -83,7 +84,7 @@ function saveGame() {
 	} catch (e) {  }
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
-function collideCircle(x, z, r) {
+function colC(x, z, r) {
 	const half = G.citySize / 2 - 6;
 	if (!isLand(x, z)) { x = clamp(x, -half, half); z = clamp(z, -half, half); }
 	for (let i = 0; i < G.colliders.length; i++) {

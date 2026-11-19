@@ -1,6 +1,6 @@
 "use strict";
-const ROAD_LINES = [-640, -480, -320, -160, 0, 160, 320, 480, 640];
-const BLOCK_CENTERS = [-560, -400, -240, -80, 80, 240, 400, 560];
+const RL = [-640, -480, -320, -160, 0, 160, 320, 480, 640];
+const BC = [-560, -400, -240, -80, 80, 240, 400, 560];
 const PIERS = [-240, -80, 80, 240];
 const SPOTS = {
 	safehouse: { x: 60, z: 306 }, club: { x: -34, z: -34 },
@@ -11,11 +11,11 @@ const SPOTS = {
 	beachFalco: { x: 622, z: 470 }, roadster: { x: -392, z: -352 },
 	bicycle: { x: 668, z: 120 },
 };
-const RACE_CHECKPOINTS = [
+const RCP = [
 	{ x: 640, z: 380 }, { x: 640, z: 220 }, { x: 640, z: 60 },
 	{ x: 640, z: -100 }, { x: 640, z: -260 }, { x: 640, z: -420 },
 ];
-function districtAt(x, z) {
+function dAt(x, z) {
 	if (z > 540) return "Coral Bay Airport";
 	if (x > 600) return "Beachfront";
 	if (x < -580) return "The Marina";
@@ -30,15 +30,15 @@ function isLand(x, z) {
 	for (const pz of PIERS) if (x < -852 && x > -1000 && Math.abs(z - pz) < 11) return true;
 	return false;
 }
-const UNIT_BOX = () => new THREE.BoxGeometry(1, 1, 1);
+const UNIT_BOX = () => new T3.BoxGeometry(1, 1, 1);
 class Bucket {
 	constructor() { this.items = []; }
 	add(geo, x, y, z, o) {
 		o = o || {};
-		const m = new THREE.Matrix4();
-		const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(o.rx || 0, o.ry || 0, o.rz || 0));
-		m.compose(new THREE.Vector3(x, y, z), q, new THREE.Vector3(o.sx || 1, o.sy || 1, o.sz || 1));
-		const c = new THREE.Color(o.color === undefined ? 0xffffff : o.color);
+		const m = new T3.Matrix4();
+		const q = new T3.Quaternion().setFromEuler(new T3.Euler(o.rx || 0, o.ry || 0, o.rz || 0));
+		m.compose(new T3.Vector3(x, y, z), q, new T3.Vector3(o.sx || 1, o.sy || 1, o.sz || 1));
+		const c = new T3.Color(o.color === undefined ? 0xffffff : o.color);
 		this.items.push({ geo, m, c });
 	}
 	box(x, y, z, sx, sy, sz, color, ry) { this.add(UNIT_BOX(), x, y, z, { sx, sy, sz, color, ry: ry || 0 }); }
@@ -58,16 +58,16 @@ class Bucket {
 			for (let i = 0; i < n; i++) { col[(off + i) * 3] = p.c.r; col[(off + i) * 3 + 1] = p.c.g; col[(off + i) * 3 + 2] = p.c.b; }
 			off += n;
 		}
-		const geo = new THREE.BufferGeometry();
-		geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-		geo.setAttribute("normal", new THREE.BufferAttribute(nor, 3));
-		geo.setAttribute("color", new THREE.BufferAttribute(col, 3));
-		const mesh = new THREE.Mesh(geo, material);
+		const geo = new T3.BufferGeometry();
+		geo.setAttribute("position", new T3.BufferAttribute(pos, 3));
+		geo.setAttribute("normal", new T3.BufferAttribute(nor, 3));
+		geo.setAttribute("color", new T3.BufferAttribute(col, 3));
+		const mesh = new T3.Mesh(geo, material);
 		mesh.matrixAutoUpdate = false;
 		return mesh;
 	}
 }
-function vertexMat(opts) { return new THREE.MeshLambertMaterial(Object.assign({ vertexColors: true }, opts || {})); }
+function vertexMat(opts) { return new T3.MeshLambertMaterial(Object.assign({ vertexColors: true }, opts || {})); }
 function buildGroundCanvas() {
 	const S = 2048, W = G.citySize, sc = S / W;
 	const cv = document.createElement("canvas"); cv.width = S; cv.height = S;
@@ -86,19 +86,19 @@ function buildGroundCanvas() {
 	c.fillStyle = "#1b6a8c"; FR(-852, 417, 552, 26);
 	c.fillStyle = "#c2b28a"; FR(-852, 412, 552, 5); FR(-852, 443, 552, 5);
 	c.fillStyle = "#c9ccce";
-	for (const bx of BLOCK_CENTERS) for (const bz of BLOCK_CENTERS) {
+	for (const bx of BC) for (const bz of BC) {
 		if (isAirport(bx, bz) || bx > 600) continue;
 		FR(bx - 68, bz - 68, 136, 136);
 	}
 	c.fillStyle = "#5da248"; FR(12, -308, 136, 136);
 	c.fillStyle = "#3f7fbf"; c.beginPath(); c.arc(X(80), Y(-240), U(22), 0, 7); c.fill();
 	c.fillStyle = "#3c4147";
-	for (const r of ROAD_LINES) {
+	for (const r of RL) {
 		FR(r - 15, -852, 30, 1704);
 		FR(-852, r - 15, 1704, 30);
 	}
 	c.fillStyle = "#f5f2e4";
-	for (const r of ROAD_LINES) for (let t = -840; t < 850; t += 36) {
+	for (const r of RL) for (let t = -840; t < 850; t += 36) {
 		FR(r - 1, t, 2, 16);
 		FR(t, r - 1, 16, 2);
 	}
@@ -119,7 +119,7 @@ function buildGroundCanvas() {
 	G.groundCanvas = cv;
 	return cv;
 }
-const WINDOW_TINTS = [0xdfe8ee, 0xf3e3c2, 0xcfe0ea, 0xf6d9d0];
+const WT = [0xdfe8ee, 0xf3e3c2, 0xcfe0ea, 0xf6d9d0];
 function bTex(w, h, base) {
 	const cv = document.createElement("canvas"); cv.width = 64; cv.height = 128;
 	const c = cv.getContext("2d");
@@ -130,23 +130,23 @@ function bTex(w, h, base) {
 		c.fillStyle = lit ? "#ffd98c" : "#2c3e50";
 		c.fillRect(4 + i * (56 / cols), 5 + j * (118 / rows), 56 / cols - 5, 118 / rows - 6);
 	}
-	const t = new THREE.CanvasTexture(cv);
-	t.colorSpace = THREE.SRGBColorSpace;
+	const t = new T3.CanvasTexture(cv);
+	t.colorSpace = T3.SRGBColorSpace;
 	return t;
 }
 function buildWorld() {
 	const scene = G.scene;
 	const groundCv = buildGroundCanvas();
-	const gtex = new THREE.CanvasTexture(groundCv);
-	gtex.colorSpace = THREE.SRGBColorSpace;
+	const gtex = new T3.CanvasTexture(groundCv);
+	gtex.colorSpace = T3.SRGBColorSpace;
 	gtex.anisotropy = 4;
-	G.groundMat = new THREE.MeshPhongMaterial({ map: gtex, shininess: 0, specular: 0x222222 });
-	const ground = new THREE.Mesh(new THREE.PlaneGeometry(G.citySize, G.citySize), G.groundMat);
+	G.groundMat = new T3.MeshPhongMaterial({ map: gtex, shininess: 0, specular: 0x222222 });
+	const ground = new T3.Mesh(new T3.PlaneGeometry(G.citySize, G.citySize), G.groundMat);
 	ground.rotation.x = -Math.PI / 2;
 	ground.receiveShadow = true;
 	scene.add(ground);
-	const waterMat = new THREE.MeshPhongMaterial({ color: 0x1b6a8c, shininess: 140, specular: 0x99ccdd });
-	const water = new THREE.Mesh(new THREE.PlaneGeometry(6000, 6000), waterMat);
+	const waterMat = new T3.MeshPhongMaterial({ color: 0x1b6a8c, shininess: 140, specular: 0x99ccdd });
+	const water = new T3.Mesh(new T3.PlaneGeometry(6000, 6000), waterMat);
 	water.rotation.x = -Math.PI / 2; water.position.y = -0.5;
 	scene.add(water);
 	G.waterMat = waterMat;
@@ -158,9 +158,9 @@ function buildWorld() {
 	buildSky(scene);
 	buildRain(scene);
 }
-function addBuilding(scene, x, z, w, d, h, tex, tint) {
-	const mat = new THREE.MeshLambertMaterial({ map: tex, color: tint });
-	const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+function aBld(scene, x, z, w, d, h, tex, tint) {
+	const mat = new T3.MeshLambertMaterial({ map: tex, color: tint });
+	const m = new T3.Mesh(new T3.BoxGeometry(w, h, d), mat);
 	m.position.set(x, h / 2, z);
 	m.castShadow = true; m.receiveShadow = true;
 	scene.add(m);
@@ -174,47 +174,47 @@ function buildDistricts(scene) {
 	const midTex = [bTex(40, 30, "#e3d7c3"), bTex(36, 24, "#d5dee2")];
 	const houseTex = bTex(20, 12, "#f0e6d2");
 	const roofs = new Bucket();
-	for (const bx of BLOCK_CENTERS) for (const bz of BLOCK_CENTERS) {
+	for (const bx of BC) for (const bz of BC) {
 		if (isAirport(bx, bz) || bx > 600 || (bx === 80 && bz === -240)) continue;
-		const d = districtAt(bx, bz);
+		const d = dAt(bx, bz);
 		if (d === "Downtown") {
 			const n = rng() > 0.4 ? 1 : 2;
 			for (let i = 0; i < n; i++) {
 				const w = rand(44, 66), dep = rand(44, 66), h = rand(42, 112);
 				const ox = n === 2 ? (i === 0 ? -32 : 32) : rand(-8, 8), oz = rand(-10, 10);
-				addBuilding(scene, bx + ox, bz + oz, w, dep, h, pick(towerTex), pick(WINDOW_TINTS));
-				if (bx === 240 && bz === 80 && i === 0) placeSign("COMET GT", "DEALER", bx + ox, h * 0.72, bz + oz + dep / 2 + 0.4, 30, 5.5, "#ffffff", "#8c1f28", 0);
+				aBld(scene, bx + ox, bz + oz, w, dep, h, pick(towerTex), pick(WT));
+				if (bx === 240 && bz === 80 && i === 0) pSgn("COMET GT", "DEALER", bx + ox, h * 0.72, bz + oz + dep / 2 + 0.4, 30, 5.5, "#ffffff", "#8c1f28", 0);
 			}
 		} else if (d === "Palmera Heights") {
-			addBuilding(scene, bx, bz, rand(52, 66), rand(40, 52), rand(10, 15), houseTex, pick(WINDOW_TINTS));
+			aBld(scene, bx, bz, rand(52, 66), rand(40, 52), rand(10, 15), houseTex, pick(WT));
 			roofs.box(bx + 40, 0.8, bz + 30, 26, 1.6, 18, 0x3f7fbf);
 		} else if (d === "Industrial Yards") {
-			addBuilding(scene, bx, bz, rand(78, 100), rand(52, 68), rand(14, 20), pick(midTex), 0xcfc4ae);
+			aBld(scene, bx, bz, rand(78, 100), rand(52, 68), rand(14, 20), pick(midTex), 0xcfc4ae);
 			for (let i = 0; i < 5; i++)
 				roofs.box(bx + rand(-52, 52), 1.5, bz + rand(-40, 40), 6, 3, 6, pick([0xc96f2e, 0x2e7fc9, 0x9aa0a3, 0x58a05c]));
 		} else if (d === "The Marina") {
-			addBuilding(scene, bx + rand(-14, 14), bz, rand(50, 70), rand(38, 50), rand(9, 16), pick(midTex), pick(WINDOW_TINTS));
+			aBld(scene, bx + rand(-14, 14), bz, rand(50, 70), rand(38, 50), rand(9, 16), pick(midTex), pick(WT));
 		} else {
 			for (let i = 0; i < 3; i++) {
 				const ox = (i - 1) * 40 + rand(-5, 5), oz = rand(-30, 30);
 				const hw = rand(24, 32), hd = rand(20, 28), hh = rand(8, 13);
-				addBuilding(scene, bx + ox, bz + oz, hw, hd, hh, houseTex, pick(WINDOW_TINTS));
-				roofs.add(new THREE.ConeGeometry(1, 1, 4), bx + ox, hh + 3.4, bz + oz,
+				aBld(scene, bx + ox, bz + oz, hw, hd, hh, houseTex, pick(WT));
+				roofs.add(new T3.ConeGeometry(1, 1, 4), bx + ox, hh + 3.4, bz + oz,
 					{ sx: hw * 0.78, sy: 7, sz: hd * 0.78, color: pick([0xb5502e, 0x8a5a34, 0x707880]), ry: Math.PI / 4 });
 			}
 		}
 	}
-	const club = addBuilding(scene, -80, -80, 56, 48, 17, midTex[0], 0xf6d9d0);
+	const club = aBld(scene, -80, -80, 56, 48, 17, midTex[0], 0xf6d9d0);
 	club.position.y = 8.5;
-	const sign = new THREE.Mesh(new THREE.BoxGeometry(30, 4, 1.5), BM(0xff4fa3));
+	const sign = new T3.Mesh(new T3.BoxGeometry(30, 4, 1.5), BM(0xff4fa3));
 	sign.position.set(-52, 15, -55); scene.add(sign);
 	G.clubSignMat = sign.material;
-	placeSign("STARFISH CLUB", null, -52, 15, -54.1, 28, 3.6, "#ff8fd0", "#1c0b26", 0);
-	addBuilding(scene, 60, 348, 44, 30, 12, houseTex, 0xd8f2ee);
-	const doorGlow = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 1), BM(0x2ee6c8));
+	pSgn("STARFISH CLUB", null, -52, 15, -54.1, 28, 3.6, "#ff8fd0", "#1c0b26", 0);
+	aBld(scene, 60, 348, 44, 30, 12, houseTex, 0xd8f2ee);
+	const doorGlow = new T3.Mesh(new T3.BoxGeometry(5, 8, 1), BM(0x2ee6c8));
 	doorGlow.position.set(60, 4, 332); scene.add(doorGlow);
 	const poles = new Bucket(), heads = new Bucket();
-	for (const r of ROAD_LINES) for (let t = -800; t <= 800; t += 107) {
+	for (const r of RL) for (let t = -800; t <= 800; t += 107) {
 		if (Math.abs(t - r) < 20) continue;
 		poles.box(r + 17, 3.4, t, 0.5, 6.8, 0.5, 0x3a4046);
 		heads.box(r + 17, 7, t, 1.6, 0.5, 1.6, 0xffe6a3);
@@ -240,10 +240,10 @@ function buildDistricts(scene) {
 }
 function buildVegetation(scene) {
 	const trunks = new Bucket(), leaves = new Bucket();
-	const frond = new THREE.ConeGeometry(0.6, 7, 5), canopy = new THREE.SphereGeometry(1, 7, 6);
+	const frond = new T3.ConeGeometry(0.6, 7, 5), canopy = new T3.SphereGeometry(1, 7, 6);
 	function palm(x, z, s) {
 		const lean = rand(-0.7, 0.7);
-		trunks.add(new THREE.CylinderGeometry(0.32, 0.45, 8, 6), x + lean, 4, z, { color: 0x8a6a44, rz: lean * 0.09 });
+		trunks.add(new T3.CylinderGeometry(0.32, 0.45, 8, 6), x + lean, 4, z, { color: 0x8a6a44, rz: lean * 0.09 });
 		for (let i = 0; i < 6; i++) {
 			const a = (i / 6) * Math.PI * 2;
 			leaves.add(frond, x + lean * 2 + Math.cos(a) * 2.6, 8.6, z + Math.sin(a) * 2.6,
@@ -251,7 +251,7 @@ function buildVegetation(scene) {
 		}
 	}
 	function tree(x, z, s) {
-		trunks.add(new THREE.CylinderGeometry(0.4, 0.55, 3.6, 6), x, 1.8, z, { color: 0x6e4f30 });
+		trunks.add(new T3.CylinderGeometry(0.4, 0.55, 3.6, 6), x, 1.8, z, { color: 0x6e4f30 });
 		leaves.add(canopy, x, 5.6, z, { sx: 4.6 * s, sy: 3.8 * s, sz: 4.6 * s, color: pick([0x4da653, 0x5cb85e, 0x3f9e4d]) });
 		leaves.add(canopy, x + 1.8, 4.6, z + 1, { sx: 3 * s, sy: 2.6 * s, sz: 3 * s, color: 0x55a84f });
 	}
@@ -260,7 +260,7 @@ function buildVegetation(scene) {
 	for (let i = 0; i < 22; i++) palm(rand(-560, -200), rand(-640, -350), rand(0.85, 1.2));
 	for (let i = 0; i < 14; i++) tree(80 + rand(-55, 55), -240 + rand(-55, 55), rand(0.9, 1.3));
 	for (let i = 0; i < 30; i++) { const x = rand(-560, 560), z = rand(-560, 520); if (Math.abs(x % 160) > 30 && Math.abs(z % 160) > 30) tree(x, z, rand(0.8, 1.2)); }
-	const tuft = new THREE.ConeGeometry(0.5, 1.1, 4);
+	const tuft = new T3.ConeGeometry(0.5, 1.1, 4);
 	for (let i = 0; i < 380; i++) {
 		const x = rand(-840, 840), z = rand(-840, 840);
 		if (Math.abs(x % 160) < 22 || Math.abs(z % 160) < 22 || isAirport(x, z)) continue;
@@ -280,24 +280,24 @@ function buildMarina(scene) {
 	for (const mz of [-300, -140, 20, 180, 330]) {
 		if (mz === 20) continue;
 		const bx2 = -668 + rand(-16, 16), bw = rand(52, 74), bd = rand(36, 48), bh = rand(9, 15);
-		addBuilding(scene, bx2, mz, bw, bd, bh, cafeTex, pick(WINDOW_TINTS));
+		aBld(scene, bx2, mz, bw, bd, bh, cafeTex, pick(WT));
 		const cs = cafeSigns[String(mz)];
-		if (cs) placeSign(cs[0], null, bx2 + bw / 2 + 0.3, bh * 0.66, mz, bd * 0.8, 4.2, cs[1], cs[2], Math.PI / 2);
+		if (cs) pSgn(cs[0], null, bx2 + bw / 2 + 0.3, bh * 0.66, mz, bd * 0.8, 4.2, cs[1], cs[2], Math.PI / 2);
 	}
 	G.boats = [];
 	const hullCols = [0xe8e4da, 0x2e7fc9, 0xc93a2e, 0xf2b13d, 0x39b5a6];
 	for (const pz of PIERS) {
 		for (let i = 0; i < 3; i++) {
 			const bx = -884 - i * 38, bz = pz + (i % 2 === 0 ? -17 : 17);
-			const boat = new THREE.Group();
-			const hull = new THREE.Mesh(new THREE.BoxGeometry(13, 2.2, 4.6), lam(pick(hullCols)));
+			const boat = new T3.Group();
+			const hull = new T3.Mesh(new T3.BoxGeometry(13, 2.2, 4.6), lam(pick(hullCols)));
 			hull.position.y = 0.4; boat.add(hull);
-			const cabin = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2, 3.4), lam(0xf4f1e8));
+			const cabin = new T3.Mesh(new T3.BoxGeometry(4.5, 2, 3.4), lam(0xf4f1e8));
 			cabin.position.set(-0.5, 2.4, 0); boat.add(cabin);
-			const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.16, 11, 5), lam(0x8a8f94));
+			const mast = new T3.Mesh(new T3.CylinderGeometry(0.16, 0.16, 11, 5), lam(0x8a8f94));
 			mast.position.set(2.4, 6.4, 0); boat.add(mast);
-			const sail = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 7.6),
-				new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide }));
+			const sail = new T3.Mesh(new T3.PlaneGeometry(4.6, 7.6),
+				new T3.MeshLambertMaterial({ color: 0xffffff, side: T3.DoubleSide }));
 			sail.position.set(0.6, 6, 0); sail.rotation.y = Math.PI / 2; boat.add(sail);
 			boat.position.set(bx, 0, bz);
 			boat.rotation.y = Math.PI / 2 + rand(-0.06, 0.06);
@@ -305,12 +305,12 @@ function buildMarina(scene) {
 			scene.add(boat); G.boats.push(boat);
 		}
 	}
-	const lh = new THREE.Group();
-	const base = new THREE.Mesh(new THREE.CylinderGeometry(4.4, 5.6, 15, 10), lam(0xf2efe8));
+	const lh = new T3.Group();
+	const base = new T3.Mesh(new T3.CylinderGeometry(4.4, 5.6, 15, 10), lam(0xf2efe8));
 	base.position.y = 7.5; lh.add(base);
-	const band = new THREE.Mesh(new THREE.CylinderGeometry(4.7, 5, 4.4, 10), lam(0xc93a2e));
+	const band = new T3.Mesh(new T3.CylinderGeometry(4.7, 5, 4.4, 10), lam(0xc93a2e));
 	band.position.y = 10; lh.add(band);
-	const lampRoom = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.4, 3.4, 8), BM(0xffe9a3));
+	const lampRoom = new T3.Mesh(new T3.CylinderGeometry(2.4, 2.4, 3.4, 8), BM(0xffe9a3));
 	lampRoom.position.y = 16.6; lh.add(lampRoom);
 	G.lighthouseMat = lampRoom.material;
 	lh.position.set(-972, 0, -330);
@@ -325,21 +325,21 @@ function buildAirport(scene) {
 	for (const hx of [-240, 60, 330]) G.colliders.push({ minX: hx - 45, maxX: hx + 45, minZ: 562, maxZ: 606 });
 	G.colliders.push({ minX: -125, maxX: 65, minZ: 553, maxZ: 579 });
 	const mesh = b.build(vertexMat()); mesh.castShadow = true; scene.add(mesh);
-	placeSign("CORAL BAY AIRPORT", null, -30, 11, 552.4, 120, 10, "#ffffff", "#14425e", Math.PI);
-	const plane = new THREE.Group();
+	pSgn("CORAL BAY AIRPORT", null, -30, 11, 552.4, 120, 10, "#ffffff", "#14425e", Math.PI);
+	const plane = new T3.Group();
 	const white = lam(0xf2f4f6);
-	const fus = new THREE.Mesh(new THREE.CylinderGeometry(3.1, 3.1, 34, 12), white);
+	const fus = new T3.Mesh(new T3.CylinderGeometry(3.1, 3.1, 34, 12), white);
 	fus.rotation.z = Math.PI / 2; fus.position.y = 4.6; plane.add(fus);
-	const nose = new THREE.Mesh(new THREE.SphereGeometry(3.1, 10, 8), white);
+	const nose = new T3.Mesh(new T3.SphereGeometry(3.1, 10, 8), white);
 	nose.position.set(17, 4.6, 0); plane.add(nose);
-	const wing = new THREE.Mesh(new THREE.BoxGeometry(9, 0.5, 30), lam(0xc93a2e));
+	const wing = new T3.Mesh(new T3.BoxGeometry(9, 0.5, 30), lam(0xc93a2e));
 	wing.position.set(1, 4.2, 0); plane.add(wing);
-	const tail = new THREE.Mesh(new THREE.BoxGeometry(5, 7, 0.6), lam(0xc93a2e));
+	const tail = new T3.Mesh(new T3.BoxGeometry(5, 7, 0.6), lam(0xc93a2e));
 	tail.position.set(-16.5, 8.6, 0); plane.add(tail);
-	const fin = new THREE.Mesh(new THREE.BoxGeometry(6, 0.5, 9), lam(0xc93a2e));
+	const fin = new T3.Mesh(new T3.BoxGeometry(6, 0.5, 9), lam(0xc93a2e));
 	fin.position.set(-16.5, 5.4, 0); plane.add(fin);
 	for (const s of [-8, 8]) {
-		const eng = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 4.6, 8), lam(0x596066));
+		const eng = new T3.Mesh(new T3.CylinderGeometry(1.3, 1.3, 4.6, 8), lam(0x596066));
 		eng.rotation.z = Math.PI / 2; eng.position.set(1, 3, s); plane.add(eng);
 	}
 	plane.position.set(330, 0, 712); plane.rotation.y = 0.04;
@@ -357,20 +357,20 @@ function signMesh(text, sub, w, h, fg, bg) {
 	if (tw > cv.width * 0.92) { fs = Math.floor(fs * cv.width * 0.92 / tw); c.font = "bold " + fs + "px Trebuchet MS, sans-serif"; }
 	c.fillText(text, cv.width / 2, sub ? cv.height * 0.34 : cv.height / 2);
 	if (sub) { c.font = "bold " + Math.round(cv.height * 0.19) + "px Trebuchet MS, sans-serif"; c.fillText(sub, cv.width / 2, cv.height * 0.76); }
-	const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
-	return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t }));
+	const t = new T3.CanvasTexture(cv); t.colorSpace = T3.SRGBColorSpace;
+	return new T3.Mesh(new T3.PlaneGeometry(w, h), new T3.MeshBasicMaterial({ map: t }));
 }
-function placeSign(text, sub, x, y, z, w, h, fg, bg, ry) {
+function pSgn(text, sub, x, y, z, w, h, fg, bg, ry) {
 	const m = signMesh(text, sub, w, h, fg, bg);
 	m.position.set(x, y, z); if (ry) m.rotation.y = ry;
 	G.scene.add(m); return m;
 }
 function billboard(text, sub, x, z, fg, bg, ry, w, h, cy) {
 	w = w || 18; h = h || 5.5; cy = cy || 9.5;
-	const g = new THREE.Group();
+	const g = new T3.Group();
 	const poleMat = lam(0x3a4046);
 	for (const px of [-(w / 2 - 2), w / 2 - 2]) {
-		const pole = new THREE.Mesh(new THREE.BoxGeometry(0.5, cy + h / 2, 0.5), poleMat);
+		const pole = new T3.Mesh(new T3.BoxGeometry(0.5, cy + h / 2, 0.5), poleMat);
 		pole.position.set(px, (cy + h / 2) / 2, 0); g.add(pole);
 	}
 	const f = signMesh(text, sub, w, h, fg, bg); f.position.set(0, cy, 0.35); g.add(f);
@@ -380,18 +380,18 @@ function billboard(text, sub, x, z, fg, bg, ry, w, h, cy) {
 	G.colliders.push({ minX: x - 1, maxX: x + 1, minZ: z - 1, maxZ: z + 1 });
 }
 function buildSigns(scene) {
-	addBuilding(scene, 736, -160, 44, 44, 64, bTex(70, 100, "#b8c4cc"), 0xdfe8ee);
-	placeSign("HOTEL CORALIA", "ON THE BEACH", 713.6, 50, -160, 40, 7.5, "#7df9ff", "#0b2038", -Math.PI / 2);
-	addBuilding(scene, 30, -300, 48, 34, 26, bTex(40, 30, "#4a3550"), 0xf3e3c2);
-	placeSign("CASINO", "CORAL BAY", 30, 19, -317.4, 40, 6.5, "#ffd94d", "#2a0a2e", Math.PI);
-	addBuilding(scene, -690, 20, 46, 34, 14, bTex(40, 14, "#d8dee2"), 0xffe9a3);
-	placeSign("BANCO DEL MAR", null, -666.6, 10.5, 20, 34, 5.5, "#ffe9a3", "#0e2a1e", Math.PI / 2);
-	addBuilding(scene, -668, -60, 40, 30, 8, bTex(40, 14, "#e8dcc4"), 0xf6d9d0);
-	placeSign("PASTA MARINA", null, -647.6, 6, -60, 30, 4.5, "#ffb37a", "#40260e", Math.PI / 2);
+	aBld(scene, 736, -160, 44, 44, 64, bTex(70, 100, "#b8c4cc"), 0xdfe8ee);
+	pSgn("HOTEL CORALIA", "ON THE BEACH", 713.6, 50, -160, 40, 7.5, "#7df9ff", "#0b2038", -Math.PI / 2);
+	aBld(scene, 30, -300, 48, 34, 26, bTex(40, 30, "#4a3550"), 0xf3e3c2);
+	pSgn("CASINO", "CORAL BAY", 30, 19, -317.4, 40, 6.5, "#ffd94d", "#2a0a2e", Math.PI);
+	aBld(scene, -690, 20, 46, 34, 14, bTex(40, 14, "#d8dee2"), 0xffe9a3);
+	pSgn("BANCO DEL MAR", null, -666.6, 10.5, 20, 34, 5.5, "#ffe9a3", "#0e2a1e", Math.PI / 2);
+	aBld(scene, -668, -60, 40, 30, 8, bTex(40, 14, "#e8dcc4"), 0xf6d9d0);
+	pSgn("PASTA MARINA", null, -647.6, 6, -60, 30, 4.5, "#ffb37a", "#40260e", Math.PI / 2);
 	const huts = [["SURF SHACK", -520, "#fff3b0", "#7a4a21"], ["BEACH BAR", 60, "#ffd1dc", "#402030"], ["PIZZA BAY", 300, "#ffdf6b", "#7a1f1f"]];
 	for (const [nm, hz, fg, bg] of huts) {
-		addBuilding(scene, 706, hz, 20, 14, 6, bTex(20, 12, "#f0e6d2"), 0xe8e4da);
-		placeSign(nm, null, 695.6, 4.2, hz, 16, 3.6, fg, bg, -Math.PI / 2);
+		aBld(scene, 706, hz, 20, 14, 6, bTex(20, 12, "#f0e6d2"), 0xe8e4da);
+		pSgn(nm, null, 695.6, 4.2, hz, 16, 3.6, fg, bg, -Math.PI / 2);
 	}
 	billboard("PALMERA PLAZA", "MALL · CINEMA", -452, -292, "#ffb37a", "#14262e", 0, 30, 6, 9.5);
 	billboard("WELCOME TO CORAL BAY", null, 16, 344, "#12222e", "#ffd94d", Math.PI, 17, 4, 4.6);
@@ -400,29 +400,29 @@ function buildSigns(scene) {
 	billboard("CORAL BAY", "SUN · SEA · SYNDICATE", 672, -640, "#ffe9a3", "#0e3a4a", -Math.PI / 2);
 }
 function buildSky(scene) {
-	G.sun = new THREE.DirectionalLight(0xffe3b3, 3);
+	G.sun = new T3.DirectionalLight(0xffe3b3, 3);
 	G.sun.castShadow = true;
 	G.sun.shadow.mapSize.set(1024, 1024);
 	G.sun.shadow.camera.left = -150; G.sun.shadow.camera.right = 150;
 	G.sun.shadow.camera.top = 150; G.sun.shadow.camera.bottom = -150;
 	G.sun.shadow.camera.far = 900; G.sun.shadow.bias = -0.0006;
 	scene.add(G.sun); scene.add(G.sun.target);
-	G.hemi = new THREE.HemisphereLight(0xbfe3ff, 0x8a7a5a, 0.9);
+	G.hemi = new T3.HemisphereLight(0xbfe3ff, 0x8a7a5a, 0.9);
 	scene.add(G.hemi);
-	scene.fog = new THREE.Fog(0xf2c99a, 260, 1500);
+	scene.fog = new T3.Fog(0xf2c99a, 260, 1500);
 	G.clouds = [];
-	const cm = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.88 });
+	const cm = new T3.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.88 });
 	for (let i = 0; i < 13; i++) {
-		const cl = new THREE.Group();
+		const cl = new T3.Group();
 		for (let j = 0; j < 4; j++) {
-			const s = new THREE.Mesh(new THREE.SphereGeometry(rand(9, 20), 7, 6), cm);
+			const s = new T3.Mesh(new T3.SphereGeometry(rand(9, 20), 7, 6), cm);
 			s.position.set(rand(-16, 16), rand(-3, 3), rand(-8, 8));
 			s.scale.y = 0.42; cl.add(s);
 		}
 		cl.position.set(rand(-1000, 1000), rand(120, 175), rand(-1000, 1000));
 		scene.add(cl); G.clouds.push(cl);
 	}
-	const starGeo = new THREE.BufferGeometry();
+	const starGeo = new T3.BufferGeometry();
 	const sp = new Float32Array(700 * 3);
 	const sr = mulberry32(777);
 	for (let i = 0; i < 700; i++) {
@@ -431,21 +431,21 @@ function buildSky(scene) {
 		sp[i * 3 + 1] = Math.sin(e) * r;
 		sp[i * 3 + 2] = Math.sin(a) * Math.cos(e) * r;
 	}
-	starGeo.setAttribute("position", new THREE.BufferAttribute(sp, 3));
-	G.starMat = new THREE.PointsMaterial({ color: 0xdfe9ff, size: 5, sizeAttenuation: false, transparent: true, opacity: 0, fog: false });
-	const stars = new THREE.Points(starGeo, G.starMat);
+	starGeo.setAttribute("position", new T3.BufferAttribute(sp, 3));
+	G.starMat = new T3.PointsMaterial({ color: 0xdfe9ff, size: 5, sizeAttenuation: false, transparent: true, opacity: 0, fog: false });
+	const stars = new T3.Points(starGeo, G.starMat);
 	scene.add(stars); G.stars = stars;
-	G.moon = new THREE.Mesh(new THREE.CircleGeometry(70, 24),
-		new THREE.MeshBasicMaterial({ color: 0xf4f7ff, transparent: true, opacity: 0, fog: false }));
+	G.moon = new T3.Mesh(new T3.CircleGeometry(70, 24),
+		new T3.MeshBasicMaterial({ color: 0xf4f7ff, transparent: true, opacity: 0, fog: false }));
 	scene.add(G.moon);
 }
 function buildRain(scene) {
 	const N = 850;
-	const geo = new THREE.BufferGeometry();
+	const geo = new T3.BufferGeometry();
 	const p = new Float32Array(N * 3);
 	const rr = mulberry32(4242);
 	for (let i = 0; i < N; i++) { p[i * 3] = (rr() - 0.5) * 110; p[i * 3 + 1] = rr() * 60; p[i * 3 + 2] = (rr() - 0.5) * 110; }
-	geo.setAttribute("position", new THREE.BufferAttribute(p, 3));
+	geo.setAttribute("position", new T3.BufferAttribute(p, 3));
 	const rcv = document.createElement("canvas"); rcv.width = 16; rcv.height = 64;
 	const rc = rcv.getContext("2d");
 	const grad = rc.createLinearGradient(0, 0, 0, 64);
@@ -453,9 +453,9 @@ function buildRain(scene) {
 	grad.addColorStop(0.5, "rgba(170,204,238,0.85)");
 	grad.addColorStop(1, "rgba(170,204,238,0)");
 	rc.fillStyle = grad; rc.fillRect(6, 0, 4, 64);
-	const rtex = new THREE.CanvasTexture(rcv);
-	G.rainMat = new THREE.PointsMaterial({ color: 0xaaccee, size: 1.9, map: rtex, transparent: true, opacity: 0, depthWrite: false });
-	G.rain = new THREE.Points(geo, G.rainMat);
+	const rtex = new T3.CanvasTexture(rcv);
+	G.rainMat = new T3.PointsMaterial({ color: 0xaaccee, size: 1.9, map: rtex, transparent: true, opacity: 0, depthWrite: false });
+	G.rain = new T3.Points(geo, G.rainMat);
 	G.rain.visible = false;
 	scene.add(G.rain);
 }
@@ -471,7 +471,7 @@ const SKY_KEYS = [
 	[24, 0x0b1026, 0x0b1026, 0x223, 0, 0.3, 1],
 ];
 function skyAt(h) {
-	const mix = (a, b, t) => new THREE.Color(a).lerp(new THREE.Color(b), t);
+	const mix = (a, b, t) => new T3.Color(a).lerp(new T3.Color(b), t);
 	for (let i = 0; i < SKY_KEYS.length - 1; i++) {
 		const a = SKY_KEYS[i], b = SKY_KEYS[i + 1];
 		if (h >= a[0] && h <= b[0]) {
@@ -483,7 +483,7 @@ function skyAt(h) {
 		}
 	}
 	const a = SKY_KEYS[0];
-	return { sky: new THREE.Color(a[1]), fog: new THREE.Color(a[2]), sun: new THREE.Color(a[3]), sunI: a[4], hemiI: a[5], night: a[6] };
+	return { sky: new T3.Color(a[1]), fog: new T3.Color(a[2]), sun: new T3.Color(a[3]), sunI: a[4], hemiI: a[5], night: a[6] };
 }
 function updateSkyAndWeather(dt) {
 	if (!G.stage) { G.hour += dt * (24 / 720); if (G.hour >= 24) G.hour -= 24; }
@@ -494,7 +494,7 @@ function updateSkyAndWeather(dt) {
 	if (G.weather === "hot") G.scene.fog.near = 200, G.scene.fog.far = 1050;
 	else G.scene.fog.near = 280, G.scene.fog.far = 1550;
 	const sunAng = ((G.hour - 6) / 12) * Math.PI;
-	const focus = G.vehicle && !G.onFoot ? G.vehicle.mesh.position : (G.player ? G.player.mesh.position : new THREE.Vector3());
+	const focus = G.vehicle && !G.onFoot ? G.vehicle.mesh.position : (G.player ? G.player.mesh.position : new T3.Vector3());
 	G.sun.position.set(focus.x + Math.cos(sunAng) * 260, Math.max(95, Math.sin(sunAng) * 300), focus.z + 120);
 	G.sun.target.position.set(focus.x, 0, focus.z);
 	G.sun.intensity = sk.sunI; G.sun.color.copy(sk.sun);
@@ -518,8 +518,8 @@ function updateSkyAndWeather(dt) {
 		const roll = rng();
 		G.weather = roll < 0.45 ? "clear" : (roll < 0.72 ? "hot" : "rain");
 		G.weatherTimer = rand(45, 95);
-		if (G.weather === "rain") showToast("Rain front rolling in off the bay");
-		else if (G.weather === "hot") showToast("Heat haze over Coral Bay");
+		if (G.weather === "rain") sToa("Rain front rolling in off the bay");
+		else if (G.weather === "hot") sToa("Heat haze over Coral Bay");
 	}
 	const raining = G.weather === "rain";
 	G.rain.visible = raining;

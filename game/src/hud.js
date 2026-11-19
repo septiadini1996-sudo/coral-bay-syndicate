@@ -5,7 +5,7 @@ function hudInit() {
 	mmCtx = el("minimap").getContext("2d");
 	clk("btn-new", startNewGame, 1);
 	clk("btn-continue", continueGame, 1);
-	clk("btn-resume", () => togglePause(false));
+	clk("btn-resume", () => tPau(false));
 	clk("btn-restart", restartAtSafehouse);
 	clk("btn-quit", quitToTitle);
 	clk("btn-card", hideCard);
@@ -16,13 +16,13 @@ function hudInit() {
 		if (Sfx.master) Sfx.master.gain.value = G.muted ? 0 : 0.55;
 		el("btn-mute").textContent = G.muted ? "🔇" : "🔊";
 	});
-	el("minimap").addEventListener("click", () => { if (G.mode === "play") toggleBigMap(true); });
-	clk("btn-map", () => { if (G.mode === "play" || G.mode === "map") toggleBigMap(); });
-	clk("btn-missions", () => { if (G.mode === "play" || G.mode === "missions") toggleMissions(); });
+	el("minimap").addEventListener("click", () => { if (G.mode === "play") tMap(true); });
+	clk("btn-map", () => { if (G.mode === "play" || G.mode === "map") tMap(); });
+	clk("btn-missions", () => { if (G.mode === "play" || G.mode === "missions") tMis(); });
 	el("bigmap-canvas").addEventListener("click", bigMapClick);
-	el("bigmap").addEventListener("click", (e) => { if (e.target === el("bigmap") && G.mode === "map") toggleBigMap(false); });
+	el("bigmap").addEventListener("click", (e) => { if (e.target === el("bigmap") && G.mode === "map") tMap(false); });
 	clk("btn-follow", () => { setTrack(null); forceRoute(); drawBigMap(); });
-	clk("btn-missions-close", () => toggleMissions(false));
+	clk("btn-missions-close", () => tMis(false));
 	buildTokoh();
 }
 function buildTokoh() {
@@ -41,7 +41,7 @@ function buildTokoh() {
 		drawPortrait(cv, key);
 	}
 }
-function showToast(text, dur) {
+function sToa(text, dur) {
 	const t = el("toast");
 	t.textContent = text; t.style.opacity = "1";
 	toastTimer = dur || 3.4;
@@ -53,7 +53,7 @@ function showBanner(title, text, dur) {
 	el("banner").style.transform = "translate(-50%, 0)";
 	bannerTimer = dur || 5;
 }
-function setObjective(text, x, z, timer) {
+function sObj(text, x, z, timer) {
 	const box = el("objective");
 	if (!text) { box.style.display = "none"; G.objTimer = null; return; }
 	box.style.display = "block";
@@ -61,7 +61,7 @@ function setObjective(text, x, z, timer) {
 	if (x !== undefined && x !== null) G.objectivePos = { x, z };
 	G.objTimer = (timer === undefined ? null : timer);
 }
-function setInteract(text) {
+function sInt(text) {
 	const i = el("interact");
 	if (!text) { i.style.display = "none"; return; }
 	i.style.display = "block"; i.textContent = text;
@@ -73,7 +73,7 @@ function setBustUI(v) {
 	el("bust-fill").style.width = Math.round(v * 100) + "%";
 }
 function showHurt() { hurtT = 0.55; }
-function updateHUD() {
+function uHud() {
 	el("cash").textContent = fmtCash(G.cash);
 	let stars = "";
 	for (let i = 0; i < 5; i++) stars += i < G.wanted ? "★" : "☆";
@@ -94,20 +94,20 @@ function updateHUD() {
 	}
 	const tp = G.track || G.objectivePos;
 	if (tp) {
-		const f = focusPoint();
+		const f = fPt();
 		el("obj-dist").textContent = Math.round(dist2d(f.x, f.z, tp.x, tp.z)) + "m";
 	} else el("obj-dist").textContent = "";
 	if (G.objTimer !== null && G.objTimer !== undefined) {
 		const t = Math.max(0, Math.ceil(G.objTimer));
 		el("obj-timer").textContent = "⏱ " + Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
 	} else el("obj-timer").textContent = "";
-	const f = focusPoint();
-	const dname = districtAt(f.x, f.z);
+	const f = fPt();
+	const dname = dAt(f.x, f.z);
 	if (dname !== lastDistrict) { lastDistrict = dname; el("district").textContent = dname; }
 	refreshTracker(f);
 }
 let trkCache = "";
-function chapterGiverKey() {
+function cgK() {
 	if (G.job) return JOBS[G.job.i].giver;
 	if (G.jobIndex < JOBS.length) return JOBS[G.jobIndex].giver;
 	return null;
@@ -127,7 +127,7 @@ function refreshTracker(f) {
 	} else if (G.jobIndex < JOBS.length) {
 		const def = JOBS[G.jobIndex], key = def.giver, spot = G.contacts[key].spot;
 		head = "CHAPTER " + (G.jobIndex + 1) + " — " + def.title;
-		obj = "Meet " + giverName(key) + " — " + districtAt(spot.x, spot.z);
+		obj = "Meet " + gNam(key) + " — " + dAt(spot.x, spot.z);
 		tx = spot.x; tz = spot.z;
 	} else {
 		head = "STORY COMPLETE — Coral Bay is yours";
@@ -145,7 +145,7 @@ function refreshTracker(f) {
 function drawMinimap() {
 	if (!mmCtx || !G.groundCanvas) return;
 	const S = 204, ctx = mmCtx, R = 215;
-	const f = focusPoint();
+	const f = fPt();
 	const px = f.x, pz = f.z, scale = (S / 2) / R;
 	const src = G.groundCanvas, w2c = src.width / G.citySize, sw = 2 * R * w2c;
 	ctx.clearRect(0, 0, S, S);
@@ -153,12 +153,12 @@ function drawMinimap() {
 	ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 2, 0, 7); ctx.clip();
 	ctx.fillStyle = "#1b6a8c"; ctx.fillRect(0, 0, S, S);
 	ctx.drawImage(src, (px + G.citySize / 2) * w2c - sw / 2, (pz + G.citySize / 2) * w2c - sw / 2, sw, sw, 0, 0, S, S);
-	if (routePts && routePts.length > 1) {
+	if (rPts && rPts.length > 1) {
 		ctx.lineJoin = "round";
 		for (const pass of [[5.5, "rgba(8,24,34,.6)"], [3, "#ffd94d"]]) {
 			ctx.strokeStyle = pass[1]; ctx.lineWidth = pass[0]; ctx.beginPath();
 			let pen = false;
-			for (const p of routePts) {
+			for (const p of rPts) {
 				const dx = (p[0] - px) * scale, dz = (p[1] - pz) * scale;
 				if (dx * dx + dz * dz > 16900) { pen = false; continue; }
 				if (pen) ctx.lineTo(S / 2 + dx, S / 2 + dz); else { ctx.moveTo(S / 2 + dx, S / 2 + dz); pen = true; }
@@ -174,7 +174,7 @@ function drawMinimap() {
 	const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
 	for (const c of G.police) dot(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", 4);
 	if (typeof pHeli !== "undefined" && pHeli) dot(pHeli.mesh.position.x, pHeli.mesh.position.z, "#ff3b30", 4);
-	const cgKey = chapterGiverKey();
+	const cgKey = cgK();
 	for (const key of ["celia", "marco", "don"]) {
 		if (contactHasJob(key)) {
 			const ct = G.contacts[key];
@@ -212,9 +212,9 @@ function hudTick(dt) {
 	}
 	if (hurtT > 0) { hurtT -= dt; el("hurt").style.opacity = String(clamp(hurtT, 0, 0.55)); }
 	else el("hurt").style.opacity = "0";
-	if (jobMarker && jobMarker.visible) {
+	if (jMrk && jMrk.visible) {
 		const s = 1 + Math.sin(G.time * 4) * 0.08;
-		jobMarker.scale.set(s, 1, s);
+		jMrk.scale.set(s, 1, s);
 	}
 	routeTick(dt);
 }
@@ -243,17 +243,17 @@ function continueGame() {
 		if (save.guns) { G.guns = save.guns; G.ammoP = save.ammoP || 0; G.ammoS = save.ammoS || 0; }
 	}
 	beginPlay();
-	showToast(G.jobIndex < JOBS.length ? "Welcome back. Next job: " + JOBS[G.jobIndex].title : "Welcome back, boss. The bay is yours.");
+	sToa(G.jobIndex < JOBS.length ? "Welcome back. Next job: " + JOBS[G.jobIndex].title : "Welcome back, boss. The bay is yours.");
 }
 function beginPlay() {
 	el("menu-title").style.display = "none";
 	el("hud").style.display = "block";
 	G.mode = "play";
-	respawnAtSafehouse();
+	rspH();
 	G.cash = Math.max(G.cash, 0);
-	updateHUD();
+	uHud();
 }
-function togglePause(force) {
+function tPau(force) {
 	if (G.cutscene) return;
 	const show = force !== undefined ? force : G.mode === "play";
 	if (show && G.mode === "play") {
@@ -267,17 +267,17 @@ function togglePause(force) {
 }
 function storyLine() {
 	if (G.jobIndex >= JOBS.length) return "Story: complete — CORAL BAY IS YOURS · free-roam hustles stay open";
-	return "Story: jobs done " + G.jobsDone + "/6 · next: " + JOBS[G.jobIndex].title + " (" + giverName(JOBS[G.jobIndex].giver) + ")";
+	return "Story: jobs done " + G.jobsDone + "/6 · next: " + JOBS[G.jobIndex].title + " (" + gNam(JOBS[G.jobIndex].giver) + ")";
 }
 function restartAtSafehouse() {
-	togglePause(false);
+	tPau(false);
 	if (G.job) failJobSilent();
-	respawnAtSafehouse();
-	showToast("Back at the safehouse");
+	rspH();
+	sToa("Back at the safehouse");
 }
-function failJobSilent() { G.job = null; G.hustle = null; hideMarker(); setObjective(null); }
+function failJobSilent() { G.job = null; G.hustle = null; hMrk(); sObj(null); }
 function quitToTitle() {
-	togglePause(false);
+	tPau(false);
 	failJobSilent();
 	clearPolice();
 	showTitle();
@@ -293,7 +293,7 @@ function hideCard() {
 	el("card").style.display = "none";
 	if (G.mode === "card") G.mode = "play";
 }
-function toggleBigMap(force) {
+function tMap(force) {
 	const show = force !== undefined ? force : G.mode !== "map";
 	if (show && G.mode === "play") {
 		G.mode = "map";
@@ -311,11 +311,11 @@ function drawBigMap() {
 	const w2m = (x) => (x + W / 2) / W * S;
 	ctx.clearRect(0, 0, S, S);
 	ctx.drawImage(G.groundCanvas, 0, 0, S, S);
-	if (routePts && routePts.length > 1) {
+	if (rPts && rPts.length > 1) {
 		ctx.lineJoin = "round";
 		for (const pass of [[11, "rgba(255,217,77,.3)"], [5, "#ffd94d"]]) {
 			ctx.strokeStyle = pass[1]; ctx.lineWidth = pass[0]; ctx.beginPath();
-			routePts.forEach((p, i) => { if (i) ctx.lineTo(w2m(p[0]), w2m(p[1])); else ctx.moveTo(w2m(p[0]), w2m(p[1])); });
+			rPts.forEach((p, i) => { if (i) ctx.lineTo(w2m(p[0]), w2m(p[1])); else ctx.moveTo(w2m(p[0]), w2m(p[1])); });
 			ctx.stroke();
 		}
 	}
@@ -337,7 +337,7 @@ function drawBigMap() {
 	const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
 	for (const c of G.police) blip(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", S * 0.008);
 	if (typeof pHeli !== "undefined" && pHeli) blip(pHeli.mesh.position.x, pHeli.mesh.position.z, "#ff3b30", S * 0.008);
-	const cgKey = chapterGiverKey();
+	const cgKey = cgK();
 	ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
 	for (const key of ["celia", "marco", "don"]) {
 		const ct = G.contacts[key];
@@ -354,8 +354,8 @@ function drawBigMap() {
 		}
 		const nx = clamp(bx, 48, S - 48);
 		ctx.lineWidth = 3.5; ctx.strokeStyle = "rgba(10,25,35,0.8)";
-		ctx.strokeText(giverName(key), nx, bz - S * 0.02);
-		ctx.fillStyle = "#ffffff"; ctx.fillText(giverName(key), nx, bz - S * 0.02);
+		ctx.strokeText(gNam(key), nx, bz - S * 0.02);
+		ctx.fillStyle = "#ffffff"; ctx.fillText(gNam(key), nx, bz - S * 0.02);
 	}
 	el("btn-follow").style.display = G.track ? "inline-block" : "none";
 	if (G.track) {
@@ -368,7 +368,7 @@ function drawBigMap() {
 		const pulse = S * 0.013 + Math.sin(G.time * 5) * S * 0.003;
 		blip(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
 	}
-	const f = focusPoint();
+	const f = fPt();
 	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
 	ctx.save();
 	ctx.translate(clamp(w2m(f.x), 16, S - 16), clamp(w2m(f.z), 16, S - 16)); ctx.rotate(Math.PI - heading);
@@ -378,7 +378,7 @@ function drawBigMap() {
 	ctx.fill(); ctx.stroke();
 	ctx.restore();
 }
-function toggleMissions(force) {
+function tMis(force) {
 	const show = force !== undefined ? force : G.mode !== "missions";
 	if (show && G.mode === "play") {
 		buildMissionList();
@@ -404,7 +404,7 @@ function buildMissionList() {
 		let html = "<div class='mission-head'><span class='mission-chip'>CHAPTER " + (i + 1) + "</span>" +
 			"<span class='mission-title'>" + def.title + "</span>" +
 			"<span class='mission-status " + cls + "'>" + status + "</span></div>" +
-			"<div class='mission-meta'>" + giverName(def.giver) + " · " + districtAt(spot.x, spot.z) + " · " + fmtCash(def.payout) + "</div>";
+			"<div class='mission-meta'>" + gNam(def.giver) + " · " + dAt(spot.x, spot.z) + " · " + fmtCash(def.payout) + "</div>";
 		if (cls === "active") html += "<div class='mission-obj'>Tujuan: " + (el("obj-text").textContent || def.brief) + "</div>";
 		else if (cls === "next") html += "<div class='mission-obj'>" + def.brief + "</div>";
 		row.innerHTML = html;
@@ -413,10 +413,10 @@ function buildMissionList() {
 			btn.className = "mission-track"; btn.textContent = "🧭 Lacak";
 			btn.addEventListener("click", () => {
 				if (cls === "active" && G.objectivePos) setTrack({ x: G.objectivePos.x, z: G.objectivePos.z, name: "Tujuan — " + def.title });
-				else setTrack({ x: spot.x, z: spot.z, name: giverName(def.giver) + " — " + districtAt(spot.x, spot.z), key: def.giver });
+				else setTrack({ x: spot.x, z: spot.z, name: gNam(def.giver) + " — " + dAt(spot.x, spot.z), key: def.giver });
 				forceRoute();
-				toggleMissions(false);
-				if (G.track) showToast("Melacak: " + G.track.name);
+				tMis(false);
+				if (G.track) sToa("Melacak: " + G.track.name);
 			});
 			row.appendChild(btn);
 		}
@@ -429,7 +429,7 @@ function buildMissionList() {
 		wrap.appendChild(note);
 	}
 }
-let routePts = null, routeSig = "", routeClock = 0, routeWp = 1, routeMesh = null, routeMat = null, navEl = null;
+let rPts = null, routeSig = "", routeClock = 0, routeWp = 1, rMsh = null, routeMat = null, navEl = null;
 function setTrack(t) { G.track = t; routeSig = ""; }
 function trackTarget() {
 	if (G.track) return G.track;
@@ -438,7 +438,7 @@ function trackTarget() {
 	return null;
 }
 function computeRoute(sx, sz, tx, tz) {
-	const L = ROAD_LINES, n = L.length, NI = n * n;
+	const L = RL, n = L.length, NI = n * n;
 	const P = [], ADJ = {};
 	for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) P.push([L[i], L[j]]);
 	const link = (a, b, w) => { (ADJ[a] || (ADJ[a] = [])).push([b, w]); (ADJ[b] || (ADJ[b] = [])).push([a, w]); };
@@ -490,67 +490,67 @@ function computeRoute(sx, sz, tx, tz) {
 	return out;
 }
 function buildRibbon() {
-	if (routeMesh) { G.scene.remove(routeMesh); routeMesh.geometry.dispose(); routeMesh = null; }
-	if (!routePts || routePts.length < 2) return;
+	if (rMsh) { G.scene.remove(rMsh); rMsh.geometry.dispose(); rMsh = null; }
+	if (!rPts || rPts.length < 2) return;
 	if (!routeMat) routeMat = BM(0xffd94d, { transparent: true, opacity: 0.5, depthWrite: false });
 	const pos = [];
-	for (let i = 0; i < routePts.length - 1; i++) {
-		const a = routePts[i], b = routePts[i + 1];
+	for (let i = 0; i < rPts.length - 1; i++) {
+		const a = rPts[i], b = rPts[i + 1];
 		let dx = b[0] - a[0], dz = b[1] - a[1];
 		const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
 		const px = -dz * 1.15, pz = dx * 1.15, y = 0.22;
 		pos.push(a[0] + px, y, a[1] + pz, a[0] - px, y, a[1] - pz, b[0] + px, y, b[1] + pz,
 			a[0] - px, y, a[1] - pz, b[0] - px, y, b[1] - pz, b[0] + px, y, b[1] + pz);
 	}
-	const geo = new THREE.BufferGeometry();
-	geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-	routeMesh = new THREE.Mesh(geo, routeMat);
-	routeMesh.renderOrder = 2;
-	routeMesh.visible = false;
-	G.scene.add(routeMesh);
+	const geo = new T3.BufferGeometry();
+	geo.setAttribute("position", new T3.Float32BufferAttribute(pos, 3));
+	rMsh = new T3.Mesh(geo, routeMat);
+	rMsh.renderOrder = 2;
+	rMsh.visible = false;
+	G.scene.add(rMsh);
 }
 function routeTick(dt) {
 	if (!navEl) navEl = el("navarrow");
-	const active = !G.stage && routePts && routePts.length > 1 && G.mode === "play" && !G.cutscene;
-	if (routeMesh) {
-		routeMesh.visible = !!active;
+	const active = !G.stage && rPts && rPts.length > 1 && G.mode === "play" && !G.cutscene;
+	if (rMsh) {
+		rMsh.visible = !!active;
 		if (active) routeMat.opacity = 0.42 + Math.sin(G.time * 4) * 0.13;
 	}
 	if (active) {
-		const f = focusPoint();
-		while (routeWp < routePts.length - 1 && dist2d(f.x, f.z, routePts[routeWp][0], routePts[routeWp][1]) < 16) routeWp++;
-		const wp = routePts[routeWp];
+		const f = fPt();
+		while (routeWp < rPts.length - 1 && dist2d(f.x, f.z, rPts[routeWp][0], rPts[routeWp][1]) < 16) routeWp++;
+		const wp = rPts[routeWp];
 		const a = Math.atan2(wp[0] - f.x, wp[1] - f.z);
 		navEl.style.display = "block";
 		navEl.style.transform = "rotate(" + Math.round((G.camYaw - a) * 57.2958) + "deg)";
 	} else navEl.style.display = "none";
 	if (G.mode !== "play" || G.cutscene || G.stage) return;
-	const f = focusPoint();
+	const f = fPt();
 	if (G.track && dist2d(f.x, f.z, G.track.x, G.track.z) < 15) {
-		showToast("Sampai: " + G.track.name);
+		sToa("Sampai: " + G.track.name);
 		setTrack(null);
 	}
 	routeClock += dt;
 	if (routeClock < 0.3) return;
 	routeClock = 0;
 	const t = trackTarget();
-	if (!t) { if (routePts) { routePts = null; buildRibbon(); } routeSig = ""; return; }
+	if (!t) { if (rPts) { rPts = null; buildRibbon(); } routeSig = ""; return; }
 	const sig = t.x + "," + t.z;
 	let redo = sig !== routeSig;
-	if (!redo && routePts) {
-		if (dist2d(f.x, f.z, routePts[0][0], routePts[0][1]) > 30) redo = true;
+	if (!redo && rPts) {
+		if (dist2d(f.x, f.z, rPts[0][0], rPts[0][1]) > 30) redo = true;
 		else {
 			let md = 1e9;
-			for (const p of routePts) md = Math.min(md, dist2d(f.x, f.z, p[0], p[1]));
+			for (const p of rPts) md = Math.min(md, dist2d(f.x, f.z, p[0], p[1]));
 			if (md > 40) redo = true;
 		}
 	}
 	if (redo) forceRoute();
 }
 function forceRoute() {
-	const t = trackTarget(), f = focusPoint();
+	const t = trackTarget(), f = fPt();
 	routeSig = t ? t.x + "," + t.z : "";
-	routePts = t ? computeRoute(f.x, f.z, t.x, t.z) : null;
+	rPts = t ? computeRoute(f.x, f.z, t.x, t.z) : null;
 	routeWp = 1;
 	buildRibbon();
 }
@@ -560,12 +560,12 @@ function bigMapClick(e) {
 	const cx = e.offsetX / r.width * S, cy = e.offsetY / r.height * S;
 	const w2m = (v) => (v + G.citySize / 2) / G.citySize * S;
 	const hit = (x, z, rad) => Math.hypot(cx - clamp(w2m(x), rad + 2, S - rad - 2), cy - clamp(w2m(z), rad + 2, S - rad - 2)) < 30;
-	const cg = chapterGiverKey();
+	const cg = cgK();
 	for (const key of ["celia", "marco", "don"]) {
 		const ct = G.contacts[key];
 		if (hit(ct.spot.x, ct.spot.z, key === cg && !G.job ? S * 0.017 : S * 0.011)) {
 			if (G.track && G.track.key === key) setTrack(null);
-			else setTrack({ x: ct.spot.x, z: ct.spot.z, name: giverName(key) + " — " + districtAt(ct.spot.x, ct.spot.z), key });
+			else setTrack({ x: ct.spot.x, z: ct.spot.z, name: gNam(key) + " — " + dAt(ct.spot.x, ct.spot.z), key });
 			sfxClick(); forceRoute(); drawBigMap();
 			return;
 		}
@@ -574,5 +574,5 @@ function bigMapClick(e) {
 		setTrack(null); sfxClick(); forceRoute(); drawBigMap();
 		return;
 	}
-	toggleBigMap(false);
+	tMap(false);
 }

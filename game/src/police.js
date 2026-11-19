@@ -3,10 +3,10 @@
 
 function setWanted(n) {
 	n = clamp(Math.round(n), 0, 5);
-	if (n === G.wanted) { updateHUD(); return; }
+	if (n === G.wanted) { uHud(); return; }
 	G.wanted = n; G.wantedCalm = 0;
-	if (n > 0) showToast("Wanted level " + n + " — the CBPD is rolling");
-	updateHUD();
+	if (n > 0) sToa("Wanted level " + n + " — the CBPD is rolling");
+	uHud();
 }
 function addCrime(n) {
 	if (G.mode !== "play" && !G.stage) return;
@@ -15,7 +15,7 @@ function addCrime(n) {
 	G.wantedCalm = 0;
 }
 
-function removeVehicle(v) {
+function rmVeh(v) {
 	G.scene.remove(v.mesh);
 	for (const arr of [G.vehicles, G.traffic, G.police]) {
 		const i = arr.indexOf(v); if (i >= 0) arr.splice(i, 1);
@@ -27,7 +27,7 @@ function spawnInterceptor(nearX, nearZ) {
 	const a = rand(0, Math.PI * 2), d = rand(105, 150);
 	let x = clamp(nearX + Math.cos(a) * d, -820, 820), z = clamp(nearZ + Math.sin(a) * d, -820, 820);
 	x = Math.round(x / 160) * 160; 
-	const v = spawnVehicle("interceptor", x, z, rand(0, 6.28), 0x30343a, "police");
+	const v = spV("interceptor", x, z, rand(0, 6.28), 0x30343a, "police");
 	G.police.push(v);
 	return v;
 }
@@ -37,11 +37,11 @@ function updateRoadblocks(dt) {
 	rbState.cooldown -= dt;
 	if (rbState.active) {
 		rbState.t -= dt;
-		const pp = focusPoint();
+		const pp = fPt();
 		const dBlock = dist2d(pp.x, pp.z, rbState.x, rbState.z);
 		const past = rbState.cars.length && (dBlock < 14 || dBlock > 280);
 		if (rbState.t <= 0 || past) {
-			for (const c of rbState.cars) removeVehicle(c);
+			for (const c of rbState.cars) rmVeh(c);
 			rbState.cars = []; rbState.active = false; rbState.cooldown = 22;
 		}
 		return;
@@ -55,44 +55,44 @@ function updateRoadblocks(dt) {
 	bx = clamp(bx, -700, 700); bz = clamp(bz, -700, 700);
 	const across = Math.atan2(fx, fz) + Math.PI / 2;
 	for (const off of [-4.5, 4.5]) {
-		const c = spawnVehicle("interceptor", bx + Math.sin(across) * off, bz + Math.cos(across) * off, across, 0x30343a, "roadblock");
+		const c = spV("interceptor", bx + Math.sin(across) * off, bz + Math.cos(across) * off, across, 0x30343a, "roadblock");
 		c.roadblock = true;
 		rbState.cars.push(c);
 	}
 	rbState.x = bx; rbState.z = bz; rbState.t = 30; rbState.active = true;
-	showToast("Roadblock ahead!");
+	sToa("Roadblock ahead!");
 }
 
-function focusPoint() {
+function fPt() {
 	if (!G.onFoot && G.vehicle) return G.vehicle.mesh.position;
 	return G.player.mesh.position;
 }
 
-let pHeli = null, heliLight = null, heliCone = null;
+let pHeli = null, hLit = null, heliCone = null;
 function ensurePoliceHeli() {
 	if (pHeli || G.stageNoHeli) return;
-	const pp = focusPoint();
-	pHeli = spawnVehicle("heli", pp.x + 60, pp.z + 60, 0, 0x30343a, "police");
+	const pp = fPt();
+	pHeli = spV("heli", pp.x + 60, pp.z + 60, 0, 0x30343a, "police");
 	pHeli.alt = 44; pHeli.mesh.position.y = 44;
-	heliLight = new THREE.SpotLight(0xfff2cc, 900, 190, 0.36, 0.45, 1.4);
-	G.scene.add(heliLight); G.scene.add(heliLight.target);
-	const coneGeo = new THREE.ConeGeometry(13, 46, 18, 1, true);
+	hLit = new T3.SpotLight(0xfff2cc, 900, 190, 0.36, 0.45, 1.4);
+	G.scene.add(hLit); G.scene.add(hLit.target);
+	const coneGeo = new T3.ConeGeometry(13, 46, 18, 1, true);
 	coneGeo.translate(0, -23, 0);
-	heliCone = new THREE.Mesh(coneGeo, new THREE.MeshBasicMaterial({
-		color: 0xfff2cc, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false,
+	heliCone = new T3.Mesh(coneGeo, new T3.MeshBasicMaterial({
+		color: 0xfff2cc, transparent: true, opacity: 0.14, side: T3.DoubleSide, depthWrite: false,
 	}));
 	G.scene.add(heliCone);
 }
 function dropPoliceHeli() {
 	if (!pHeli) return;
-	removeVehicle(pHeli); pHeli = null;
-	if (heliLight) { G.scene.remove(heliLight); G.scene.remove(heliLight.target); heliLight = null; }
+	rmVeh(pHeli); pHeli = null;
+	if (hLit) { G.scene.remove(hLit); G.scene.remove(hLit.target); hLit = null; }
 	if (heliCone) { G.scene.remove(heliCone); heliCone = null; }
 }
 function updatePoliceHeli(dt) {
 	if (G.wanted >= 4) ensurePoliceHeli(); else if (pHeli && G.wanted === 0) dropPoliceHeli();
 	if (!pHeli) return;
-	const pp = focusPoint();
+	const pp = fPt();
 	const m = pHeli.mesh;
 	pHeli.rotorSpin += dt * 30;
 	if (m.userData.rotor) m.userData.rotor.rotation.y = pHeli.rotorSpin * 3;
@@ -101,20 +101,20 @@ function updatePoliceHeli(dt) {
 	m.position.z = lerp(m.position.z, tz, clamp(dt * 1.6, 0, 1));
 	m.position.y = lerp(m.position.y, 44, dt);
 	m.rotation.y = Math.atan2(pp.x - m.position.x, pp.z - m.position.z);
-	heliLight.position.set(m.position.x, m.position.y - 1, m.position.z);
-	heliLight.target.position.set(pp.x, 0, pp.z);
+	hLit.position.set(m.position.x, m.position.y - 1, m.position.z);
+	hLit.target.position.set(pp.x, 0, pp.z);
 	heliCone.position.set(m.position.x, m.position.y - 1, m.position.z);
 }
 
 function updatePolice(dt) {
-	const pp = focusPoint();
+	const pp = fPt();
 	
 	G.wantedCalm += dt;
 	if (G.wanted > 0 && G.wanted <= 2 && G.wantedCalm > 30) setWanted(G.wanted - 1);
 	const wantedCount = [0, 1, 2, 3, 4, 5][G.wanted];
 	if (G.mode === "play") {
 		while (G.police.length < wantedCount) spawnInterceptor(pp.x, pp.z);
-		while (G.police.length > wantedCount) removeVehicle(G.police[G.police.length - 1]);
+		while (G.police.length > wantedCount) rmVeh(G.police[G.police.length - 1]);
 	}
 	const flash = Math.floor(G.time * 2.4) % 2 === 0;
 	for (const c of G.police) {
@@ -153,7 +153,7 @@ function v_angDiff(m, pp) { return angWrap(Math.atan2(pp.x - m.position.x, pp.z 
 
 function updateBusted(dt) {
 	if (G.mode !== "play" || G.wanted === 0) { G.bustMeter = Math.max(0, G.bustMeter - dt * 0.5); setBustUI(G.bustMeter); return; }
-	const pp = focusPoint();
+	const pp = fPt();
 	let near = false;
 	for (const c of G.police) {
 		if (dist2d(c.mesh.position.x, c.mesh.position.z, pp.x, pp.z) < 8.5) { near = true; break; }
@@ -166,14 +166,14 @@ function updateBusted(dt) {
 }
 
 function clearPolice() {
-	while (G.police.length) removeVehicle(G.police[0]);
-	for (const c of rbState.cars) removeVehicle(c);
+	while (G.police.length) rmVeh(G.police[0]);
+	for (const c of rbState.cars) rmVeh(c);
 	rbState.cars = []; rbState.active = false;
 	dropPoliceHeli();
 }
-function respawnAtSafehouse() {
+function rspH() {
 	if (G.vehicle) { G.vehicle.driver = null; G.vehicle = null; }
-	G.onFoot = true; posePlayerSeated(false);
+	G.onFoot = true; poseS(false);
 	G.player.mesh.visible = true;
 	G.player.mesh.position.set(SPOTS.safehouse.x, 0, SPOTS.safehouse.z);
 	G.player.y = 0; G.player.vy = 0;
@@ -184,20 +184,20 @@ function doBusted() {
 	G.bustMeter = 0;
 	const fine = Math.min(G.cash, Math.max(50, Math.round(G.cash * 0.12)));
 	G.cash -= fine;
-	respawnAtSafehouse();
+	rspH();
 	sfxSting("bad");
 	showCard("BUSTED", "The CBPD cuffed Rico and relieved him of " + fmtCash(fine) + ". He walks out of the station at dawn, back at the safehouse.", "Keep rolling");
-	saveGame(); updateHUD();
+	saveGame(); uHud();
 }
 function doWasted() {
 	const fine = Math.min(G.cash, Math.max(40, Math.round(G.cash * 0.1)));
 	G.cash -= fine;
-	respawnAtSafehouse();
+	rspH();
 	sfxSting("bad");
 	showCard("WASTED", "Rico wakes up outside Coral Bay General, " + fmtCash(fine) + " lighter. The bay keeps turning.", "Keep rolling");
-	saveGame(); updateHUD();
+	saveGame(); uHud();
 }
 function checkHealth(dt) {
 	if (G.health <= 0 && G.mode === "play") { G.health = 0; doWasted(); return; }
-	if (G.health < 100 && G.mode === "play") { G.health = Math.min(100, G.health + dt * 1.1); updateHUD(); }
+	if (G.health < 100 && G.mode === "play") { G.health = Math.min(100, G.health + dt * 1.1); uHud(); }
 }
