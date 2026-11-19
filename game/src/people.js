@@ -1,12 +1,7 @@
-// people.js — articulated low-poly people in gangster styling (fedoras, panama
-// hats, sunglasses, gold chains, tropical prints), the player on foot,
-// pedestrians with sidewalk AI, dogs, seagulls, and hand-to-hand combat.
 "use strict";
-
 const SKIN_TONES = [0xf2c09a, 0xd99e63, 0xa96f3f, 0x7a4a28, 0xffd9b3];
 const SHIRT_COLORS = [0xf26d5b, 0x3fbfae, 0xf2b13d, 0x7a5fd0, 0xe8e4da, 0x2e4053, 0xff8fab, 0x58a05c];
 const PANTS_COLORS = [0x2e4053, 0xe8e4da, 0x5a4632, 0x30343a, 0x7a2e35];
-
 function shirtTexture(base, print) {
   const cv = document.createElement("canvas"); cv.width = 32; cv.height = 32;
   const c = cv.getContext("2d");
@@ -26,7 +21,6 @@ const SHIRT_TEX = [
   shirtTexture("#e8e4da", false), shirtTexture("#2e4053", false), shirtTexture("#ff8fab", true),
 ];
 function lam(color) { return new THREE.MeshLambertMaterial({ color }); }
-
 function makePerson(style) {
   style = style || {};
   const g = new THREE.Group();
@@ -74,7 +68,6 @@ function makePerson(style) {
   g.scale.setScalar(0.84);
   return { mesh: g, inner, la, ra, ll, rl, head, phase: rand(0, 6), hp: 3, dead: 0, fleeT: 0, target: null, speed: 0 };
 }
-
 function animatePerson(p, speed, dt) {
   p.phase += dt * (3 + speed * 2.1);
   const sw = Math.sin(p.phase) * clamp(speed / 3.4, 0, 1) * 0.62;
@@ -83,7 +76,6 @@ function animatePerson(p, speed, dt) {
   p.inner.position.y = Math.abs(Math.sin(p.phase)) * 0.05 * clamp(speed / 3, 0, 1);
   if (p.attackT > 0) { p.attackT -= dt; p.ra.rotation.x = -2 + (0.18 - p.attackT) * 6; }
 }
-
 function textSprite(text, color) {
   const cv = document.createElement("canvas"); cv.width = 256; cv.height = 56;
   const c = cv.getContext("2d");
@@ -95,8 +87,6 @@ function textSprite(text, color) {
   s.scale.set(7.5, 1.65, 1);
   return s;
 }
-
-// --- the cast ---------------------------------------------------------------
 function buildCast(scene) {
   const rico = makePerson({ skin: 0xd99e63, shirtTex: 0, pants: 0xe8e4da, hat: "fedora", shades: true, chain: true, hair: 0x1c1410 });
   rico.mesh.position.set(SPOTS.safehouse.x, 0, SPOTS.safehouse.z);
@@ -105,7 +95,6 @@ function buildCast(scene) {
   const plate = textSprite("Rico Solano", "#ffe9a3");
   plate.position.set(0, 3.35, 0); plate.scale.set(6.4, 1.4, 1);
   rico.mesh.add(plate); rico.namePlate = plate;
-
   function contact(key, style, spot, name) {
     const p = makePerson(style);
     p.mesh.position.set(spot.x, 0, spot.z);
@@ -126,8 +115,6 @@ function buildCast(scene) {
   contact("celia", { skin: 0xf2c09a, shirtTex: 5, skirt: 0xc93a2e, hair: 0x4a2a12 }, SPOTS.celia, "Celia");
   contact("marco", { skin: 0xa96f3f, shirt: 0x2e4053, pants: 0x30343a, hat: "fedora", shades: true, chain: true }, SPOTS.marco, "Marco");
   contact("don", { skin: 0xffd9b3, shirtTex: 3, pants: 0xe8e4da, hat: "panama", shades: true, chain: true }, SPOTS.don, "Don Falso");
-
-  // pedestrians on the sidewalks
   for (let i = 0; i < 24; i++) {
     const p = makePerson({
       hat: rng() > 0.55 ? pick(["fedora", "panama"]) : null,
@@ -146,7 +133,6 @@ function randomSidewalkPoint() {
   const road = pick(ROAD_LINES), side = rng() > 0.5 ? 20.5 : -20.5, along = rand(-800, 800);
   return rng() > 0.5 ? { x: road + side, z: along } : { x: along, z: road + side };
 }
-
 function buildDogs(scene) {
   G.dogs = [];
   const spots = [{ x: 700, z: -300 }, { x: -700, z: 100 }, { x: 700, z: 420 }, { x: -620, z: -420 }];
@@ -195,8 +181,6 @@ function buildPickups(scene) {
     G.pickups.push({ kind: d.kind, grp, x: d.x, z: d.z, taken: false });
   }
 }
-
-// --- per-frame people updates -------------------------------------------------
 function updatePeds(dt) {
   const pp = G.player.mesh.position;
   for (const p of G.peds) {
@@ -218,8 +202,6 @@ function updatePeds(dt) {
     ct.ring.rotation.z += dt * 0.8;
     const vis = contactHasJob(key) && !G.cutscene;
     ct.beacon.visible = vis; ct.ring.visible = vis;
-    // name plates read when you are close enough to talk story (~25 m);
-    // they hide while a cutscene's camera is close (billboards would fill it)
     ct.label.visible = !G.cutscene && dist2d(pp.x, pp.z, ct.spot.x, ct.spot.z) < 25;
   }
   for (const d of G.dogs) {
@@ -266,8 +248,6 @@ function movePerson(p, tx, tz, sp, dt) {
   m.position.x = nx; m.position.z = nz;
   p.speed = sp; animatePerson(p, sp, dt);
 }
-
-// --- the player on foot -------------------------------------------------------
 function updatePlayerOnFoot(dt) {
   const p = G.player, m = p.mesh;
   const camA = G.camYaw;
@@ -290,14 +270,12 @@ function updatePlayerOnFoot(dt) {
     animatePerson(p, sp, dt);
     p.speed = sp;
   } else { p.speed = 0; animatePerson(p, 0, dt); }
-  // jumping
   if ((G.keys["Space"]) && p.y <= 0) { p.vy = 7.4; }
   if (p.y > 0 || p.vy > 0) {
     p.vy -= 22 * dt; p.y += p.vy * dt;
     if (p.y <= 0) { p.y = 0; p.vy = 0; }
   }
   m.position.y = p.y;
-  // entering vehicles
   const near = nearestVehicle(m.position.x, m.position.z, 4.2);
   if (near && near.alive) {
     setInteract("E — Take the " + near.name);
@@ -306,7 +284,6 @@ function updatePlayerOnFoot(dt) {
   else setInteract(null);
   if (G.keys["KeyF"]) { G.keys["KeyF"] = false; playerAttack(); }
 }
-
 function playerAttack() {
   const p = G.player;
   if (G.mode !== "play" || !G.onFoot || G.cutscene) return;

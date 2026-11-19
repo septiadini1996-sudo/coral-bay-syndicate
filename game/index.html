@@ -58,6 +58,13 @@
   .tokoh-face { width: 62px; height: 62px; border-radius: 8px; border: 2px solid rgba(255,217,77,.6); }
   .tokoh-name { font-size: 13.5px; font-weight: bold; margin-top: 4px; }
   .tokoh-role { font-size: 11px; line-height: 1.3; color: #b9cdd4; margin-top: 2px; }
+  #navarrow { position: absolute; top: 62px; left: 50%; margin-left: -17px; width: 34px; height: 34px; line-height: 32px;
+    text-align: center; font-size: 19px; color: #12222e; background: rgba(255,217,77,.92); display: none;
+    border: 2px solid rgba(8,24,34,.65); border-radius: 50%; box-shadow: 0 2px 8px rgba(0,0,0,.5); }
+  #btn-follow { display: none; margin-top: 10px; pointer-events: auto; background: linear-gradient(180deg, #ffd94d, #f2a93d);
+    color: #12222e; border: none; border-radius: 9px; font-size: 14.5px; font-weight: bold; padding: 8px 18px; cursor: pointer; font-family: inherit; }
+  .mission-track { margin-top: 6px; background: rgba(46,230,200,.16); color: #2ee6c8; border: 1px solid rgba(46,230,200,.6);
+    border-radius: 7px; font-size: 12.5px; font-weight: bold; padding: 4px 12px; cursor: pointer; font-family: inherit; }
   #district { margin-top: 5px; font-size: 13px; font-weight: bold; letter-spacing: .12em; text-transform: uppercase;
     color: #ffe9a3; text-shadow: 0 1px 3px rgba(0,0,0,.8); }
   #topright { position: absolute; top: 14px; right: 16px; text-align: right; }
@@ -141,6 +148,7 @@
   <div id="toast"></div>
   <div id="bust-wrap"><div id="bust-label">BUSTED</div><div id="bust-bar"><div id="bust-fill"></div></div></div>
   <div id="tracker"><div id="trk-chapter"></div><div id="trk-obj"></div><div id="trk-dist"></div></div>
+  <div id="navarrow">▲</div>
   <div id="subtitle"><canvas id="sub-face" width="96" height="96"></canvas><div><div id="sub-name"></div><div id="sub-text"></div></div><div id="sub-skip">Lewati ▸▸ (Enter)</div></div>
   <button id="btn-mute" class="hud-btn" style="bottom:16px" title="Mute">🔊</button>
   <button id="btn-map" class="hud-btn" title="Peta penuh (M)">🗺️</button>
@@ -157,7 +165,8 @@
     <span><span class="lg-dot" style="background:#ff3b30"></span>Polisi</span>
     <span><span class="lg-dot" style="background:#ffffff"></span>Rico</span>
   </div>
-  <div id="bigmap-hint">M / Esc / klik untuk menutup</div>
+  <button id="btn-follow">Ikuti Misi — kembali ke tujuan utama</button>
+  <div id="bigmap-hint">Klik penanda pemberi misi untuk melacaknya · M / Esc untuk menutup</div>
 </div>
 
 <div id="menu-missions" class="overlay">

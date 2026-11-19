@@ -1,13 +1,8 @@
-// main.js — boot, input, camera, the frame loop, and the screenshot staging
-// scenes (?scene=chase|drive|marina|rico|cutscene) the entry's screenshots
-// are taken in.
 "use strict";
-
 function bootGame() {
   const params = new URLSearchParams(location.search);
   const seedParam = parseInt(params.get("seed") || "", 10);
   if (!Number.isNaN(seedParam)) rng = mulberry32(seedParam);
-
   G.scene = new THREE.Scene();
   G.camera = new THREE.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 6000);
   G.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
@@ -18,28 +13,23 @@ function bootGame() {
   G.renderer.toneMapping = THREE.ACESFilmicToneMapping;
   G.renderer.toneMappingExposure = 1.12;
   el("app").appendChild(G.renderer.domElement);
-
   buildWorld();
   buildCast(G.scene);
   buildVehicles(G.scene);
   buildMissionMarker(G.scene);
   hudInit();
   bindInput();
-
   const sceneName = params.get("scene");
   if (sceneName) setupStage(sceneName);
   else showTitle();
-
   requestAnimationFrame(frameLoop);
 }
-
-// --- input ----------------------------------------------------------------------
 let mouseDown = false, mouseMoved = 0, mouseDownAt = 0, lastDragT = -9;
 function bindInput() {
   addEventListener("keydown", (e) => {
     G.keys[e.code] = true;
     if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(e.code)) e.preventDefault();
-    if (G.cutscene) { // a cutscene owns the keys: Enter / Esc skips it
+    if (G.cutscene) {
       if (e.code === "Enter" || e.code === "Escape") skipCutscene();
       sfxInit();
       return;
@@ -82,8 +72,6 @@ function bindInput() {
     G.renderer.setSize(innerWidth, innerHeight);
   });
 }
-
-// --- camera -----------------------------------------------------------------------
 const camTargetPos = new THREE.Vector3();
 function updateCamera(dt) {
   const cam = G.camera;
@@ -107,7 +95,6 @@ function updateCamera(dt) {
     (f.y || 0) + 1.7 + Math.sin(pitch) * dist,
     f.z - bz * Math.cos(pitch) * dist
   );
-  // keep the camera out of buildings and above the street
   const fixed = collideCircle(camTargetPos.x, camTargetPos.z, 1.2);
   camTargetPos.x = fixed.x; camTargetPos.z = fixed.z;
   camTargetPos.y = Math.max(camTargetPos.y, 1.1);
@@ -115,8 +102,6 @@ function updateCamera(dt) {
   const lead = !G.onFoot && G.vehicle ? clamp(Math.abs(G.vehicle.speed) * 0.14, 0, 5) : 0;
   cam.lookAt(f.x + bx * lead, (f.y || 0) + 2.1, f.z + bz * lead);
 }
-
-// --- the frame loop -----------------------------------------------------------------
 let lastNow = performance.now(), fpsAccum = 0, fpsCount = 0, fpsStage = 0, hudAccum = 0;
 function frameLoop(now) {
   requestAnimationFrame(frameLoop);
@@ -125,9 +110,6 @@ function frameLoop(now) {
   lastNow = now;
   if (dt <= 0) dt = 0.016;
   G.time += dt;
-
-  // Watchdog on the RAW frame time: on a modest GPU the sun's shadows are
-  // the first thing to go, so the game stays smooth everywhere.
   if (fpsStage < 3 && rawDt < 1) {
     fpsAccum += rawDt; fpsCount++;
     if (fpsAccum > 4) {
@@ -138,7 +120,6 @@ function frameLoop(now) {
       fpsAccum = 0; fpsCount = 0; fpsStage++;
     }
   }
-
   if (G.stage) { stageTick(dt); }
   else if (G.cutscene) {
     updateCutscene(dt);
@@ -173,8 +154,6 @@ function frameLoop(now) {
     if (stageFrames === 100) window.__shotReady = true;
   }
 }
-
-// --- screenshot staging ---------------------------------------------------------------
 let stageFrames = 0, stageRig = null;
 function setupStage(name) {
   G.stage = name; G.mode = "stage"; G.stageNoHeli = true;
@@ -190,8 +169,7 @@ function setupStage(name) {
     const i1 = spawnVehicle("interceptor", -2.85, 217.2, Math.PI, 0x30343a, "police");
     const i2 = spawnVehicle("interceptor", 5, 217.6, Math.PI, 0x30343a, "police");
     i1.speed = 15; i2.speed = 15;
-    G.police.push(i1, i2); // minimap blips; the police AI stays off in staging
-    // clear ambient traffic out of the chase corridor so the shot stays clean
+    G.police.push(i1, i2);
     for (const t of G.traffic) {
       if (Math.abs(t.mesh.position.x) < 60 && t.mesh.position.z > -460 && t.mesh.position.z < 300) {
         t.mesh.position.x = 320; t.aiTarget = null;
@@ -212,9 +190,6 @@ function setupStage(name) {
     cam.position.set(632, 2.5, 312);
   } else if (name === "marina") {
     G.hour = 21.5; G.weather = "rain";
-    // staging-only moonlight lift: the still needs the boats, pier and Celia
-    // to read at night, so the portrait gets extra light the game itself
-    // never sees (these lights exist only in this staging branch)
     const moonBoost = new THREE.DirectionalLight(0xbdd2ff, 1.15);
     moonBoost.position.set(-780, 160, 20);
     moonBoost.target.position.set(-920, 0, 78);
@@ -227,8 +202,6 @@ function setupStage(name) {
     cam.position.set(-868, 2.8, 108);
   } else if (name === "cutscene") {
     G.hour = 17.8; G.weather = "clear";
-    // Chapter 1's opening scene at the marina, frozen on Celia's third line:
-    // Rico and Celia face each other on the pier, subtitle bar up.
     G.player.mesh.position.set(-879, 0, 70);
     startCutscene(0, null);
     G.cutscene.line = 2; csShowLine();
@@ -257,8 +230,6 @@ function stageTick(dt) {
     }
     const lead = stageRig.cars[0];
     if (G.stage === "chase") {
-      // low, tight rear three-quarter: the Comet fills the centre of the
-      // frame with an Interceptor tucked at each rear quarter
       cam.position.set(lead.mesh.position.x + 4.8, 1.5, lead.mesh.position.z + 8.6);
       cam.lookAt(lead.mesh.position.x - 2.2, 1, lead.mesh.position.z - 10);
       const flash = Math.floor(G.time * 2.4) % 2 === 0;
@@ -289,8 +260,6 @@ function stageTick(dt) {
   if (hudAccum > 0.12) { hudAccum = 0; updateHUD(); drawMinimap(); }
 }
 function seatSyncStage() { if (G.vehicle) seatPlayerInVehicle(G.vehicle); }
-
-// Debug and staging hooks: the build's own test console.
 window.CBS = {
   G,
   warp(x, z) {
@@ -318,5 +287,4 @@ window.CBS = {
     };
   },
 };
-
 document.addEventListener("DOMContentLoaded", bootGame);

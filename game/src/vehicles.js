@@ -1,8 +1,4 @@
-// vehicles.js — every drivable machine in Coral Bay: sports coupe, vintage
-// roadster, monster truck, two motorcycles, a bicycle, traffic, police
-// Interceptors and the helicopter — plus arcade driving physics and traffic AI.
 "use strict";
-
 const VEHICLE_KINDS = {
   comet: { name: "Comet GT", top: 47, accel: 27, radius: 1.9, open: false },
   roadster: { name: "Heritage Roadster", top: 34, accel: 18, radius: 1.9, open: true },
@@ -17,9 +13,7 @@ const VEHICLE_KINDS = {
   heli: { name: "Helicopter", top: 42, accel: 16, radius: 2.4, open: false, heli: true },
 };
 const CAR_COLORS = [0xc93a2e, 0x2e7fc9, 0xf2b13d, 0x39b5a6, 0xe8e4da, 0x30343a, 0xff8fab, 0x7a5fd0, 0x58a05c];
-
 function vehicleMaterial(color) { return new THREE.MeshLambertMaterial({ color }); }
-
 function makeWheel(r, w) {
   const m = new THREE.Mesh(new THREE.CylinderGeometry(r, r, w, 12), vehicleMaterial(0x181a1c));
   m.rotation.z = Math.PI / 2;
@@ -28,13 +22,11 @@ function makeWheel(r, w) {
   m.castShadow = true;
   return m;
 }
-
 function makeVehicleMesh(kind, color) {
   const g = new THREE.Group();
   const wheels = [], steer = [];
   const paint = vehicleMaterial(color);
   const dark = vehicleMaterial(0x22262a);
-  // cabin glass is translucent so the seated driver reads through it
   const glass = new THREE.MeshLambertMaterial({ color: 0x9fd4e8, transparent: true, opacity: 0.55 });
   function box(w, h, d, mat, x, y, z, ry) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -80,18 +72,18 @@ function makeVehicleMesh(kind, color) {
     box(2, 1.1, 1.8, glass, 0, 2.1, 2.6);
     box(0.7, 0.7, 4.6, paint, 0, 2.3, -4.4);
     box(0.24, 1.7, 1.1, paint, 0, 3.1, -6.5);
-    box(4.4, 0.3, 1.1, dark, 0, 1, 0.4); // skids crossbar hint
+    box(4.4, 0.3, 1.1, dark, 0, 1, 0.4);
     box(0.24, 0.24, 5.4, dark, -1.1, 0.35, 0.3); box(0.24, 0.24, 5.4, dark, 1.1, 0.35, 0.3);
     const rotor = new THREE.Mesh(new THREE.BoxGeometry(11.5, 0.08, 0.5), dark);
     rotor.position.y = 3.55; g.add(rotor);
     const tailRotor = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.7, 0.3), dark);
     tailRotor.position.set(0.45, 3.1, -6.5); g.add(tailRotor);
     g.userData.rotor = rotor; g.userData.tailRotor = tailRotor;
-  } else { // sedan, pickup, van, interceptor share a family look
+  } else {
     const h = kind === "van" ? 2.2 : 0.78, len = kind === "pickup" ? 5.2 : 4.7;
     box(2.05, h, len, paint, 0, kind === "van" ? 1.35 : 0.68, 0);
     if (kind !== "van") box(1.85, 0.52, 2.2, glass, 0, 1.28, -0.15);
-    else box(1.8, 0.7, 0.12, glass, 0, 1.8, len / 2 - 0.02); // the van gets a windshield
+    else box(1.8, 0.7, 0.12, glass, 0, 1.8, len / 2 - 0.02);
     if (kind === "pickup") box(1.9, 0.5, 1.9, dark, 0, 1.05, -1.5);
     if (kind === "interceptor") {
       box(2.06, 0.3, len * 0.5, vehicleMaterial(0xf2f2f2), 0, 0.7, 0.4);
@@ -105,7 +97,6 @@ function makeVehicleMesh(kind, color) {
     wheel(-1, 1.5, 0.42, 0.28, true); wheel(1, 1.5, 0.42, 0.28, true);
     wheel(-1, -1.5, 0.42, 0.28, false); wheel(1, -1.5, 0.42, 0.28, false);
   }
-  // headlights that wake up at night
   const hl = new THREE.MeshBasicMaterial({ color: 0x555544 });
   for (const s of [-0.6, 0.6]) {
     if (kind === "bicycle" || kind === "heli") continue;
@@ -116,7 +107,6 @@ function makeVehicleMesh(kind, color) {
   g.userData.headlightMat = hl;
   return { group: g, wheels, steer };
 }
-
 function spawnVehicle(kind, x, z, heading, color, driver) {
   const built = makeVehicleMesh(kind, color !== undefined ? color : pick(CAR_COLORS));
   built.group.traverse((o) => { if (o.material && o.material.color) o.userData.c = o.material.color.clone(); });
@@ -132,15 +122,14 @@ function spawnVehicle(kind, x, z, heading, color, driver) {
   if (driver === "traffic") G.traffic.push(v);
   return v;
 }
-
 function buildVehicles(scene) {
-  spawnVehicle("comet", -664, 96, Math.PI / 2, 0xff5f9e);                    // Celia's Comet at the marina
-  spawnVehicle("crusher", SPOTS.crusherYard.x, SPOTS.crusherYard.z, 0.4, 0xf2762e); // industrial yard
-  spawnVehicle("falco", SPOTS.beachFalco.x, SPOTS.beachFalco.z, Math.PI, 0x2e7fc9); // beachfront
-  spawnVehicle("roadster", SPOTS.roadster.x, SPOTS.roadster.z, 2.4, 0x7a1f24);      // Palmera
+  spawnVehicle("comet", -664, 96, Math.PI / 2, 0xff5f9e);
+  spawnVehicle("crusher", SPOTS.crusherYard.x, SPOTS.crusherYard.z, 0.4, 0xf2762e);
+  spawnVehicle("falco", SPOTS.beachFalco.x, SPOTS.beachFalco.z, Math.PI, 0x2e7fc9);
+  spawnVehicle("roadster", SPOTS.roadster.x, SPOTS.roadster.z, 2.4, 0x7a1f24);
   spawnVehicle("bicycle", SPOTS.bicycle.x, SPOTS.bicycle.z, 0, 0x39b5a6);
-  spawnVehicle("marlin", -596, -216, 0.3, 0x58a05c);                                // cruiser bike by the marina cafes
-  spawnVehicle("heli", SPOTS.airportHeli.x, SPOTS.airportHeli.z, 0, 0xe8e4da);       // airport apron
+  spawnVehicle("marlin", -596, -216, 0.3, 0x58a05c);
+  spawnVehicle("heli", SPOTS.airportHeli.x, SPOTS.airportHeli.z, 0, 0xe8e4da);
   const parkedSpots = [[150, -20], [-330, 130], [90, 480], [-20, -330], [490, -90], [-490, -490], [250, 250], [-90, 90]];
   for (const s of parkedSpots) spawnVehicle(pick(["sedan", "pickup", "van", "sedan"]), s[0], s[1], rand(0, 6.28));
   for (let i = 0; i < 13; i++) {
@@ -155,14 +144,13 @@ function nextTrafficPoint(v) {
   const fx = Math.sin(v.mesh.rotation.y), fz = Math.cos(v.mesh.rotation.y);
   let nx = Math.round((p.x + fx * 90) / 160) * 160, nz = Math.round((p.z + fz * 90) / 160) * 160;
   nx = clamp(nx, -640, 640); nz = clamp(nz, -640, 640);
-  if (rng() > 0.55) { // turn at the junction
+  if (rng() > 0.55) {
     if (Math.abs(fx) > Math.abs(fz)) nz = clamp(Math.round(p.z / 160) * 160 + pick([-160, 160]), -640, 640);
     else nx = clamp(Math.round(p.x / 160) * 160 + pick([-160, 160]), -640, 640);
   }
   const lane = 6.5;
   return { x: nx + (Math.abs(fz) > 0.5 ? lane * Math.sign(fz || 1) : 0), z: nz + (Math.abs(fx) > 0.5 ? -lane * Math.sign(fx || 1) : 0) };
 }
-
 function nearestVehicle(x, z, maxD) {
   let best = null, bd = maxD;
   for (const v of G.vehicles) {
@@ -172,9 +160,6 @@ function nearestVehicle(x, z, maxD) {
   }
   return best;
 }
-
-// Driver-seat anchor per kind, in vehicle-local space. Rico's mesh is placed
-// here every frame while he drives — he rides IN the machine, never kerbside.
 const SEATS = {
   comet: { x: -0.48, y: -0.36, z: 0.05 }, roadster: { x: -0.45, y: -0.1, z: -0.3 },
   crusher: { x: -0.55, y: 1.12, z: -0.2 },
@@ -195,7 +180,6 @@ function seatPlayerInVehicle(v) {
   if (G.player.namePlate) G.player.namePlate.visible = false;
   posePlayerSeated(true);
 }
-
 function enterVehicle(v) {
   G.onFoot = false; G.vehicle = v; v.driver = "player"; v.speed = 0;
   setInteract(null);
@@ -228,8 +212,6 @@ function posePlayerSeated(seated) {
   p.ll.rotation.x = seated ? -1.35 : 0; p.rl.rotation.x = seated ? -1.35 : 0;
   p.la.rotation.x = seated ? -0.75 : 0; p.ra.rotation.x = seated ? -0.75 : 0;
 }
-
-// --- driving ------------------------------------------------------------------
 function driveVehicle(v, dt, input) {
   const K = VEHICLE_KINDS[v.kind];
   const m = v.mesh;
@@ -256,7 +238,6 @@ function driveVehicle(v, dt, input) {
   if (!isLand(nx, nz) && isLand(prevX, prevZ)) { nx = prevX; nz = prevZ; if (v.speed > 4) damageVehicle(v, 3); v.speed *= 0.3; }
   if (impact > 0.4 && Math.abs(v.speed) > 9) { damageVehicle(v, Math.abs(v.speed) * 0.22); if (v.driver === "player") sfxCrash(Math.abs(v.speed)); v.speed *= 0.35; }
   m.position.x = nx; m.position.z = nz;
-  // wheels, lean and rider pose
   const wr = v.speed * dt / 0.42;
   for (const w of v.wheels) w.rotation.x += wr;
   for (const w of v.steerW) w.rotation.y = v.steer * 0.42;
@@ -270,7 +251,6 @@ function driveVehicle(v, dt, input) {
   }
   vehicleSmoke(v, dt);
 }
-
 function seatPlayerOnBike(v) {
   const m = v.mesh, p = G.player.mesh;
   p.position.copy(m.position);
@@ -280,7 +260,6 @@ function seatPlayerOnBike(v) {
   if (G.player.namePlate) G.player.namePlate.visible = false;
   posePlayerSeated(true);
 }
-
 function flyHelicopter(v, dt, input) {
   const m = v.mesh;
   v.rotorSpin += dt * (v.driver ? 26 : (v.rotorSpin > 0.2 ? -dt * 4 : 0));
@@ -303,7 +282,6 @@ function flyHelicopter(v, dt, input) {
   if (v.driver === "player") seatPlayerInVehicle(v);
   vehicleSmoke(v, dt);
 }
-
 function damageVehicle(v, amt) {
   if (!v.alive) return;
   v.health -= amt;
@@ -348,8 +326,6 @@ function updateSmoke(dt) {
     if (s.life <= 0) s.spr.visible = false;
   }
 }
-
-// vehicle-on-vehicle bumps and running-down checks, shared by all drivers
 function collideVehicles(dt) {
   const vs = G.vehicles;
   for (let i = 0; i < vs.length; i++) {
@@ -370,7 +346,6 @@ function collideVehicles(dt) {
         a.speed *= 0.55; b.speed *= 0.55;
       }
     }
-    // the player's machine versus pedestrians
     if (a.driver === "player" && Math.abs(a.speed) > 6) {
       for (const p of G.peds) {
         if (p.dead > 0) continue;
@@ -381,14 +356,13 @@ function collideVehicles(dt) {
     }
   }
 }
-
 function updateTraffic(dt) {
   const pp = G.player ? G.player.mesh.position : { x: 0, z: 0 };
   for (const v of G.traffic) {
     if (!v.alive || v.driver !== "traffic") continue;
     const m = v.mesh;
     const far = dist2d(m.position.x, m.position.z, pp.x, pp.z);
-    if (far > 720) { // recycle far-away traffic to a road nearer the player
+    if (far > 720) {
       const road = pick(ROAD_LINES), horiz = rng() > 0.5, along = clamp(pp.x + rand(-420, 420), -780, 780);
       m.position.set(horiz ? along : road, 0, horiz ? road : clamp(pp.z + rand(-420, 420), -780, 780));
       m.rotation.y = horiz ? Math.PI / 2 : 0;
@@ -418,7 +392,6 @@ function updateTraffic(dt) {
     driveVehicle(v, dt, input);
   }
 }
-
 function updatePlayerVehicle(dt) {
   const v = G.vehicle; if (!v) return;
   const input = {
@@ -430,7 +403,7 @@ function updatePlayerVehicle(dt) {
   driveVehicle(v, dt, input);
   if (G.keys["KeyE"]) { G.keys["KeyE"] = false; if (VEHICLE_KINDS[v.kind].heli && v.alt > 2) { showToast("Too high to bail out!"); } else exitVehicle(); }
   if (G.keys["KeyQ"]) { G.keys["KeyQ"] = false; G.radioOn = !G.radioOn; showToast(G.radioOn ? "Radio on — " + RADIO_STATIONS[G.radioStation].name : "Radio off"); }
-  if (G.keys["KeyR"] && !VEHICLE_KINDS[v.kind].heli) { /* R is radio station in cars */ }
+  if (G.keys["KeyR"] && !VEHICLE_KINDS[v.kind].heli) {  }
   if (G.keys["Digit1"]) { G.keys["Digit1"] = false; cycleRadio(-1); }
   if (G.keys["Digit2"]) { G.keys["Digit2"] = false; cycleRadio(1); }
 }

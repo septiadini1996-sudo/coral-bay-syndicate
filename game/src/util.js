@@ -1,8 +1,4 @@
-// util.js — shared helpers, the central game state object and the save system.
 "use strict";
-
-// Deterministic seeded RNG (mulberry32): the city is built the same way on
-// every load, and no gameplay path depends on unseeded randomness.
 function mulberry32(seed) {
   let a = seed >>> 0;
   return function () {
@@ -23,24 +19,21 @@ function angWrap(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI)
 function angLerp(a, b, t) { return a + angWrap(b - a) * clamp(t, 0, 1); }
 function el(id) { return document.getElementById(id); }
 function fmtCash(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
-
-// Central mutable game state. Everything else hangs off this object so the
-// staging hooks and the debug console can reach any system.
 const G = {
-  mode: "boot",            // boot | title | play | pause | card
+  mode: "boot",
   scene: null, camera: null, renderer: null, three: null,
   keys: {}, mouseDX: 0, mouseDY: 0,
-  time: 0,                 // seconds since boot
-  hour: 16.6,              // time of day, 0..24
-  weather: "clear",        // clear | hot | rain
+  time: 0,
+  hour: 16.6,
+  weather: "clear",
   weatherTimer: 40,
   cash: 250, health: 100, wanted: 0, wantedCalm: 0,
   weapon: "fists", ammo: 0,
-  player: null,            // person object for Rico
+  player: null,
   onFoot: true, vehicle: null,
   vehicles: [], peds: [], dogs: [], gulls: [], police: [], traffic: [],
-  colliders: [],           // {minX,maxX,minZ,maxZ} building footprints
-  pickups: [],             // weapon pickups in the world
+  colliders: [],
+  pickups: [],
   jobsDone: 0, jobIndex: 0, job: null,
   bustMeter: 0, dead: false,
   camYaw: 0, camPitch: 0.32, camDist: 9,
@@ -49,9 +42,9 @@ const G = {
   groundCanvas: null, citySize: 1700,
   save: null,
   objectiveMarker: null, objectivePos: null,
+  track: null,
   raceBest: 0,
 };
-
 const SAVE_KEY = "coral-bay-syndicate-save-v1";
 function loadSave() {
   try {
@@ -68,11 +61,9 @@ function saveGame() {
       cash: G.cash, jobIndex: G.jobIndex, jobsDone: G.jobsDone,
       raceBest: G.raceBest, radioStation: G.radioStation,
     }));
-  } catch (e) { /* storage unavailable: the run simply is not saved */ }
+  } catch (e) {  }
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
-
-// Circle-vs-colliders push-out used by the player and every vehicle.
 function collideCircle(x, z, r) {
   const half = G.citySize / 2 - 6;
   x = clamp(x, -half, half); z = clamp(z, -half, half);
