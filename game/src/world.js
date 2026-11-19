@@ -154,6 +154,7 @@ function buildWorld() {
 	buildVegetation(scene);
 	buildMarina(scene);
 	buildAirport(scene);
+	buildSigns(scene);
 	buildSky(scene);
 	buildRain(scene);
 }
@@ -182,6 +183,7 @@ function buildDistricts(scene) {
 				const w = rand(44, 66), dep = rand(44, 66), h = rand(42, 112);
 				const ox = n === 2 ? (i === 0 ? -32 : 32) : rand(-8, 8), oz = rand(-10, 10);
 				addBuilding(scene, bx + ox, bz + oz, w, dep, h, pick(towerTex), pick(WINDOW_TINTS));
+				if (bx === 240 && bz === 80 && i === 0) placeSign("COMET GT", "DEALER", bx + ox, h * 0.72, bz + oz + dep / 2 + 0.4, 30, 5.5, "#ffffff", "#8c1f28", 0);
 			}
 		} else if (d === "Palmera Heights") {
 			addBuilding(scene, bx, bz, rand(52, 66), rand(40, 52), rand(10, 15), houseTex, pick(WINDOW_TINTS));
@@ -207,6 +209,7 @@ function buildDistricts(scene) {
 	const sign = new THREE.Mesh(new THREE.BoxGeometry(30, 4, 1.5), BM(0xff4fa3));
 	sign.position.set(-52, 15, -55); scene.add(sign);
 	G.clubSignMat = sign.material;
+	placeSign("STARFISH CLUB", null, -52, 15, -54.1, 28, 3.6, "#ff8fd0", "#1c0b26", 0);
 	addBuilding(scene, 60, 348, 44, 30, 12, houseTex, 0xd8f2ee);
 	const doorGlow = new THREE.Mesh(new THREE.BoxGeometry(5, 8, 1), BM(0x2ee6c8));
 	doorGlow.position.set(60, 4, 332); scene.add(doorGlow);
@@ -273,9 +276,13 @@ function buildMarina(scene) {
 	deckMesh.receiveShadow = true;
 	scene.add(deckMesh);
 	const cafeTex = bTex(40, 14, "#e8dcc4");
+	const cafeSigns = { "-300": ["CAFÉ OLE", "#ffd94d", "#40260e"], "-140": ["GELATO BAY", "#a3ffd9", "#0e2a3a"], "180": ["MARINA YACHT CLUB", "#a3e8ff", "#0a2436"], "330": ["TACO MAR", "#ffb37a", "#3a1408"] };
 	for (const mz of [-300, -140, 20, 180, 330]) {
 		if (mz === 20) continue;
-		addBuilding(scene, -668 + rand(-16, 16), mz, rand(52, 74), rand(36, 48), rand(9, 15), cafeTex, pick(WINDOW_TINTS));
+		const bx2 = -668 + rand(-16, 16), bw = rand(52, 74), bd = rand(36, 48), bh = rand(9, 15);
+		addBuilding(scene, bx2, mz, bw, bd, bh, cafeTex, pick(WINDOW_TINTS));
+		const cs = cafeSigns[String(mz)];
+		if (cs) placeSign(cs[0], null, bx2 + bw / 2 + 0.3, bh * 0.66, mz, bd * 0.8, 4.2, cs[1], cs[2], Math.PI / 2);
 	}
 	G.boats = [];
 	const hullCols = [0xe8e4da, 0x2e7fc9, 0xc93a2e, 0xf2b13d, 0x39b5a6];
@@ -318,6 +325,7 @@ function buildAirport(scene) {
 	for (const hx of [-240, 60, 330]) G.colliders.push({ minX: hx - 45, maxX: hx + 45, minZ: 562, maxZ: 606 });
 	G.colliders.push({ minX: -125, maxX: 65, minZ: 553, maxZ: 579 });
 	const mesh = b.build(vertexMat()); mesh.castShadow = true; scene.add(mesh);
+	placeSign("CORAL BAY AIRPORT", null, -30, 11, 552.4, 120, 10, "#ffffff", "#14425e", Math.PI);
 	const plane = new THREE.Group();
 	const white = lam(0xf2f4f6);
 	const fus = new THREE.Mesh(new THREE.CylinderGeometry(3.1, 3.1, 34, 12), white);
@@ -337,6 +345,59 @@ function buildAirport(scene) {
 	plane.position.set(330, 0, 712); plane.rotation.y = 0.04;
 	scene.add(plane);
 	G.colliders.push({ minX: 310, maxX: 352, minZ: 696, maxZ: 728 });
+}
+function signMesh(text, sub, w, h, fg, bg) {
+	const cv = document.createElement("canvas"); cv.width = 512; cv.height = Math.max(32, Math.round(512 * h / w));
+	const c = cv.getContext("2d");
+	c.fillStyle = bg; c.fillRect(0, 0, cv.width, cv.height);
+	c.fillStyle = fg; c.textAlign = "center"; c.textBaseline = "middle";
+	let fs = Math.round(cv.height * (sub ? 0.42 : 0.6));
+	c.font = "bold " + fs + "px Trebuchet MS, sans-serif";
+	const tw = c.measureText(text).width;
+	if (tw > cv.width * 0.92) { fs = Math.floor(fs * cv.width * 0.92 / tw); c.font = "bold " + fs + "px Trebuchet MS, sans-serif"; }
+	c.fillText(text, cv.width / 2, sub ? cv.height * 0.34 : cv.height / 2);
+	if (sub) { c.font = "bold " + Math.round(cv.height * 0.19) + "px Trebuchet MS, sans-serif"; c.fillText(sub, cv.width / 2, cv.height * 0.76); }
+	const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+	return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: t }));
+}
+function placeSign(text, sub, x, y, z, w, h, fg, bg, ry) {
+	const m = signMesh(text, sub, w, h, fg, bg);
+	m.position.set(x, y, z); if (ry) m.rotation.y = ry;
+	G.scene.add(m); return m;
+}
+function billboard(text, sub, x, z, fg, bg, ry, w, h, cy) {
+	w = w || 18; h = h || 5.5; cy = cy || 9.5;
+	const g = new THREE.Group();
+	const poleMat = lam(0x3a4046);
+	for (const px of [-(w / 2 - 2), w / 2 - 2]) {
+		const pole = new THREE.Mesh(new THREE.BoxGeometry(0.5, cy + h / 2, 0.5), poleMat);
+		pole.position.set(px, (cy + h / 2) / 2, 0); g.add(pole);
+	}
+	const f = signMesh(text, sub, w, h, fg, bg); f.position.set(0, cy, 0.35); g.add(f);
+	const b = signMesh(text, sub, w, h, fg, bg); b.position.set(0, cy, -0.35); b.rotation.y = Math.PI; g.add(b);
+	g.position.set(x, 0, z); g.rotation.y = ry || 0;
+	G.scene.add(g);
+	G.colliders.push({ minX: x - 1, maxX: x + 1, minZ: z - 1, maxZ: z + 1 });
+}
+function buildSigns(scene) {
+	addBuilding(scene, 736, -160, 44, 44, 64, bTex(70, 100, "#b8c4cc"), 0xdfe8ee);
+	placeSign("HOTEL CORALIA", "ON THE BEACH", 713.6, 50, -160, 40, 7.5, "#7df9ff", "#0b2038", -Math.PI / 2);
+	addBuilding(scene, 30, -300, 48, 34, 26, bTex(40, 30, "#4a3550"), 0xf3e3c2);
+	placeSign("CASINO", "CORAL BAY", 30, 19, -317.4, 40, 6.5, "#ffd94d", "#2a0a2e", Math.PI);
+	addBuilding(scene, -690, 20, 46, 34, 14, bTex(40, 14, "#d8dee2"), 0xffe9a3);
+	placeSign("BANCO DEL MAR", null, -666.6, 10.5, 20, 34, 5.5, "#ffe9a3", "#0e2a1e", Math.PI / 2);
+	addBuilding(scene, -668, -60, 40, 30, 8, bTex(40, 14, "#e8dcc4"), 0xf6d9d0);
+	placeSign("PASTA MARINA", null, -647.6, 6, -60, 30, 4.5, "#ffb37a", "#40260e", Math.PI / 2);
+	const huts = [["SURF SHACK", -520, "#fff3b0", "#7a4a21"], ["BEACH BAR", 60, "#ffd1dc", "#402030"], ["PIZZA BAY", 300, "#ffdf6b", "#7a1f1f"]];
+	for (const [nm, hz, fg, bg] of huts) {
+		addBuilding(scene, 706, hz, 20, 14, 6, bTex(20, 12, "#f0e6d2"), 0xe8e4da);
+		placeSign(nm, null, 695.6, 4.2, hz, 16, 3.6, fg, bg, -Math.PI / 2);
+	}
+	billboard("PALMERA PLAZA", "MALL · CINEMA", -452, -292, "#ffb37a", "#14262e", 0, 30, 6, 9.5);
+	billboard("WELCOME TO CORAL BAY", null, 16, 344, "#12222e", "#ffd94d", Math.PI, 17, 4, 4.6);
+	billboard("VOLT COLA", "SPARK UP THE BAY", 706, -420, "#ffffff", "#c22030", -Math.PI / 2);
+	billboard("AERO AIR", "FLY THE BAY", 500, 520, "#dff4ff", "#1c4d8c", Math.PI);
+	billboard("CORAL BAY", "SUN · SEA · SYNDICATE", 672, -640, "#ffe9a3", "#0e3a4a", -Math.PI / 2);
 }
 function buildSky(scene) {
 	G.sun = new THREE.DirectionalLight(0xffe3b3, 3);
