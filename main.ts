@@ -17,6 +17,12 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
+// Coral Bay Syndicate — the game this entry hands in: an original open-world
+// crime game (a sun-soaked coastal city, a three-job story for a harbour crew,
+// stealable cars, traffic and pedestrians, CBPD pursuits under a five-star
+// wanted system, deliveries and checkpoint races, a minimap HUD and saving).
+const GAME_TITLE = 'Coral Bay Syndicate';
+
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
