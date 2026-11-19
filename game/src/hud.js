@@ -1,573 +1,574 @@
 "use strict";
 let mmCtx = null, toastTimer = 0, bannerTimer = 0, hurtT = 0, lastDistrict = "";
+function clk(id, fn, init) { el(id).addEventListener("click", () => { if (init) sfxInit(); sfxClick(); fn(); }); }
 function hudInit() {
-  mmCtx = el("minimap").getContext("2d");
-  el("btn-new").addEventListener("click", () => { sfxInit(); sfxClick(); startNewGame(); });
-  el("btn-continue").addEventListener("click", () => { sfxInit(); sfxClick(); continueGame(); });
-  el("btn-resume").addEventListener("click", () => { sfxClick(); togglePause(false); });
-  el("btn-restart").addEventListener("click", () => { sfxClick(); restartAtSafehouse(); });
-  el("btn-quit").addEventListener("click", () => { sfxClick(); quitToTitle(); });
-  el("btn-card").addEventListener("click", () => { sfxClick(); hideCard(); });
-  for (const id of ["btn-help1", "btn-help2"]) el(id).addEventListener("click", () => { sfxClick(); el("menu-help").style.display = "flex"; });
-  el("btn-help-close").addEventListener("click", () => { sfxClick(); el("menu-help").style.display = "none"; });
-  el("btn-mute").addEventListener("click", () => {
-    G.muted = !G.muted;
-    if (Sfx.master) Sfx.master.gain.value = G.muted ? 0 : 0.55;
-    el("btn-mute").textContent = G.muted ? "🔇" : "🔊";
-  });
-  el("minimap").addEventListener("click", () => { if (G.mode === "play") toggleBigMap(true); });
-  el("btn-map").addEventListener("click", () => { sfxClick(); if (G.mode === "play" || G.mode === "map") toggleBigMap(); });
-  el("btn-missions").addEventListener("click", () => { sfxClick(); if (G.mode === "play" || G.mode === "missions") toggleMissions(); });
-  el("bigmap-canvas").addEventListener("click", bigMapClick);
-  el("bigmap").addEventListener("click", (e) => { if (e.target === el("bigmap") && G.mode === "map") toggleBigMap(false); });
-  el("btn-follow").addEventListener("click", () => { sfxClick(); setTrack(null); forceRoute(); drawBigMap(); });
-  el("btn-missions-close").addEventListener("click", () => { sfxClick(); toggleMissions(false); });
-  buildTokoh();
+	mmCtx = el("minimap").getContext("2d");
+	clk("btn-new", startNewGame, 1);
+	clk("btn-continue", continueGame, 1);
+	clk("btn-resume", () => togglePause(false));
+	clk("btn-restart", restartAtSafehouse);
+	clk("btn-quit", quitToTitle);
+	clk("btn-card", hideCard);
+	for (const id of ["btn-help1", "btn-help2"]) clk(id, () => { el("menu-help").style.display = "flex"; });
+	clk("btn-help-close", () => { el("menu-help").style.display = "none"; });
+	el("btn-mute").addEventListener("click", () => {
+		G.muted = !G.muted;
+		if (Sfx.master) Sfx.master.gain.value = G.muted ? 0 : 0.55;
+		el("btn-mute").textContent = G.muted ? "🔇" : "🔊";
+	});
+	el("minimap").addEventListener("click", () => { if (G.mode === "play") toggleBigMap(true); });
+	clk("btn-map", () => { if (G.mode === "play" || G.mode === "map") toggleBigMap(); });
+	clk("btn-missions", () => { if (G.mode === "play" || G.mode === "missions") toggleMissions(); });
+	el("bigmap-canvas").addEventListener("click", bigMapClick);
+	el("bigmap").addEventListener("click", (e) => { if (e.target === el("bigmap") && G.mode === "map") toggleBigMap(false); });
+	clk("btn-follow", () => { setTrack(null); forceRoute(); drawBigMap(); });
+	clk("btn-missions-close", () => toggleMissions(false));
+	buildTokoh();
 }
 function buildTokoh() {
-  const wrap = el("tokoh-list");
-  if (!wrap || wrap.children.length) return;
-  for (const key of ["rico", "celia", "marco", "don"]) {
-    const ch = CHARACTERS[key];
-    const fig = document.createElement("div");
-    fig.className = "tokoh-item";
-    const cv = document.createElement("canvas");
-    cv.width = 96; cv.height = 96; cv.className = "tokoh-face";
-    fig.appendChild(cv);
-    const nm = document.createElement("div"); nm.className = "tokoh-name"; nm.textContent = ch.name; fig.appendChild(nm);
-    const rl = document.createElement("div"); rl.className = "tokoh-role"; rl.textContent = ch.role; fig.appendChild(rl);
-    wrap.appendChild(fig);
-    drawPortrait(cv, key);
-  }
+	const wrap = el("tokoh-list");
+	if (!wrap || wrap.children.length) return;
+	for (const key of ["rico", "celia", "marco", "don"]) {
+		const ch = CHARACTERS[key];
+		const fig = document.createElement("div");
+		fig.className = "tokoh-item";
+		const cv = document.createElement("canvas");
+		cv.width = 96; cv.height = 96; cv.className = "tokoh-face";
+		fig.appendChild(cv);
+		const nm = document.createElement("div"); nm.className = "tokoh-name"; nm.textContent = ch.name; fig.appendChild(nm);
+		const rl = document.createElement("div"); rl.className = "tokoh-role"; rl.textContent = ch.role; fig.appendChild(rl);
+		wrap.appendChild(fig);
+		drawPortrait(cv, key);
+	}
 }
 function showToast(text, dur) {
-  const t = el("toast");
-  t.textContent = text; t.style.opacity = "1";
-  toastTimer = dur || 3.4;
+	const t = el("toast");
+	t.textContent = text; t.style.opacity = "1";
+	toastTimer = dur || 3.4;
 }
 function showBanner(title, text, dur) {
-  el("banner-title").textContent = title;
-  el("banner-text").textContent = text;
-  el("banner").style.opacity = "1";
-  el("banner").style.transform = "translate(-50%, 0)";
-  bannerTimer = dur || 5;
+	el("banner-title").textContent = title;
+	el("banner-text").textContent = text;
+	el("banner").style.opacity = "1";
+	el("banner").style.transform = "translate(-50%, 0)";
+	bannerTimer = dur || 5;
 }
 function setObjective(text, x, z, timer) {
-  const box = el("objective");
-  if (!text) { box.style.display = "none"; G.objTimer = null; return; }
-  box.style.display = "block";
-  el("obj-text").textContent = text;
-  if (x !== undefined && x !== null) G.objectivePos = { x, z };
-  G.objTimer = (timer === undefined ? null : timer);
+	const box = el("objective");
+	if (!text) { box.style.display = "none"; G.objTimer = null; return; }
+	box.style.display = "block";
+	el("obj-text").textContent = text;
+	if (x !== undefined && x !== null) G.objectivePos = { x, z };
+	G.objTimer = (timer === undefined ? null : timer);
 }
 function setInteract(text) {
-  const i = el("interact");
-  if (!text) { i.style.display = "none"; return; }
-  i.style.display = "block"; i.textContent = text;
+	const i = el("interact");
+	if (!text) { i.style.display = "none"; return; }
+	i.style.display = "block"; i.textContent = text;
 }
 function setBustUI(v) {
-  const w = el("bust-wrap");
-  if (v <= 0.02) { w.style.display = "none"; return; }
-  w.style.display = "block";
-  el("bust-fill").style.width = Math.round(v * 100) + "%";
+	const w = el("bust-wrap");
+	if (v <= 0.02) { w.style.display = "none"; return; }
+	w.style.display = "block";
+	el("bust-fill").style.width = Math.round(v * 100) + "%";
 }
 function showHurt() { hurtT = 0.55; }
 function updateHUD() {
-  el("cash").textContent = fmtCash(G.cash);
-  let stars = "";
-  for (let i = 0; i < 5; i++) stars += i < G.wanted ? "★" : "☆";
-  const st = el("stars");
-  st.textContent = stars;
-  st.style.color = G.wanted > 0 ? "#ffcf3f" : "rgba(255,255,255,0.35)";
-  el("healthfill").style.width = clamp(G.health, 0, 100) + "%";
-  el("healthfill").style.background = G.health > 35 ? "#58d06a" : "#e84a3c";
-  const wname = { fists: "Fists", bat: "Baseball bat", pipe: "Lead pipe", pistol: "Pistol" }[G.weapon];
-  el("weapon").textContent = G.weapon === "pistol" ? wname + " · " + G.ammo : wname;
-  const driving = !G.onFoot && G.vehicle;
-  el("speedo").style.display = driving ? "block" : "none";
-  if (driving) {
-    el("speed-val").textContent = Math.round(Math.abs(G.vehicle.speed) * 3.1);
-    el("speed-name").textContent = G.vehicle.name + (G.vehicle.kind === "heli" ? " · alt " + Math.round(G.vehicle.alt) + "m" : "");
-  }
-  const tp = G.track || G.objectivePos;
-  if (tp) {
-    const f = focusPoint();
-    el("obj-dist").textContent = Math.round(dist2d(f.x, f.z, tp.x, tp.z)) + "m";
-  } else el("obj-dist").textContent = "";
-  if (G.objTimer !== null && G.objTimer !== undefined) {
-    const t = Math.max(0, Math.ceil(G.objTimer));
-    el("obj-timer").textContent = "⏱ " + Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
-  } else el("obj-timer").textContent = "";
-  const f = focusPoint();
-  const dname = districtAt(f.x, f.z);
-  if (dname !== lastDistrict) { lastDistrict = dname; el("district").textContent = dname; }
-  refreshTracker(f);
+	el("cash").textContent = fmtCash(G.cash);
+	let stars = "";
+	for (let i = 0; i < 5; i++) stars += i < G.wanted ? "★" : "☆";
+	const st = el("stars");
+	st.textContent = stars;
+	st.style.color = G.wanted > 0 ? "#ffcf3f" : "rgba(255,255,255,0.35)";
+	el("healthfill").style.width = clamp(G.health, 0, 100) + "%";
+	el("healthfill").style.background = G.health > 35 ? "#58d06a" : "#e84a3c";
+	const wname = { fists: "Fists", bat: "Baseball bat", pipe: "Lead pipe", pistol: "Pistol" }[G.weapon];
+	el("weapon").textContent = G.weapon === "pistol" ? wname + " · " + G.ammo : wname;
+	const driving = !G.onFoot && G.vehicle;
+	el("speedo").style.display = driving ? "block" : "none";
+	if (driving) {
+		el("speed-val").textContent = Math.round(Math.abs(G.vehicle.speed) * 3.1);
+		el("speed-name").textContent = G.vehicle.name + (G.vehicle.kind === "heli" ? " · alt " + Math.round(G.vehicle.alt) + "m" : "");
+	}
+	const tp = G.track || G.objectivePos;
+	if (tp) {
+		const f = focusPoint();
+		el("obj-dist").textContent = Math.round(dist2d(f.x, f.z, tp.x, tp.z)) + "m";
+	} else el("obj-dist").textContent = "";
+	if (G.objTimer !== null && G.objTimer !== undefined) {
+		const t = Math.max(0, Math.ceil(G.objTimer));
+		el("obj-timer").textContent = "⏱ " + Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
+	} else el("obj-timer").textContent = "";
+	const f = focusPoint();
+	const dname = districtAt(f.x, f.z);
+	if (dname !== lastDistrict) { lastDistrict = dname; el("district").textContent = dname; }
+	refreshTracker(f);
 }
 let trkCache = "";
 function chapterGiverKey() {
-  if (G.job) return JOBS[G.job.i].giver;
-  if (G.jobIndex < JOBS.length) return JOBS[G.jobIndex].giver;
-  return null;
+	if (G.job) return JOBS[G.job.i].giver;
+	if (G.jobIndex < JOBS.length) return JOBS[G.jobIndex].giver;
+	return null;
 }
 function refreshTracker(f) {
-  if (G.stage) { el("tracker").style.display = "none"; return; }
-  el("tracker").style.display = "block";
-  let head, obj, tx = null, tz = null;
-  if (G.job) {
-    head = "CHAPTER " + (G.job.i + 1) + " — " + JOBS[G.job.i].title;
-    obj = el("obj-text").textContent;
-    if (G.objectivePos) { tx = G.objectivePos.x; tz = G.objectivePos.z; }
-  } else if (G.hustle) {
-    head = "SIDE HUSTLE — " + (G.hustle.type === "race" ? "Bay Runner Rematch" : "Special Delivery");
-    obj = el("obj-text").textContent;
-    if (G.objectivePos) { tx = G.objectivePos.x; tz = G.objectivePos.z; }
-  } else if (G.jobIndex < JOBS.length) {
-    const def = JOBS[G.jobIndex], key = def.giver, spot = G.contacts[key].spot;
-    head = "CHAPTER " + (G.jobIndex + 1) + " — " + def.title;
-    obj = "Meet " + giverName(key) + " — " + districtAt(spot.x, spot.z);
-    tx = spot.x; tz = spot.z;
-  } else {
-    head = "STORY COMPLETE — Coral Bay is yours";
-    obj = "Free roam: Celia's deliveries & the Bay Runner rematch keep paying";
-  }
-  let dist = tx !== null ? Math.round(dist2d(f.x, f.z, tx, tz)) + "m" : "";
-  if (G.track) { obj = "Melacak: " + G.track.name; dist = Math.round(dist2d(f.x, f.z, G.track.x, G.track.z)) + "m"; }
-  const sig = head + "|" + obj + "|" + dist;
-  if (sig === trkCache) return;
-  trkCache = sig;
-  el("trk-chapter").textContent = head;
-  el("trk-obj").textContent = obj;
-  el("trk-dist").textContent = dist;
+	if (G.stage) { el("tracker").style.display = "none"; return; }
+	el("tracker").style.display = "block";
+	let head, obj, tx = null, tz = null;
+	if (G.job) {
+		head = "CHAPTER " + (G.job.i + 1) + " — " + JOBS[G.job.i].title;
+		obj = el("obj-text").textContent;
+		if (G.objectivePos) { tx = G.objectivePos.x; tz = G.objectivePos.z; }
+	} else if (G.hustle) {
+		head = "SIDE HUSTLE — " + (G.hustle.type === "race" ? "Bay Runner Rematch" : "Special Delivery");
+		obj = el("obj-text").textContent;
+		if (G.objectivePos) { tx = G.objectivePos.x; tz = G.objectivePos.z; }
+	} else if (G.jobIndex < JOBS.length) {
+		const def = JOBS[G.jobIndex], key = def.giver, spot = G.contacts[key].spot;
+		head = "CHAPTER " + (G.jobIndex + 1) + " — " + def.title;
+		obj = "Meet " + giverName(key) + " — " + districtAt(spot.x, spot.z);
+		tx = spot.x; tz = spot.z;
+	} else {
+		head = "STORY COMPLETE — Coral Bay is yours";
+		obj = "Free roam: Celia's deliveries & the Bay Runner rematch keep paying";
+	}
+	let dist = tx !== null ? Math.round(dist2d(f.x, f.z, tx, tz)) + "m" : "";
+	if (G.track) { obj = "Melacak: " + G.track.name; dist = Math.round(dist2d(f.x, f.z, G.track.x, G.track.z)) + "m"; }
+	const sig = head + "|" + obj + "|" + dist;
+	if (sig === trkCache) return;
+	trkCache = sig;
+	el("trk-chapter").textContent = head;
+	el("trk-obj").textContent = obj;
+	el("trk-dist").textContent = dist;
 }
 function drawMinimap() {
-  if (!mmCtx || !G.groundCanvas) return;
-  const S = 204, ctx = mmCtx, R = 215;
-  const f = focusPoint();
-  const px = f.x, pz = f.z, scale = (S / 2) / R;
-  const src = G.groundCanvas, w2c = src.width / G.citySize, sw = 2 * R * w2c;
-  ctx.clearRect(0, 0, S, S);
-  ctx.save();
-  ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 2, 0, 7); ctx.clip();
-  ctx.fillStyle = "#1b6a8c"; ctx.fillRect(0, 0, S, S);
-  ctx.drawImage(src, (px + G.citySize / 2) * w2c - sw / 2, (pz + G.citySize / 2) * w2c - sw / 2, sw, sw, 0, 0, S, S);
-  if (routePts && routePts.length > 1) {
-    ctx.lineJoin = "round";
-    for (const pass of [[5.5, "rgba(8,24,34,.6)"], [3, "#ffd94d"]]) {
-      ctx.strokeStyle = pass[1]; ctx.lineWidth = pass[0]; ctx.beginPath();
-      let pen = false;
-      for (const p of routePts) {
-        const dx = (p[0] - px) * scale, dz = (p[1] - pz) * scale;
-        if (dx * dx + dz * dz > 16900) { pen = false; continue; }
-        if (pen) ctx.lineTo(S / 2 + dx, S / 2 + dz); else { ctx.moveTo(S / 2 + dx, S / 2 + dz); pen = true; }
-      }
-      ctx.stroke();
-    }
-  }
-  function dot(x, z, color, r) {
-    const dx = (x - px) * scale, dz = (z - pz) * scale;
-    if (dx * dx + dz * dz > (S / 2 - 5) * (S / 2 - 5)) return;
-    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(S / 2 + dx, S / 2 + dz, r, 0, 7); ctx.fill();
-  }
-  const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
-  for (const c of G.police) dot(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", 4);
-  if (typeof policeHeli !== "undefined" && policeHeli) dot(policeHeli.mesh.position.x, policeHeli.mesh.position.z, "#ff3b30", 4);
-  const cgKey = chapterGiverKey();
-  for (const key of ["celia", "marco", "don"]) {
-    if (contactHasJob(key)) {
-      const ct = G.contacts[key];
-      dot(ct.spot.x, ct.spot.z, "#ffd94d", 5.5);
-      if (key === cgKey && !G.job) {
-        const dx = (ct.spot.x - px) * scale, dz = (ct.spot.z - pz) * scale;
-        if (dx * dx + dz * dz < (S / 2 - 8) * (S / 2 - 8)) {
-          ctx.fillStyle = "#ffd94d"; ctx.beginPath(); ctx.arc(S / 2 + dx, S / 2 + dz, 8, 0, 7); ctx.fill();
-          ctx.fillStyle = "#12222e"; ctx.font = "bold 10px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
-          ctx.fillText(String(G.jobIndex + 1), S / 2 + dx, S / 2 + dz + 3.5);
-        }
-      }
-    }
-  }
-  if (G.objectivePos) {
-    const pulse = 5 + Math.sin(G.time * 5) * 1.6;
-    dot(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
-  }
-  const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
-  ctx.translate(S / 2, S / 2); ctx.rotate(Math.PI - heading);
-  ctx.fillStyle = "#ffffff";
-  ctx.strokeStyle = "#12303f"; ctx.lineWidth = 1.6;
-  ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(5.4, 6.4); ctx.lineTo(0, 3.4); ctx.lineTo(-5.4, 6.4); ctx.closePath();
-  ctx.fill(); ctx.stroke();
-  ctx.restore();
-  ctx.fillStyle = "rgba(255,255,255,0.9)";
-  ctx.font = "bold 11px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
-  ctx.fillText("N", S / 2, 13);
+	if (!mmCtx || !G.groundCanvas) return;
+	const S = 204, ctx = mmCtx, R = 215;
+	const f = focusPoint();
+	const px = f.x, pz = f.z, scale = (S / 2) / R;
+	const src = G.groundCanvas, w2c = src.width / G.citySize, sw = 2 * R * w2c;
+	ctx.clearRect(0, 0, S, S);
+	ctx.save();
+	ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 2, 0, 7); ctx.clip();
+	ctx.fillStyle = "#1b6a8c"; ctx.fillRect(0, 0, S, S);
+	ctx.drawImage(src, (px + G.citySize / 2) * w2c - sw / 2, (pz + G.citySize / 2) * w2c - sw / 2, sw, sw, 0, 0, S, S);
+	if (routePts && routePts.length > 1) {
+		ctx.lineJoin = "round";
+		for (const pass of [[5.5, "rgba(8,24,34,.6)"], [3, "#ffd94d"]]) {
+			ctx.strokeStyle = pass[1]; ctx.lineWidth = pass[0]; ctx.beginPath();
+			let pen = false;
+			for (const p of routePts) {
+				const dx = (p[0] - px) * scale, dz = (p[1] - pz) * scale;
+				if (dx * dx + dz * dz > 16900) { pen = false; continue; }
+				if (pen) ctx.lineTo(S / 2 + dx, S / 2 + dz); else { ctx.moveTo(S / 2 + dx, S / 2 + dz); pen = true; }
+			}
+			ctx.stroke();
+		}
+	}
+	function dot(x, z, color, r) {
+		const dx = (x - px) * scale, dz = (z - pz) * scale;
+		if (dx * dx + dz * dz > (S / 2 - 5) * (S / 2 - 5)) return;
+		ctx.fillStyle = color; ctx.beginPath(); ctx.arc(S / 2 + dx, S / 2 + dz, r, 0, 7); ctx.fill();
+	}
+	const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
+	for (const c of G.police) dot(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", 4);
+	if (typeof pHeli !== "undefined" && pHeli) dot(pHeli.mesh.position.x, pHeli.mesh.position.z, "#ff3b30", 4);
+	const cgKey = chapterGiverKey();
+	for (const key of ["celia", "marco", "don"]) {
+		if (contactHasJob(key)) {
+			const ct = G.contacts[key];
+			dot(ct.spot.x, ct.spot.z, "#ffd94d", 5.5);
+			if (key === cgKey && !G.job) {
+				const dx = (ct.spot.x - px) * scale, dz = (ct.spot.z - pz) * scale;
+				if (dx * dx + dz * dz < (S / 2 - 8) * (S / 2 - 8)) {
+					ctx.fillStyle = "#ffd94d"; ctx.beginPath(); ctx.arc(S / 2 + dx, S / 2 + dz, 8, 0, 7); ctx.fill();
+					ctx.fillStyle = "#12222e"; ctx.font = "bold 10px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
+					ctx.fillText(String(G.jobIndex + 1), S / 2 + dx, S / 2 + dz + 3.5);
+				}
+			}
+		}
+	}
+	if (G.objectivePos) {
+		const pulse = 5 + Math.sin(G.time * 5) * 1.6;
+		dot(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
+	}
+	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
+	ctx.translate(S / 2, S / 2); ctx.rotate(Math.PI - heading);
+	ctx.fillStyle = "#ffffff";
+	ctx.strokeStyle = "#12303f"; ctx.lineWidth = 1.6;
+	ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(5.4, 6.4); ctx.lineTo(0, 3.4); ctx.lineTo(-5.4, 6.4); ctx.closePath();
+	ctx.fill(); ctx.stroke();
+	ctx.restore();
+	ctx.fillStyle = "rgba(255,255,255,0.9)";
+	ctx.font = "bold 11px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
+	ctx.fillText("N", S / 2, 13);
 }
 function hudTick(dt) {
-  if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) el("toast").style.opacity = "0"; }
-  if (bannerTimer > 0) {
-    bannerTimer -= dt;
-    if (bannerTimer <= 0) { el("banner").style.opacity = "0"; el("banner").style.transform = "translate(-50%, -12px)"; }
-  }
-  if (hurtT > 0) { hurtT -= dt; el("hurt").style.opacity = String(clamp(hurtT, 0, 0.55)); }
-  else el("hurt").style.opacity = "0";
-  if (jobMarker && jobMarker.visible) {
-    const s = 1 + Math.sin(G.time * 4) * 0.08;
-    jobMarker.scale.set(s, 1, s);
-  }
-  routeTick(dt);
+	if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) el("toast").style.opacity = "0"; }
+	if (bannerTimer > 0) {
+		bannerTimer -= dt;
+		if (bannerTimer <= 0) { el("banner").style.opacity = "0"; el("banner").style.transform = "translate(-50%, -12px)"; }
+	}
+	if (hurtT > 0) { hurtT -= dt; el("hurt").style.opacity = String(clamp(hurtT, 0, 0.55)); }
+	else el("hurt").style.opacity = "0";
+	if (jobMarker && jobMarker.visible) {
+		const s = 1 + Math.sin(G.time * 4) * 0.08;
+		jobMarker.scale.set(s, 1, s);
+	}
+	routeTick(dt);
 }
 function showTitle() {
-  G.mode = "title";
-  el("menu-title").style.display = "flex";
-  el("menu-pause").style.display = "none";
-  el("card").style.display = "none";
-  el("hud").style.display = "none";
-  const save = loadSave();
-  el("btn-continue").style.display = save ? "block" : "none";
-  if (save) el("continue-note").textContent = "Saved: " + fmtCash(save.cash) + " · jobs " + save.jobIndex + "/6";
+	G.mode = "title";
+	el("menu-title").style.display = "flex";
+	el("menu-pause").style.display = "none";
+	el("card").style.display = "none";
+	el("hud").style.display = "none";
+	const save = loadSave();
+	el("btn-continue").style.display = save ? "block" : "none";
+	if (save) el("continue-note").textContent = "Saved: " + fmtCash(save.cash) + " · jobs " + save.jobIndex + "/6";
 }
 function startNewGame() {
-  clearSave();
-  G.cash = 250; G.jobIndex = 0; G.jobsDone = 0; G.raceBest = 0;
-  beginPlay();
-  showBanner("Coral Bay Syndicate", "Rico Solano, fixer. Celia is waiting at the marina — follow the gold marker. Build the syndicate, job by job.", 7);
+	clearSave();
+	G.cash = 250; G.jobIndex = 0; G.jobsDone = 0; G.raceBest = 0;
+	beginPlay();
+	showBanner("Coral Bay Syndicate", "Rico Solano, fixer. Celia is waiting at the marina — follow the gold marker. Build the syndicate, job by job.", 7);
 }
 function continueGame() {
-  const save = loadSave();
-  if (save) {
-    G.cash = save.cash; G.jobIndex = save.jobIndex; G.jobsDone = save.jobsDone;
-    G.raceBest = save.raceBest || 0; G.radioStation = save.radioStation || 0;
-  }
-  beginPlay();
-  showToast(G.jobIndex < JOBS.length ? "Welcome back. Next job: " + JOBS[G.jobIndex].title : "Welcome back, boss. The bay is yours.");
+	const save = loadSave();
+	if (save) {
+		G.cash = save.cash; G.jobIndex = save.jobIndex; G.jobsDone = save.jobsDone;
+		G.raceBest = save.raceBest || 0; G.radioStation = save.radioStation || 0;
+	}
+	beginPlay();
+	showToast(G.jobIndex < JOBS.length ? "Welcome back. Next job: " + JOBS[G.jobIndex].title : "Welcome back, boss. The bay is yours.");
 }
 function beginPlay() {
-  el("menu-title").style.display = "none";
-  el("hud").style.display = "block";
-  G.mode = "play";
-  respawnAtSafehouse();
-  G.cash = Math.max(G.cash, 0);
-  updateHUD();
+	el("menu-title").style.display = "none";
+	el("hud").style.display = "block";
+	G.mode = "play";
+	respawnAtSafehouse();
+	G.cash = Math.max(G.cash, 0);
+	updateHUD();
 }
 function togglePause(force) {
-  if (G.cutscene) return;
-  const show = force !== undefined ? force : G.mode === "play";
-  if (show && G.mode === "play") {
-    G.mode = "pause";
-    el("story-line").textContent = storyLine();
-    el("menu-pause").style.display = "flex";
-  } else if (!show && G.mode === "pause") {
-    G.mode = "play";
-    el("menu-pause").style.display = "none";
-  }
+	if (G.cutscene) return;
+	const show = force !== undefined ? force : G.mode === "play";
+	if (show && G.mode === "play") {
+		G.mode = "pause";
+		el("story-line").textContent = storyLine();
+		el("menu-pause").style.display = "flex";
+	} else if (!show && G.mode === "pause") {
+		G.mode = "play";
+		el("menu-pause").style.display = "none";
+	}
 }
 function storyLine() {
-  if (G.jobIndex >= JOBS.length) return "Story: complete — CORAL BAY IS YOURS · free-roam hustles stay open";
-  return "Story: jobs done " + G.jobsDone + "/6 · next: " + JOBS[G.jobIndex].title + " (" + giverName(JOBS[G.jobIndex].giver) + ")";
+	if (G.jobIndex >= JOBS.length) return "Story: complete — CORAL BAY IS YOURS · free-roam hustles stay open";
+	return "Story: jobs done " + G.jobsDone + "/6 · next: " + JOBS[G.jobIndex].title + " (" + giverName(JOBS[G.jobIndex].giver) + ")";
 }
 function restartAtSafehouse() {
-  togglePause(false);
-  if (G.job) failJobSilent();
-  respawnAtSafehouse();
-  showToast("Back at the safehouse");
+	togglePause(false);
+	if (G.job) failJobSilent();
+	respawnAtSafehouse();
+	showToast("Back at the safehouse");
 }
 function failJobSilent() { G.job = null; G.hustle = null; hideMarker(); setObjective(null); }
 function quitToTitle() {
-  togglePause(false);
-  failJobSilent();
-  clearPolice();
-  showTitle();
+	togglePause(false);
+	failJobSilent();
+	clearPolice();
+	showTitle();
 }
 function showCard(title, text, btnText) {
-  G.mode = "card";
-  el("card-title").textContent = title;
-  el("card-text").textContent = text;
-  el("btn-card").textContent = btnText || "Continue";
-  el("card").style.display = "flex";
+	G.mode = "card";
+	el("card-title").textContent = title;
+	el("card-text").textContent = text;
+	el("btn-card").textContent = btnText || "Continue";
+	el("card").style.display = "flex";
 }
 function hideCard() {
-  el("card").style.display = "none";
-  if (G.mode === "card") G.mode = "play";
+	el("card").style.display = "none";
+	if (G.mode === "card") G.mode = "play";
 }
 function toggleBigMap(force) {
-  const show = force !== undefined ? force : G.mode !== "map";
-  if (show && G.mode === "play") {
-    G.mode = "map";
-    el("bigmap").style.display = "flex";
-    drawBigMap();
-  } else if (!show && G.mode === "map") {
-    G.mode = "play";
-    el("bigmap").style.display = "none";
-  }
+	const show = force !== undefined ? force : G.mode !== "map";
+	if (show && G.mode === "play") {
+		G.mode = "map";
+		el("bigmap").style.display = "flex";
+		drawBigMap();
+	} else if (!show && G.mode === "map") {
+		G.mode = "play";
+		el("bigmap").style.display = "none";
+	}
 }
 function drawBigMap() {
-  const cv = el("bigmap-canvas");
-  if (!cv || !G.groundCanvas) return;
-  const ctx = cv.getContext("2d"), S = cv.width, W = G.citySize;
-  const w2m = (x) => (x + W / 2) / W * S;
-  ctx.clearRect(0, 0, S, S);
-  ctx.drawImage(G.groundCanvas, 0, 0, S, S);
-  if (routePts && routePts.length > 1) {
-    ctx.lineJoin = "round";
-    for (const pass of [[11, "rgba(255,217,77,.3)"], [5, "#ffd94d"]]) {
-      ctx.strokeStyle = pass[1]; ctx.lineWidth = pass[0]; ctx.beginPath();
-      routePts.forEach((p, i) => { if (i) ctx.lineTo(w2m(p[0]), w2m(p[1])); else ctx.moveTo(w2m(p[0]), w2m(p[1])); });
-      ctx.stroke();
-    }
-  }
-  ctx.textAlign = "center";
-  ctx.font = "bold " + Math.round(S * 0.021) + "px Trebuchet MS, sans-serif";
-  const labels = [[0, -60, "DOWNTOWN"], [-735, 30, "THE MARINA"], [712, 0, "BEACHFRONT"],
-    [-390, -505, "PALMERA HEIGHTS"], [395, 395, "INDUSTRIAL YARDS"], [0, 705, "CORAL BAY AIRPORT"]];
-  for (const [x, z, name] of labels) {
-    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,25,35,0.75)";
-    ctx.strokeText(name, w2m(x), w2m(z));
-    ctx.fillStyle = "#ffe9a3"; ctx.fillText(name, w2m(x), w2m(z));
-  }
-  function blip(x, z, color, r) {
-    const bx = clamp(w2m(x), r + 2, S - r - 2), bz = clamp(w2m(z), r + 2, S - r - 2);
-    ctx.fillStyle = color; ctx.beginPath(); ctx.arc(bx, bz, r, 0, 7); ctx.fill();
-    ctx.lineWidth = 2; ctx.strokeStyle = "rgba(10,25,35,0.8)"; ctx.stroke();
-    return [bx, bz];
-  }
-  const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
-  for (const c of G.police) blip(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", S * 0.008);
-  if (typeof policeHeli !== "undefined" && policeHeli) blip(policeHeli.mesh.position.x, policeHeli.mesh.position.z, "#ff3b30", S * 0.008);
-  const cgKey = chapterGiverKey();
-  ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
-  for (const key of ["celia", "marco", "don"]) {
-    const ct = G.contacts[key];
-    const isNext = key === cgKey && !G.job;
-    const [bx, bz] = blip(ct.spot.x, ct.spot.z, "#ffd94d", isNext ? S * 0.017 : S * 0.011);
-    if (isNext) {
-      ctx.fillStyle = "#12222e"; ctx.font = "bold " + Math.round(S * 0.02) + "px Trebuchet MS, sans-serif";
-      ctx.fillText(String(G.jobIndex + 1), bx, bz + S * 0.007);
-      ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
-    }
-    if (G.track && G.track.key === key) {
-      ctx.lineWidth = 3; ctx.strokeStyle = "#2ee6c8";
-      ctx.beginPath(); ctx.arc(bx, bz, S * 0.024, 0, 7); ctx.stroke();
-    }
-    const nx = clamp(bx, 48, S - 48);
-    ctx.lineWidth = 3.5; ctx.strokeStyle = "rgba(10,25,35,0.8)";
-    ctx.strokeText(giverName(key), nx, bz - S * 0.02);
-    ctx.fillStyle = "#ffffff"; ctx.fillText(giverName(key), nx, bz - S * 0.02);
-  }
-  el("btn-follow").style.display = G.track ? "inline-block" : "none";
-  if (G.track) {
-    ctx.font = "bold " + Math.round(S * 0.019) + "px Trebuchet MS, sans-serif"; ctx.textAlign = "left";
-    const label = "Melacak: " + G.track.name;
-    ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,25,35,0.85)";
-    ctx.strokeText(label, 14, 28); ctx.fillStyle = "#2ee6c8"; ctx.fillText(label, 14, 28);
-  }
-  if (G.objectivePos) {
-    const pulse = S * 0.013 + Math.sin(G.time * 5) * S * 0.003;
-    blip(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
-  }
-  const f = focusPoint();
-  const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
-  ctx.save();
-  ctx.translate(clamp(w2m(f.x), 16, S - 16), clamp(w2m(f.z), 16, S - 16)); ctx.rotate(Math.PI - heading);
-  const as = S * 0.016;
-  ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#12303f"; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(0, -as); ctx.lineTo(as * 0.68, as * 0.8); ctx.lineTo(0, as * 0.42); ctx.lineTo(-as * 0.68, as * 0.8); ctx.closePath();
-  ctx.fill(); ctx.stroke();
-  ctx.restore();
+	const cv = el("bigmap-canvas");
+	if (!cv || !G.groundCanvas) return;
+	const ctx = cv.getContext("2d"), S = cv.width, W = G.citySize;
+	const w2m = (x) => (x + W / 2) / W * S;
+	ctx.clearRect(0, 0, S, S);
+	ctx.drawImage(G.groundCanvas, 0, 0, S, S);
+	if (routePts && routePts.length > 1) {
+		ctx.lineJoin = "round";
+		for (const pass of [[11, "rgba(255,217,77,.3)"], [5, "#ffd94d"]]) {
+			ctx.strokeStyle = pass[1]; ctx.lineWidth = pass[0]; ctx.beginPath();
+			routePts.forEach((p, i) => { if (i) ctx.lineTo(w2m(p[0]), w2m(p[1])); else ctx.moveTo(w2m(p[0]), w2m(p[1])); });
+			ctx.stroke();
+		}
+	}
+	ctx.textAlign = "center";
+	ctx.font = "bold " + Math.round(S * 0.021) + "px Trebuchet MS, sans-serif";
+	const labels = [[0, -60, "DOWNTOWN"], [-735, 30, "THE MARINA"], [712, 0, "BEACHFRONT"],
+		[-390, -505, "PALMERA HEIGHTS"], [395, 395, "INDUSTRIAL YARDS"], [0, 705, "CORAL BAY AIRPORT"]];
+	for (const [x, z, name] of labels) {
+		ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,25,35,0.75)";
+		ctx.strokeText(name, w2m(x), w2m(z));
+		ctx.fillStyle = "#ffe9a3"; ctx.fillText(name, w2m(x), w2m(z));
+	}
+	function blip(x, z, color, r) {
+		const bx = clamp(w2m(x), r + 2, S - r - 2), bz = clamp(w2m(z), r + 2, S - r - 2);
+		ctx.fillStyle = color; ctx.beginPath(); ctx.arc(bx, bz, r, 0, 7); ctx.fill();
+		ctx.lineWidth = 2; ctx.strokeStyle = "rgba(10,25,35,0.8)"; ctx.stroke();
+		return [bx, bz];
+	}
+	const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
+	for (const c of G.police) blip(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", S * 0.008);
+	if (typeof pHeli !== "undefined" && pHeli) blip(pHeli.mesh.position.x, pHeli.mesh.position.z, "#ff3b30", S * 0.008);
+	const cgKey = chapterGiverKey();
+	ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
+	for (const key of ["celia", "marco", "don"]) {
+		const ct = G.contacts[key];
+		const isNext = key === cgKey && !G.job;
+		const [bx, bz] = blip(ct.spot.x, ct.spot.z, "#ffd94d", isNext ? S * 0.017 : S * 0.011);
+		if (isNext) {
+			ctx.fillStyle = "#12222e"; ctx.font = "bold " + Math.round(S * 0.02) + "px Trebuchet MS, sans-serif";
+			ctx.fillText(String(G.jobIndex + 1), bx, bz + S * 0.007);
+			ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
+		}
+		if (G.track && G.track.key === key) {
+			ctx.lineWidth = 3; ctx.strokeStyle = "#2ee6c8";
+			ctx.beginPath(); ctx.arc(bx, bz, S * 0.024, 0, 7); ctx.stroke();
+		}
+		const nx = clamp(bx, 48, S - 48);
+		ctx.lineWidth = 3.5; ctx.strokeStyle = "rgba(10,25,35,0.8)";
+		ctx.strokeText(giverName(key), nx, bz - S * 0.02);
+		ctx.fillStyle = "#ffffff"; ctx.fillText(giverName(key), nx, bz - S * 0.02);
+	}
+	el("btn-follow").style.display = G.track ? "inline-block" : "none";
+	if (G.track) {
+		ctx.font = "bold " + Math.round(S * 0.019) + "px Trebuchet MS, sans-serif"; ctx.textAlign = "left";
+		const label = "Melacak: " + G.track.name;
+		ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,25,35,0.85)";
+		ctx.strokeText(label, 14, 28); ctx.fillStyle = "#2ee6c8"; ctx.fillText(label, 14, 28);
+	}
+	if (G.objectivePos) {
+		const pulse = S * 0.013 + Math.sin(G.time * 5) * S * 0.003;
+		blip(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
+	}
+	const f = focusPoint();
+	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
+	ctx.save();
+	ctx.translate(clamp(w2m(f.x), 16, S - 16), clamp(w2m(f.z), 16, S - 16)); ctx.rotate(Math.PI - heading);
+	const as = S * 0.016;
+	ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#12303f"; ctx.lineWidth = 2;
+	ctx.beginPath(); ctx.moveTo(0, -as); ctx.lineTo(as * 0.68, as * 0.8); ctx.lineTo(0, as * 0.42); ctx.lineTo(-as * 0.68, as * 0.8); ctx.closePath();
+	ctx.fill(); ctx.stroke();
+	ctx.restore();
 }
 function toggleMissions(force) {
-  const show = force !== undefined ? force : G.mode !== "missions";
-  if (show && G.mode === "play") {
-    buildMissionList();
-    G.mode = "missions";
-    el("menu-missions").style.display = "flex";
-  } else if (!show && G.mode === "missions") {
-    G.mode = "play";
-    el("menu-missions").style.display = "none";
-  }
+	const show = force !== undefined ? force : G.mode !== "missions";
+	if (show && G.mode === "play") {
+		buildMissionList();
+		G.mode = "missions";
+		el("menu-missions").style.display = "flex";
+	} else if (!show && G.mode === "missions") {
+		G.mode = "play";
+		el("menu-missions").style.display = "none";
+	}
 }
 function buildMissionList() {
-  const wrap = el("mission-list");
-  wrap.innerHTML = "";
-  JOBS.forEach((def, i) => {
-    const spot = G.contacts[def.giver].spot;
-    let status, cls;
-    if (i < G.jobIndex) { status = "Selesai ✓"; cls = "done"; }
-    else if (G.job && G.job.i === i) { status = "Aktif"; cls = "active"; }
-    else if (i === G.jobIndex) { status = "Berikutnya"; cls = "next"; }
-    else { status = "Terkunci"; cls = "locked"; }
-    const row = document.createElement("div");
-    row.className = "mission-row " + cls;
-    let html = "<div class='mission-head'><span class='mission-chip'>CHAPTER " + (i + 1) + "</span>" +
-      "<span class='mission-title'>" + def.title + "</span>" +
-      "<span class='mission-status " + cls + "'>" + status + "</span></div>" +
-      "<div class='mission-meta'>" + giverName(def.giver) + " · " + districtAt(spot.x, spot.z) + " · " + fmtCash(def.payout) + "</div>";
-    if (cls === "active") html += "<div class='mission-obj'>Tujuan: " + (el("obj-text").textContent || def.brief) + "</div>";
-    else if (cls === "next") html += "<div class='mission-obj'>" + def.brief + "</div>";
-    row.innerHTML = html;
-    if (cls === "active" || cls === "next") {
-      const btn = document.createElement("button");
-      btn.className = "mission-track"; btn.textContent = "🧭 Lacak";
-      btn.addEventListener("click", () => {
-        if (cls === "active" && G.objectivePos) setTrack({ x: G.objectivePos.x, z: G.objectivePos.z, name: "Tujuan — " + def.title });
-        else setTrack({ x: spot.x, z: spot.z, name: giverName(def.giver) + " — " + districtAt(spot.x, spot.z), key: def.giver });
-        forceRoute();
-        toggleMissions(false);
-        if (G.track) showToast("Melacak: " + G.track.name);
-      });
-      row.appendChild(btn);
-    }
-    wrap.appendChild(row);
-  });
-  if (G.jobIndex >= JOBS.length) {
-    const note = document.createElement("div");
-    note.className = "mission-note";
-    note.textContent = "Cerita selesai — Coral Bay milikmu. Pekerjaan sampingan tetap buka: antar paket untuk Celia, atau Bay Runner rematch di garis start pantai ($400).";
-    wrap.appendChild(note);
-  }
+	const wrap = el("mission-list");
+	wrap.innerHTML = "";
+	JOBS.forEach((def, i) => {
+		const spot = G.contacts[def.giver].spot;
+		let status, cls;
+		if (i < G.jobIndex) { status = "Selesai ✓"; cls = "done"; }
+		else if (G.job && G.job.i === i) { status = "Aktif"; cls = "active"; }
+		else if (i === G.jobIndex) { status = "Berikutnya"; cls = "next"; }
+		else { status = "Terkunci"; cls = "locked"; }
+		const row = document.createElement("div");
+		row.className = "mission-row " + cls;
+		let html = "<div class='mission-head'><span class='mission-chip'>CHAPTER " + (i + 1) + "</span>" +
+			"<span class='mission-title'>" + def.title + "</span>" +
+			"<span class='mission-status " + cls + "'>" + status + "</span></div>" +
+			"<div class='mission-meta'>" + giverName(def.giver) + " · " + districtAt(spot.x, spot.z) + " · " + fmtCash(def.payout) + "</div>";
+		if (cls === "active") html += "<div class='mission-obj'>Tujuan: " + (el("obj-text").textContent || def.brief) + "</div>";
+		else if (cls === "next") html += "<div class='mission-obj'>" + def.brief + "</div>";
+		row.innerHTML = html;
+		if (cls === "active" || cls === "next") {
+			const btn = document.createElement("button");
+			btn.className = "mission-track"; btn.textContent = "🧭 Lacak";
+			btn.addEventListener("click", () => {
+				if (cls === "active" && G.objectivePos) setTrack({ x: G.objectivePos.x, z: G.objectivePos.z, name: "Tujuan — " + def.title });
+				else setTrack({ x: spot.x, z: spot.z, name: giverName(def.giver) + " — " + districtAt(spot.x, spot.z), key: def.giver });
+				forceRoute();
+				toggleMissions(false);
+				if (G.track) showToast("Melacak: " + G.track.name);
+			});
+			row.appendChild(btn);
+		}
+		wrap.appendChild(row);
+	});
+	if (G.jobIndex >= JOBS.length) {
+		const note = document.createElement("div");
+		note.className = "mission-note";
+		note.textContent = "Cerita selesai — Coral Bay milikmu. Pekerjaan sampingan tetap buka: antar paket untuk Celia, atau Bay Runner rematch di garis start pantai ($400).";
+		wrap.appendChild(note);
+	}
 }
 let routePts = null, routeSig = "", routeClock = 0, routeWp = 1, routeMesh = null, routeMat = null, navEl = null;
 function setTrack(t) { G.track = t; routeSig = ""; }
 function trackTarget() {
-  if (G.track) return G.track;
-  if ((G.job || G.hustle) && G.objectivePos) return G.objectivePos;
-  if (G.jobIndex < JOBS.length) return G.contacts[JOBS[G.jobIndex].giver].spot;
-  return null;
+	if (G.track) return G.track;
+	if ((G.job || G.hustle) && G.objectivePos) return G.objectivePos;
+	if (G.jobIndex < JOBS.length) return G.contacts[JOBS[G.jobIndex].giver].spot;
+	return null;
 }
 function computeRoute(sx, sz, tx, tz) {
-  const L = ROAD_LINES, n = L.length, NI = n * n;
-  const P = [], ADJ = {};
-  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) P.push([L[i], L[j]]);
-  const link = (a, b, w) => { (ADJ[a] || (ADJ[a] = [])).push([b, w]); (ADJ[b] || (ADJ[b] = [])).push([a, w]); };
-  function addEnd(px, pz) {
-    const self = P.length; P.push([px, pz]);
-    let fi = 0, fj = 0;
-    for (let i = 0; i < n; i++) {
-      if (Math.abs(L[i] - px) < Math.abs(L[fi] - px)) fi = i;
-      if (Math.abs(L[i] - pz) < Math.abs(L[fj] - pz)) fj = i;
-    }
-    const v = P.length; P.push([L[fi], pz]);
-    link(self, v, Math.abs(px - L[fi]));
-    let j = 0; while (j < n - 2 && L[j + 1] < pz) j++;
-    link(v, fi * n + j, Math.abs(pz - L[j])); link(v, fi * n + j + 1, Math.abs(pz - L[j + 1]));
-    const hx = clamp(px, -840, 840), h = P.length; P.push([hx, L[fj]]);
-    link(self, h, Math.hypot(px - hx, pz - L[fj]));
-    let k = 0; while (k < n - 2 && L[k + 1] < hx) k++;
-    link(h, k * n + fj, Math.abs(hx - L[k])); link(h, (k + 1) * n + fj, Math.abs(hx - L[k + 1]));
-    return self;
-  }
-  const S = addEnd(sx, sz), D = addEnd(tx, tz), N = P.length;
-  const dist = new Array(N).fill(1e18), prev = new Array(N).fill(-1), done = new Array(N).fill(false);
-  dist[S] = 0;
-  for (let it = 0; it < N; it++) {
-    let u = -1, best = 1e18;
-    for (let i = 0; i < N; i++) if (!done[i] && dist[i] < best) { best = dist[i]; u = i; }
-    if (u < 0 || u === D) break;
-    done[u] = true;
-    const relax = (w, wt) => { if (dist[u] + wt < dist[w]) { dist[w] = dist[u] + wt; prev[w] = u; } };
-    if (u < NI) {
-      const i = (u / n) | 0, j = u % n;
-      if (i > 0) relax(u - n, 160); if (i < n - 1) relax(u + n, 160);
-      if (j > 0) relax(u - 1, 160); if (j < n - 1) relax(u + 1, 160);
-    }
-    if (ADJ[u]) for (const e of ADJ[u]) relax(e[0], e[1]);
-  }
-  if (prev[D] < 0) return null;
-  const path = [];
-  for (let u = D; u >= 0; u = prev[u]) path.push(P[u]);
-  path.reverse();
-  const out = [];
-  for (let i = 0; i < path.length; i++) {
-    if (i) {
-      const a = path[i - 1], b = path[i], d = dist2d(a[0], a[1], b[0], b[1]), steps = Math.floor(d / 40);
-      for (let s = 1; s <= steps; s++) out.push([a[0] + (b[0] - a[0]) * s / (steps + 1), a[1] + (b[1] - a[1]) * s / (steps + 1)]);
-    }
-    out.push(path[i]);
-  }
-  return out;
+	const L = ROAD_LINES, n = L.length, NI = n * n;
+	const P = [], ADJ = {};
+	for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) P.push([L[i], L[j]]);
+	const link = (a, b, w) => { (ADJ[a] || (ADJ[a] = [])).push([b, w]); (ADJ[b] || (ADJ[b] = [])).push([a, w]); };
+	function addEnd(px, pz) {
+		const self = P.length; P.push([px, pz]);
+		let fi = 0, fj = 0;
+		for (let i = 0; i < n; i++) {
+			if (Math.abs(L[i] - px) < Math.abs(L[fi] - px)) fi = i;
+			if (Math.abs(L[i] - pz) < Math.abs(L[fj] - pz)) fj = i;
+		}
+		const v = P.length; P.push([L[fi], pz]);
+		link(self, v, Math.abs(px - L[fi]));
+		let j = 0; while (j < n - 2 && L[j + 1] < pz) j++;
+		link(v, fi * n + j, Math.abs(pz - L[j])); link(v, fi * n + j + 1, Math.abs(pz - L[j + 1]));
+		const hx = clamp(px, -840, 840), h = P.length; P.push([hx, L[fj]]);
+		link(self, h, Math.hypot(px - hx, pz - L[fj]));
+		let k = 0; while (k < n - 2 && L[k + 1] < hx) k++;
+		link(h, k * n + fj, Math.abs(hx - L[k])); link(h, (k + 1) * n + fj, Math.abs(hx - L[k + 1]));
+		return self;
+	}
+	const S = addEnd(sx, sz), D = addEnd(tx, tz), N = P.length;
+	const dist = new Array(N).fill(1e18), prev = new Array(N).fill(-1), done = new Array(N).fill(false);
+	dist[S] = 0;
+	for (let it = 0; it < N; it++) {
+		let u = -1, best = 1e18;
+		for (let i = 0; i < N; i++) if (!done[i] && dist[i] < best) { best = dist[i]; u = i; }
+		if (u < 0 || u === D) break;
+		done[u] = true;
+		const relax = (w, wt) => { if (dist[u] + wt < dist[w]) { dist[w] = dist[u] + wt; prev[w] = u; } };
+		if (u < NI) {
+			const i = (u / n) | 0, j = u % n;
+			if (i > 0) relax(u - n, 160); if (i < n - 1) relax(u + n, 160);
+			if (j > 0) relax(u - 1, 160); if (j < n - 1) relax(u + 1, 160);
+		}
+		if (ADJ[u]) for (const e of ADJ[u]) relax(e[0], e[1]);
+	}
+	if (prev[D] < 0) return null;
+	const path = [];
+	for (let u = D; u >= 0; u = prev[u]) path.push(P[u]);
+	path.reverse();
+	const out = [];
+	for (let i = 0; i < path.length; i++) {
+		if (i) {
+			const a = path[i - 1], b = path[i], d = dist2d(a[0], a[1], b[0], b[1]), steps = Math.floor(d / 40);
+			for (let s = 1; s <= steps; s++) out.push([a[0] + (b[0] - a[0]) * s / (steps + 1), a[1] + (b[1] - a[1]) * s / (steps + 1)]);
+		}
+		out.push(path[i]);
+	}
+	return out;
 }
 function buildRibbon() {
-  if (routeMesh) { G.scene.remove(routeMesh); routeMesh.geometry.dispose(); routeMesh = null; }
-  if (!routePts || routePts.length < 2) return;
-  if (!routeMat) routeMat = new THREE.MeshBasicMaterial({ color: 0xffd94d, transparent: true, opacity: 0.5, depthWrite: false });
-  const pos = [];
-  for (let i = 0; i < routePts.length - 1; i++) {
-    const a = routePts[i], b = routePts[i + 1];
-    let dx = b[0] - a[0], dz = b[1] - a[1];
-    const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
-    const px = -dz * 1.15, pz = dx * 1.15, y = 0.22;
-    pos.push(a[0] + px, y, a[1] + pz, a[0] - px, y, a[1] - pz, b[0] + px, y, b[1] + pz,
-      a[0] - px, y, a[1] - pz, b[0] - px, y, b[1] - pz, b[0] + px, y, b[1] + pz);
-  }
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-  routeMesh = new THREE.Mesh(geo, routeMat);
-  routeMesh.renderOrder = 2;
-  routeMesh.visible = false;
-  G.scene.add(routeMesh);
+	if (routeMesh) { G.scene.remove(routeMesh); routeMesh.geometry.dispose(); routeMesh = null; }
+	if (!routePts || routePts.length < 2) return;
+	if (!routeMat) routeMat = BM(0xffd94d, { transparent: true, opacity: 0.5, depthWrite: false });
+	const pos = [];
+	for (let i = 0; i < routePts.length - 1; i++) {
+		const a = routePts[i], b = routePts[i + 1];
+		let dx = b[0] - a[0], dz = b[1] - a[1];
+		const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
+		const px = -dz * 1.15, pz = dx * 1.15, y = 0.22;
+		pos.push(a[0] + px, y, a[1] + pz, a[0] - px, y, a[1] - pz, b[0] + px, y, b[1] + pz,
+			a[0] - px, y, a[1] - pz, b[0] - px, y, b[1] - pz, b[0] + px, y, b[1] + pz);
+	}
+	const geo = new THREE.BufferGeometry();
+	geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+	routeMesh = new THREE.Mesh(geo, routeMat);
+	routeMesh.renderOrder = 2;
+	routeMesh.visible = false;
+	G.scene.add(routeMesh);
 }
 function routeTick(dt) {
-  if (!navEl) navEl = el("navarrow");
-  const active = !G.stage && routePts && routePts.length > 1 && G.mode === "play" && !G.cutscene;
-  if (routeMesh) {
-    routeMesh.visible = !!active;
-    if (active) routeMat.opacity = 0.42 + Math.sin(G.time * 4) * 0.13;
-  }
-  if (active) {
-    const f = focusPoint();
-    while (routeWp < routePts.length - 1 && dist2d(f.x, f.z, routePts[routeWp][0], routePts[routeWp][1]) < 16) routeWp++;
-    const wp = routePts[routeWp];
-    const a = Math.atan2(wp[0] - f.x, wp[1] - f.z);
-    navEl.style.display = "block";
-    navEl.style.transform = "rotate(" + Math.round((G.camYaw - a) * 57.2958) + "deg)";
-  } else navEl.style.display = "none";
-  if (G.mode !== "play" || G.cutscene || G.stage) return;
-  const f = focusPoint();
-  if (G.track && dist2d(f.x, f.z, G.track.x, G.track.z) < 15) {
-    showToast("Sampai: " + G.track.name);
-    setTrack(null);
-  }
-  routeClock += dt;
-  if (routeClock < 0.3) return;
-  routeClock = 0;
-  const t = trackTarget();
-  if (!t) { if (routePts) { routePts = null; buildRibbon(); } routeSig = ""; return; }
-  const sig = t.x + "," + t.z;
-  let redo = sig !== routeSig;
-  if (!redo && routePts) {
-    if (dist2d(f.x, f.z, routePts[0][0], routePts[0][1]) > 30) redo = true;
-    else {
-      let md = 1e9;
-      for (const p of routePts) md = Math.min(md, dist2d(f.x, f.z, p[0], p[1]));
-      if (md > 40) redo = true;
-    }
-  }
-  if (redo) forceRoute();
+	if (!navEl) navEl = el("navarrow");
+	const active = !G.stage && routePts && routePts.length > 1 && G.mode === "play" && !G.cutscene;
+	if (routeMesh) {
+		routeMesh.visible = !!active;
+		if (active) routeMat.opacity = 0.42 + Math.sin(G.time * 4) * 0.13;
+	}
+	if (active) {
+		const f = focusPoint();
+		while (routeWp < routePts.length - 1 && dist2d(f.x, f.z, routePts[routeWp][0], routePts[routeWp][1]) < 16) routeWp++;
+		const wp = routePts[routeWp];
+		const a = Math.atan2(wp[0] - f.x, wp[1] - f.z);
+		navEl.style.display = "block";
+		navEl.style.transform = "rotate(" + Math.round((G.camYaw - a) * 57.2958) + "deg)";
+	} else navEl.style.display = "none";
+	if (G.mode !== "play" || G.cutscene || G.stage) return;
+	const f = focusPoint();
+	if (G.track && dist2d(f.x, f.z, G.track.x, G.track.z) < 15) {
+		showToast("Sampai: " + G.track.name);
+		setTrack(null);
+	}
+	routeClock += dt;
+	if (routeClock < 0.3) return;
+	routeClock = 0;
+	const t = trackTarget();
+	if (!t) { if (routePts) { routePts = null; buildRibbon(); } routeSig = ""; return; }
+	const sig = t.x + "," + t.z;
+	let redo = sig !== routeSig;
+	if (!redo && routePts) {
+		if (dist2d(f.x, f.z, routePts[0][0], routePts[0][1]) > 30) redo = true;
+		else {
+			let md = 1e9;
+			for (const p of routePts) md = Math.min(md, dist2d(f.x, f.z, p[0], p[1]));
+			if (md > 40) redo = true;
+		}
+	}
+	if (redo) forceRoute();
 }
 function forceRoute() {
-  const t = trackTarget(), f = focusPoint();
-  routeSig = t ? t.x + "," + t.z : "";
-  routePts = t ? computeRoute(f.x, f.z, t.x, t.z) : null;
-  routeWp = 1;
-  buildRibbon();
+	const t = trackTarget(), f = focusPoint();
+	routeSig = t ? t.x + "," + t.z : "";
+	routePts = t ? computeRoute(f.x, f.z, t.x, t.z) : null;
+	routeWp = 1;
+	buildRibbon();
 }
 function bigMapClick(e) {
-  if (G.mode !== "map") return;
-  const cv = el("bigmap-canvas"), r = cv.getBoundingClientRect(), S = cv.width;
-  const cx = e.offsetX / r.width * S, cy = e.offsetY / r.height * S;
-  const w2m = (v) => (v + G.citySize / 2) / G.citySize * S;
-  const hit = (x, z, rad) => Math.hypot(cx - clamp(w2m(x), rad + 2, S - rad - 2), cy - clamp(w2m(z), rad + 2, S - rad - 2)) < 30;
-  const cg = chapterGiverKey();
-  for (const key of ["celia", "marco", "don"]) {
-    const ct = G.contacts[key];
-    if (hit(ct.spot.x, ct.spot.z, key === cg && !G.job ? S * 0.017 : S * 0.011)) {
-      if (G.track && G.track.key === key) setTrack(null);
-      else setTrack({ x: ct.spot.x, z: ct.spot.z, name: giverName(key) + " — " + districtAt(ct.spot.x, ct.spot.z), key });
-      sfxClick(); forceRoute(); drawBigMap();
-      return;
-    }
-  }
-  if (G.objectivePos && hit(G.objectivePos.x, G.objectivePos.z, S * 0.013)) {
-    setTrack(null); sfxClick(); forceRoute(); drawBigMap();
-    return;
-  }
-  toggleBigMap(false);
+	if (G.mode !== "map") return;
+	const cv = el("bigmap-canvas"), r = cv.getBoundingClientRect(), S = cv.width;
+	const cx = e.offsetX / r.width * S, cy = e.offsetY / r.height * S;
+	const w2m = (v) => (v + G.citySize / 2) / G.citySize * S;
+	const hit = (x, z, rad) => Math.hypot(cx - clamp(w2m(x), rad + 2, S - rad - 2), cy - clamp(w2m(z), rad + 2, S - rad - 2)) < 30;
+	const cg = chapterGiverKey();
+	for (const key of ["celia", "marco", "don"]) {
+		const ct = G.contacts[key];
+		if (hit(ct.spot.x, ct.spot.z, key === cg && !G.job ? S * 0.017 : S * 0.011)) {
+			if (G.track && G.track.key === key) setTrack(null);
+			else setTrack({ x: ct.spot.x, z: ct.spot.z, name: giverName(key) + " — " + districtAt(ct.spot.x, ct.spot.z), key });
+			sfxClick(); forceRoute(); drawBigMap();
+			return;
+		}
+	}
+	if (G.objectivePos && hit(G.objectivePos.x, G.objectivePos.z, S * 0.013)) {
+		setTrack(null); sfxClick(); forceRoute(); drawBigMap();
+		return;
+	}
+	toggleBigMap(false);
 }
