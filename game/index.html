@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -6,114 +6,73 @@
 <title>Coral Bay Syndicate</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a0f0a; }
-  body { font-family: "Segoe UI", system-ui, -apple-system, sans-serif; color: #fff; }
-  #game-canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
-
-  /* ---------- HUD ---------- */
-  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
-  #ui-topleft { position: absolute; top: 16px; left: 18px; }
-  #ui-money { font-size: 30px; font-weight: 800; color: #9fe870; text-shadow: 0 2px 6px rgba(0,0,0,.55); letter-spacing: .5px; }
-  #ui-hpwrap { width: 190px; height: 13px; margin-top: 6px; background: rgba(0,0,0,.45); border: 1px solid rgba(255,255,255,.35); border-radius: 7px; overflow: hidden; }
-  #ui-hp { height: 100%; width: 100%; background: #7ddb6a; transition: width .18s; }
-  #ui-stars { position: absolute; top: 12px; right: 20px; font-size: 30px; letter-spacing: 4px; color: #ffc94d; text-shadow: 0 2px 8px rgba(0,0,0,.6); }
-  #ui-card { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); width: 340px; padding: 10px 16px 11px;
-    background: linear-gradient(160deg, rgba(20,16,28,.82), rgba(46,20,32,.82)); border: 1px solid rgba(255,201,77,.55);
-    border-radius: 10px; text-align: center; display: none; }
-  #ui-card-title { font-size: 12px; font-weight: 800; letter-spacing: 3px; color: #ffc94d; }
-  #ui-card-text { font-size: 16.5px; font-weight: 600; margin-top: 3px; }
-  #ui-card-dist { font-size: 13px; color: #ffd98c; margin-top: 2px; font-variant-numeric: tabular-nums; }
-  #ui-notice { position: absolute; top: 24%; left: 50%; transform: translateX(-50%); text-align: center; display: none;
-    font-size: 34px; font-weight: 900; letter-spacing: 2px; color: #fff; text-shadow: 0 3px 14px rgba(0,0,0,.7); line-height: 1.25; }
-  #ui-notice::first-line { color: #ffc94d; }
-  #ui-prompt { position: absolute; bottom: 118px; left: 50%; transform: translateX(-50%); font-size: 17px; font-weight: 700;
-    background: rgba(0,0,0,.55); padding: 7px 16px; border-radius: 20px; border: 1px solid rgba(255,255,255,.25); white-space: nowrap; }
-  #ui-prompt:empty { display: none; }
-  #ui-bust { position: absolute; bottom: 168px; left: 50%; transform: translateX(-50%); width: 240px; display: none; text-align: center; }
-  #ui-bust span { font-size: 12px; font-weight: 800; letter-spacing: 3px; color: #7fb2ff; text-shadow: 0 1px 4px #000; }
-  #ui-bust-track { height: 9px; background: rgba(0,0,0,.5); border: 1px solid rgba(127,178,255,.6); border-radius: 5px; overflow: hidden; margin-top: 4px; }
-  #ui-bust-fill { height: 100%; width: 0%; background: #7fb2ff; }
-  #ui-mapwrap { position: absolute; right: 18px; bottom: 18px; text-align: center; }
-  #ui-map { width: 178px; height: 178px; border-radius: 12px; border: 2px solid rgba(255,255,255,.4); box-shadow: 0 4px 18px rgba(0,0,0,.5); }
-  #ui-speedo { display: none; margin-top: 7px; background: rgba(0,0,0,.5); border-radius: 10px; padding: 4px 0 6px; }
-  #ui-speed-val { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; }
-  #ui-speedo small { font-size: 11px; color: #ccc; letter-spacing: 1px; }
-  #ui-car-name { font-size: 12.5px; color: #ffc94d; font-weight: 700; min-height: 14px; }
-  #ui-cross { position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px; border-radius: 50%;
-    background: rgba(255,255,255,.9); box-shadow: 0 0 5px rgba(0,0,0,.8); display: none; }
-  #ui-vignette { position: absolute; inset: 0; box-shadow: inset 0 0 140px rgba(20,0,0,.55); }
-
-  /* ---------- Screens ---------- */
-  .screen { position: fixed; inset: 0; z-index: 10; display: none; flex-direction: column; align-items: center; justify-content: center;
-    background: radial-gradient(ellipse at 50% 68%, rgba(255,126,71,.30), rgba(16,8,18,.78) 65%); text-align: center; padding: 24px; }
-  .game-title { font-family: Georgia, 'Times New Roman', serif; font-size: 64px; font-weight: 900; letter-spacing: 3px;
-    color: #ffd98c; text-shadow: 0 4px 0 #b34724, 0 8px 30px rgba(0,0,0,.65); line-height: 1.02; }
-  .game-title em { display: block; font-size: 30px; letter-spacing: 14px; color: #7fe8dc; text-shadow: 0 3px 0 #14655c, 0 6px 22px rgba(0,0,0,.6); }
-  .tagline { margin-top: 14px; font-size: 16.5px; color: #ffe9c9; max-width: 560px; text-shadow: 0 1px 5px #000; }
-  .btn { pointer-events: auto; cursor: pointer; margin-top: 14px; min-width: 250px; padding: 13px 34px; font-size: 18px; font-weight: 800;
-    letter-spacing: 2.5px; color: #241105; background: linear-gradient(180deg, #ffd98c, #ff9a3d); border: none; border-radius: 30px;
-    box-shadow: 0 5px 0 #b3541e, 0 10px 24px rgba(0,0,0,.45); }
-  .btn:hover { filter: brightness(1.07); }
-  .btn:active { transform: translateY(3px); box-shadow: 0 2px 0 #b3541e; }
-  .btn.ghost { background: rgba(255,255,255,.12); color: #fff; box-shadow: none; border: 1px solid rgba(255,255,255,.45); }
-  .controls { margin-top: 26px; font-size: 13.5px; line-height: 1.85; color: #ffe9c9; text-shadow: 0 1px 4px #000; }
-  .controls b { color: #ffc94d; }
-  #menu-money { margin-top: 16px; font-size: 14px; color: #9fe870; font-weight: 700; }
-  .big-word { font-size: 74px; font-weight: 900; letter-spacing: 8px; text-shadow: 0 5px 26px rgba(0,0,0,.7); }
-  .sub-word { margin-top: 10px; font-size: 16.5px; color: #ffe9c9; text-shadow: 0 1px 5px #000; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1210; font-family: "Avenir Next", "Segoe UI", system-ui, sans-serif; }
+  canvas#game { display: block; width: 100%; height: 100%; }
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; }
+  #mapwrap { position: absolute; left: 18px; bottom: 18px; width: 176px; height: 176px; border-radius: 50%; overflow: hidden; border: 3px solid rgba(10, 24, 32, 0.85); box-shadow: 0 4px 24px rgba(0,0,0,0.45); background: #2b6f8e; }
+  #map { width: 176px; height: 176px; }
+  #topbar { position: absolute; top: 16px; right: 20px; text-align: right; }
+  #stars { font-size: 26px; letter-spacing: 3px; min-height: 30px; text-shadow: 0 2px 6px rgba(0,0,0,0.6); }
+  #cash { font-size: 30px; font-weight: 800; color: #7be495; text-shadow: 0 2px 8px rgba(0,0,0,0.65); }
+  #objective { position: absolute; top: 16px; left: 20px; max-width: 44vw; color: #ffe9b0; font-size: 17px; font-weight: 700; letter-spacing: 0.4px; text-shadow: 0 2px 6px rgba(0,0,0,0.7); transition: opacity 0.3s; }
+  #prompt { position: absolute; left: 50%; bottom: 12vh; transform: translateX(-50%); color: #fff; background: rgba(8, 20, 28, 0.72); padding: 8px 18px; border-radius: 999px; font-size: 16px; font-weight: 600; letter-spacing: 0.3px; transition: opacity 0.15s; opacity: 0; white-space: nowrap; }
+  #cross { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.9); font-size: 22px; font-weight: 300; text-shadow: 0 0 6px rgba(0,0,0,0.8); opacity: 0; transition: opacity 0.2s; }
+  #bustWrap { position: absolute; left: 50%; top: 58%; transform: translateX(-50%); width: 240px; height: 10px; border-radius: 5px; background: rgba(0,0,0,0.55); opacity: 0; transition: opacity 0.2s; overflow: hidden; }
+  #bustFill { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #ef4444); }
+  #dialog { position: absolute; left: 50%; bottom: 5vh; transform: translateX(-50%); width: min(680px, 88vw); background: rgba(8, 18, 26, 0.88); border-left: 4px solid #ffc93c; border-radius: 8px; padding: 14px 20px; display: none; }
+  #dlgWho { color: #ffc93c; font-weight: 800; font-size: 14px; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 5px; }
+  #dlgText { color: #f4f1de; font-size: 17px; line-height: 1.45; }
+  #toast { position: absolute; left: 50%; top: 12vh; transform: translateX(-50%); color: #10222e; background: linear-gradient(180deg, #ffe9a8, #ffc93c); font-weight: 800; font-size: 17px; padding: 9px 22px; border-radius: 999px; opacity: 0; transition: opacity 0.35s; box-shadow: 0 6px 24px rgba(0,0,0,0.4); white-space: nowrap; }
+  #vig { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 52%, rgba(190, 18, 40, 0.5) 100%); opacity: 0; }
+  .screen { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: linear-gradient(180deg, rgba(24, 10, 8, 0.55), rgba(10, 16, 28, 0.82)); backdrop-filter: blur(2px); z-index: 5; }
+  .title { font-size: clamp(42px, 8vw, 84px); font-weight: 900; letter-spacing: 2px; line-height: 0.95; background: linear-gradient(180deg, #ffe9a8 15%, #ff9a5a 55%, #ef476f 100%); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; filter: drop-shadow(0 4px 18px rgba(239, 71, 111, 0.35)); }
+  .subtitle { color: #f4f1de; font-size: clamp(14px, 2vw, 19px); letter-spacing: 4px; text-transform: uppercase; margin: 10px 0 30px; opacity: 0.92; }
+  .btn { pointer-events: auto; cursor: pointer; border: 0; border-radius: 999px; padding: 13px 42px; margin: 6px; font-size: 18px; font-weight: 800; letter-spacing: 1px; color: #231303; background: linear-gradient(180deg, #ffe9a8, #ffb03a); box-shadow: 0 6px 20px rgba(0,0,0,0.45); }
+  .btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn.ghost { background: rgba(244, 241, 222, 0.14); color: #f4f1de; border: 1px solid rgba(244,241,222,0.5); }
+  .controls { margin-top: 28px; color: rgba(244, 241, 222, 0.85); font-size: 14px; line-height: 1.9; letter-spacing: 0.4px; }
+  .controls b { color: #ffc93c; font-weight: 800; }
+  .big { font-size: clamp(40px, 7vw, 68px); font-weight: 900; letter-spacing: 6px; color: #f4f1de; }
+  .fine { color: rgba(244,241,222,0.9); font-size: 16px; margin: 12px 0 24px; max-width: 520px; line-height: 1.5; }
 </style>
 </head>
 <body>
-<canvas id="game-canvas"></canvas>
+<canvas id="game"></canvas>
 
 <div id="hud">
-  <div id="ui-vignette"></div>
-  <div id="ui-topleft">
-    <div id="ui-money">$350</div>
-    <div id="ui-hpwrap"><div id="ui-hp"></div></div>
-  </div>
-  <div id="ui-stars">☆☆☆☆☆</div>
-  <div id="ui-card">
-    <div id="ui-card-title">FIRST RUN</div>
-    <div id="ui-card-text">Pick up the package</div>
-    <div id="ui-card-dist">0 m</div>
-  </div>
-  <div id="ui-notice"></div>
-  <div id="ui-bust"><span>BUSTED</span><div id="ui-bust-track"><div id="ui-bust-fill"></div></div></div>
-  <div id="ui-prompt"></div>
-  <div id="ui-mapwrap">
-    <canvas id="ui-map" width="178" height="178"></canvas>
-    <div id="ui-speedo">
-      <div><span id="ui-speed-val">0</span> <small>KM/H</small></div>
-      <div id="ui-car-name"></div>
-    </div>
-  </div>
-  <div id="ui-cross"></div>
+  <div id="objective"></div>
+  <div id="topbar"><div id="stars"></div><div id="cash">$0</div></div>
+  <div id="mapwrap"><canvas id="map" width="176" height="176"></canvas></div>
+  <div id="prompt"></div>
+  <div id="cross">+</div>
+  <div id="bustWrap"><div id="bustFill"></div></div>
+  <div id="dialog"><div id="dlgWho"></div><div id="dlgText"></div></div>
+  <div id="toast"></div>
 </div>
+<div id="vig"></div>
 
-<div class="screen" id="scr-menu">
-  <div class="game-title">CORAL BAY<em>SYNDICATE</em></div>
-  <p class="tagline">Golden hour over a pastel bay city. Rico Solano drives for fixer
-    Celia Marrow — run her packages, lift her cars, outrun her police.</p>
-  <button class="btn" id="btn-new">NEW GAME</button>
-  <button class="btn ghost" id="btn-continue">CONTINUE</button>
-  <div id="menu-money"></div>
+<div id="menu" class="screen">
+  <div class="title">CORAL BAY<br>SYNDICATE</div>
+  <div class="subtitle">One bay. One wheelman. No questions.</div>
+  <button class="btn" id="continueBtn" style="display:none">CONTINUE</button>
+  <button class="btn" id="startBtn">NEW GAME</button>
   <div class="controls">
-    <b>WASD</b> walk / drive &nbsp;·&nbsp; <b>Mouse</b> look &nbsp;·&nbsp; <b>Shift</b> sprint<br>
-    <b>E</b> steal / enter / exit car &nbsp;·&nbsp; <b>Space</b> brake &nbsp;·&nbsp; <b>Click</b> shoot &nbsp;·&nbsp; <b>Esc</b> pause
+    <b>WASD</b> move / drive &nbsp;·&nbsp; <b>Mouse</b> camera (click to lock) &nbsp;·&nbsp; <b>Shift</b> sprint<br>
+    <b>E</b> talk / steal / enter &nbsp;·&nbsp; <b>F</b> punch — or fire when armed &nbsp;·&nbsp; <b>Space</b> hop / handbrake &nbsp;·&nbsp; <b>Esc</b> pause
   </div>
 </div>
 
-<div class="screen" id="scr-pause">
-  <div class="big-word" style="color:#ffd98c">PAUSED</div>
-  <p class="sub-word">The bay waits for no one, Rico.</p>
-  <button class="btn" id="btn-resume">RESUME</button>
+<div id="pauseScr" class="screen">
+  <div class="big">PAUSED</div>
+  <div class="fine">The bay waits for no one — but it will wait for you.</div>
+  <button class="btn" id="resumeBtn">RESUME</button>
+  <button class="btn ghost" id="saveBtn">SAVE GAME</button>
 </div>
 
-<div class="screen" id="scr-over">
-  <div class="big-word" id="over-title">WASTED</div>
-  <p class="sub-word" id="over-sub"></p>
-  <button class="btn" id="btn-respawn">RESPAWN — $150</button>
+<div id="bustedScr" class="screen">
+  <div class="big" style="color:#ff5147">BUSTED</div>
+  <div class="fine" id="bustedFine"></div>
+  <button class="btn" id="bustedBtn">WALK FREE</button>
 </div>
 
 <script src="vendor/three.min.js"></script>
