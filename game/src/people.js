@@ -3,7 +3,7 @@ const SKIN_TONES = [0xf2c09a, 0xd99e63, 0xa96f3f, 0x7a4a28, 0xffd9b3];
 const SHIRT_COLORS = [0xf26d5b, 0x3fbfae, 0xf2b13d, 0x7a5fd0, 0xe8e4da, 0x2e4053, 0xff8fab, 0x58a05c];
 const PANTS_COLORS = [0x2e4053, 0xe8e4da, 0x5a4632, 0x30343a, 0x7a2e35];
 function shTx(base, print) {
-	const cv = document.createElement("canvas"); cv.width = 32; cv.height = 32;
+	const cv = DC.createElement("canvas"); cv.width = 32; cv.height = 32;
 	const c = cv.getContext("2d");
 	c.fillStyle = base; c.fillRect(0, 0, 32, 32);
 	if (print) {
@@ -70,14 +70,14 @@ function makePerson(style) {
 }
 function aPrs(p, speed, dt) {
 	p.phase += dt * (3 + speed * 2.1);
-	const sw = Math.sin(p.phase) * clamp(speed / 3.4, 0, 1) * 0.62;
+	const sw = M.sin(p.phase) * clamp(speed / 3.4, 0, 1) * 0.62;
 	p.la.rotation.x = sw; p.ra.rotation.x = -sw;
 	p.ll.rotation.x = -sw; p.rl.rotation.x = sw;
-	p.inner.position.y = Math.abs(Math.sin(p.phase)) * 0.05 * clamp(speed / 3, 0, 1);
+	p.inner.position.y = M.abs(M.sin(p.phase)) * 0.05 * clamp(speed / 3, 0, 1);
 	if (p.attackT > 0) { p.attackT -= dt; p.ra.rotation.x = -2 + (0.18 - p.attackT) * 6; }
 }
 function textSprite(text, color) {
-	const cv = document.createElement("canvas"); cv.width = 256; cv.height = 56;
+	const cv = DC.createElement("canvas"); cv.width = 256; cv.height = 56;
 	const c = cv.getContext("2d");
 	c.font = "bold 34px Trebuchet MS, sans-serif"; c.textAlign = "center";
 	c.lineWidth = 7; c.strokeStyle = "rgba(10,20,30,0.85)";
@@ -91,7 +91,7 @@ function buildCast(scene) {
 	const rico = makePerson({ skin: 0xd99e63, shirtTex: 0, pants: 0xe8e4da, hat: "fedora", shades: true, chain: true, hair: 0x1c1410 });
 	rico.mesh.position.set(SPOTS.safehouse.x, 0, SPOTS.safehouse.z);
 	scene.add(rico.mesh);
-	G.player = rico; rico.heading = Math.PI; rico.vy = 0; rico.y = 0; rico.attackT = 0;
+	G.player = rico; rico.heading = M.PI; rico.vy = 0; rico.y = 0; rico.attackT = 0;
 	const gunMesh = new T3.Mesh(new T3.BoxGeometry(0.09, 0.14, 0.46), lam(0x1c1f24));
 	gunMesh.position.set(0, -0.82, 0.14); gunMesh.visible = false; rico.ra.add(gunMesh); G.gunMesh = gunMesh;
 	const plate = textSprite("Rico Solano", "#ffe9a3");
@@ -141,7 +141,7 @@ function panicAt(x, z, r) {
 	for (const p of G.peds) {
 		if (p.dead > 0) continue;
 		if (dist2d(p.mesh.position.x, p.mesh.position.z, x, z) < r) {
-			p.fleeT = Math.max(p.fleeT, rand(1.6, 3)); p.fleeX = x; p.fleeZ = z;
+			p.fleeT = M.max(p.fleeT, rand(1.6, 3)); p.fleeX = x; p.fleeZ = z;
 		}
 	}
 	for (const k in G.contacts) {
@@ -211,10 +211,10 @@ function updatePeds(dt) {
 			continue;
 		}
 		let tx = p.target.x, tz = p.target.z, sp = p.walkSpeed;
-		if (!G.onFoot && G.vehicle && Math.abs(G.vehicle.speed) > 6) {
+		if (!G.onFoot && G.vehicle && M.abs(G.vehicle.speed) > 6) {
 			const vp = G.vehicle.mesh.position;
 			if (dist2d(p.mesh.position.x, p.mesh.position.z, vp.x, vp.z) < 11) {
-				p.fleeT = Math.max(p.fleeT, 0.7); p.fleeX = vp.x; p.fleeZ = vp.z;
+				p.fleeT = M.max(p.fleeT, 0.7); p.fleeX = vp.x; p.fleeZ = vp.z;
 			}
 		}
 		if (p.fleeT > 0) {
@@ -236,7 +236,7 @@ function updatePeds(dt) {
 			cp.inner.position.y = -0.5;
 		} else if (dist2d(mp.x, mp.z, ct.spot.x, ct.spot.z) > 0.6) {
 			movePerson(cp, ct.spot.x, ct.spot.z, 2.4, dt);
-		} else cp.inner.position.y = Math.sin(cp.phase) * 0.02;
+		} else cp.inner.position.y = M.sin(cp.phase) * 0.02;
 		ct.ring.rotation.z += dt * 0.8;
 		const vis = contactHasJob(key) && !G.cutscene;
 		ct.beacon.visible = vis; ct.ring.visible = vis;
@@ -245,20 +245,20 @@ function updatePeds(dt) {
 	for (const d of G.dogs) {
 		if (d.pauseT > 0) { d.pauseT -= dt; continue; }
 		const m = d.mesh, dx = d.target.x - m.position.x, dz = d.target.z - m.position.z;
-		const dd = Math.sqrt(dx * dx + dz * dz);
+		const dd = M.sqrt(dx * dx + dz * dz);
 		if (dd < 3) { d.target = { x: clamp(m.position.x + rand(-90, 90), -840, 840), z: clamp(m.position.z + rand(-90, 90), -840, 840) }; d.pauseT = rand(1, 4); continue; }
-		const a = Math.atan2(dx, dz);
+		const a = M.atan2(dx, dz);
 		m.rotation.y = angLerp(m.rotation.y, a, dt * 6);
-		m.position.x += Math.sin(m.rotation.y) * 4.2 * dt;
-		m.position.z += Math.cos(m.rotation.y) * 4.2 * dt;
-		d.phase += dt * 9; m.position.y = Math.abs(Math.sin(d.phase)) * 0.09;
+		m.position.x += M.sin(m.rotation.y) * 4.2 * dt;
+		m.position.z += M.cos(m.rotation.y) * 4.2 * dt;
+		d.phase += dt * 9; m.position.y = M.abs(M.sin(d.phase)) * 0.09;
 	}
 	for (const g of G.gulls) {
 		g.a += g.sp * dt;
-		const x = g.cx + Math.cos(g.a) * g.r, z = g.cz + Math.sin(g.a) * g.r;
-		g.mesh.position.set(x, g.h + Math.sin(G.time * 0.8 + g.r) * 2, z);
-		g.mesh.rotation.y = -g.a - (g.sp > 0 ? 0 : Math.PI);
-		const flap = Math.sin(G.time * 7 + g.r) * 0.55;
+		const x = g.cx + M.cos(g.a) * g.r, z = g.cz + M.sin(g.a) * g.r;
+		g.mesh.position.set(x, g.h + M.sin(G.time * 0.8 + g.r) * 2, z);
+		g.mesh.rotation.y = -g.a - (g.sp > 0 ? 0 : M.PI);
+		const flap = M.sin(G.time * 7 + g.r) * 0.55;
 		g.mesh.userData.wl.rotation.x = flap; g.mesh.userData.wr.rotation.x = -flap;
 	}
 	for (const pk of G.pickups) {
@@ -287,12 +287,12 @@ function updatePeds(dt) {
 }
 function movePerson(p, tx, tz, sp, dt) {
 	const m = p.mesh, dx = tx - m.position.x, dz = tz - m.position.z;
-	const dd = Math.sqrt(dx * dx + dz * dz);
+	const dd = M.sqrt(dx * dx + dz * dz);
 	if (dd < 0.1) { aPrs(p, 0, dt); return; }
-	const a = Math.atan2(dx, dz);
+	const a = M.atan2(dx, dz);
 	m.rotation.y = angLerp(m.rotation.y, a, dt * 8);
-	let nx = m.position.x + Math.sin(m.rotation.y) * sp * dt;
-	let nz = m.position.z + Math.cos(m.rotation.y) * sp * dt;
+	let nx = m.position.x + M.sin(m.rotation.y) * sp * dt;
+	let nz = m.position.z + M.cos(m.rotation.y) * sp * dt;
 	const fixed = colC(nx, nz, 0.55);
 	nx = fixed.x; nz = fixed.z;
 	if (!isLand(nx, nz)) { nx = m.position.x; nz = m.position.z; }
@@ -311,10 +311,10 @@ function updatePlayerOnFoot(dt) {
 	const run = key("ShiftLeft") || key("ShiftRight");
 	const sp = run ? 10.6 : 6.2;
 	if (moving) {
-		const a = Math.atan2(ix, iz) + camA + Math.PI;
+		const a = M.atan2(ix, iz) + camA + M.PI;
 		m.rotation.y = angLerp(m.rotation.y, a, dt * 11);
-		let nx = m.position.x + Math.sin(m.rotation.y) * sp * dt;
-		let nz = m.position.z + Math.cos(m.rotation.y) * sp * dt;
+		let nx = m.position.x + M.sin(m.rotation.y) * sp * dt;
+		let nz = m.position.z + M.cos(m.rotation.y) * sp * dt;
 		const fixed = colC(nx, nz, 0.55);
 		nx = fixed.x; nz = fixed.z;
 		if (isLand(nx, nz) || isLand(m.position.x, m.position.z) === false) { m.position.x = nx; m.position.z = nz; }
@@ -352,26 +352,26 @@ function fireGun() {
 	if (G[ak] <= 0) { gunCd = 0.3; sToa("Out of ammo — grab a glowing ammo pickup"); return; }
 	G[ak]--; gunCd = smg ? 0.11 : 0.26; p.attackT = 0.18;
 	sfxShot(smg ? "smg" : "pistol");
-	const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y), range = smg ? 42 : 34, cone = smg ? 0.9 : 0.93;
+	const fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y), range = smg ? 42 : 34, cone = smg ? 0.9 : 0.93;
 	let best = null, bestD = range;
 	for (const q of G.peds) {
 		if (q.dead > 0) continue;
 		const dx = q.mesh.position.x - m.position.x, dz = q.mesh.position.z - m.position.z;
-		const d = Math.sqrt(dx * dx + dz * dz);
-		if (d < bestD && (dx * fx + dz * fz) / Math.max(1, d) > cone) { best = q; bestD = d; }
+		const d = M.sqrt(dx * dx + dz * dz);
+		if (d < bestD && (dx * fx + dz * fz) / M.max(1, d) > cone) { best = q; bestD = d; }
 	}
 	let hitD = best ? bestD : range, copHit = false, witness = false;
 	for (const c of G.police) {
 		const dx = c.mesh.position.x - m.position.x, dz = c.mesh.position.z - m.position.z;
-		const d = Math.sqrt(dx * dx + dz * dz);
+		const d = M.sqrt(dx * dx + dz * dz);
 		if (d < 100) witness = true;
-		if (d < range + 2 && (dx * fx + dz * fz) / Math.max(1, d) > 0.9) { copHit = true; if (d < hitD) hitD = d; }
+		if (d < range + 2 && (dx * fx + dz * fz) / M.max(1, d) > 0.9) { copHit = true; if (d < hitD) hitD = d; }
 	}
 	showTracer(m.position.x, m.position.z, fx, fz, hitD);
 	showFlash(m.position.x, m.position.z, fx, fz);
 	panicAt(m.position.x, m.position.z, 26);
 	if (best) hurtPed(best, smg ? 1 : 2, true);
-	if ((best || copHit || witness) && G.time - lastCrimeT > 1.1) { lastCrimeT = G.time; setWanted(Math.min(5, G.wanted + 1)); G.wantedCalm = 0; }
+	if ((best || copHit || witness) && G.time - lastCrimeT > 1.1) { lastCrimeT = G.time; setWanted(M.min(5, G.wanted + 1)); G.wantedCalm = 0; }
 	uHud();
 }
 function playerAttack() {
@@ -379,7 +379,7 @@ function playerAttack() {
 	if (G.mode !== "play" || !G.onFoot || G.cutscene) return;
 	if (isGun(G.weapon)) { fireGun(); return; }
 	p.attackT = 0.18;
-	const m = p.mesh, fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y);
+	const m = p.mesh, fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y);
 	sfxPunch();
 	for (const q of G.peds) {
 		if (q.dead > 0) continue;
@@ -391,7 +391,7 @@ function hurtPed(q, dmg, gun) {
 	q.hp -= dmg; q.fleeT = 3; q.fleeX = G.player.mesh.position.x; q.fleeZ = G.player.mesh.position.z;
 	panicAt(q.mesh.position.x, q.mesh.position.z, 12);
 	if (q.hp <= 0 && q.dead <= 0) {
-		q.dead = 5; q.mesh.rotation.x = -Math.PI / 2; q.mesh.position.y = 0.3;
+		q.dead = 5; q.mesh.rotation.x = -M.PI / 2; q.mesh.position.y = 0.3;
 		if (!gun) addCrime(1);
 		sToa("You flattened a pedestrian!");
 	}
@@ -404,7 +404,7 @@ function showTracer(x, z, fx, fz, len) {
 	}
 	trcM.position.set(x + fx * len / 2, 1.6, z + fz * len / 2);
 	trcM.scale.z = len;
-	trcM.rotation.y = Math.atan2(fx, fz);
+	trcM.rotation.y = M.atan2(fx, fz);
 	trcM.visible = true; tracerT = 0.06;
 }
 function updateCombatFx(dt) {

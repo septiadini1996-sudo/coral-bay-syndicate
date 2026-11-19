@@ -9,7 +9,7 @@ const portraitCache = {};
 function portraitCanvas(key) {
 	if (portraitCache[key]) return portraitCache[key];
 	const s = CHARACTERS[key];
-	const cv = document.createElement("canvas"); cv.width = 96; cv.height = 96;
+	const cv = DC.createElement("canvas"); cv.width = 96; cv.height = 96;
 	const c = cv.getContext("2d");
 	const sky = c.createLinearGradient(0, 0, 0, 96);
 	sky.addColorStop(0, "#ffb37a"); sky.addColorStop(1, "#7a4a6e");
@@ -17,12 +17,12 @@ function portraitCanvas(key) {
 	c.fillStyle = "rgba(255,233,163,0.85)"; c.beginPath(); c.arc(80, 16, 8, 0, 7); c.fill();
 	c.fillStyle = s.shirt; c.beginPath(); c.moveTo(14, 96); c.quadraticCurveTo(48, 62, 82, 96); c.closePath(); c.fill();
 	if (s.print) { c.fillStyle = "rgba(255,255,255,0.5)"; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(24 + (i * 37) % 52, 80 + (i * 13) % 14, 2.4, 0, 7); c.fill(); } }
-	if (s.chain) { c.strokeStyle = "#ffd94d"; c.lineWidth = 3.4; c.beginPath(); c.arc(48, 74, 13, 0.25, Math.PI - 0.25); c.stroke(); }
+	if (s.chain) { c.strokeStyle = "#ffd94d"; c.lineWidth = 3.4; c.beginPath(); c.arc(48, 74, 13, 0.25, M.PI - 0.25); c.stroke(); }
 	c.fillStyle = s.skin; c.fillRect(43, 56, 10, 12);
 	if (s.longHair) { c.fillStyle = s.hair; c.fillRect(24, 18, 48, 52); }
 	c.fillStyle = s.skin; c.beginPath(); c.ellipse(48, 42, 17, 20, 0, 0, 7); c.fill();
-	if (!s.longHair) { c.fillStyle = s.hair; c.beginPath(); c.ellipse(48, 25, 17.5, 8, 0, Math.PI, 7); c.fill(); }
-	else { c.fillStyle = s.hair; c.beginPath(); c.ellipse(48, 24, 18, 7.5, 0, Math.PI, 7); c.fill(); }
+	if (!s.longHair) { c.fillStyle = s.hair; c.beginPath(); c.ellipse(48, 25, 17.5, 8, 0, M.PI, 7); c.fill(); }
+	else { c.fillStyle = s.hair; c.beginPath(); c.ellipse(48, 24, 18, 7.5, 0, M.PI, 7); c.fill(); }
 	if (s.shades) {
 		c.fillStyle = "#101418"; c.fillRect(29, 38, 38, 9);
 		c.fillRect(31, 39.5, 14, 6); c.fillRect(51, 39.5, 14, 6);
@@ -32,12 +32,12 @@ function portraitCanvas(key) {
 		c.beginPath(); c.arc(41, 41, 2.1, 0, 7); c.fill();
 		c.beginPath(); c.arc(55, 41, 2.1, 0, 7); c.fill();
 		c.strokeStyle = "rgba(90,40,30,0.8)"; c.lineWidth = 1.6;
-		c.beginPath(); c.arc(48, 52, 6, 0.3, Math.PI - 0.3); c.stroke();
+		c.beginPath(); c.arc(48, 52, 6, 0.3, M.PI - 0.3); c.stroke();
 	}
 	if (s.hat) {
 		c.fillStyle = s.hat === "panama" ? "#f2e3c2" : "#3a2e22";
 		c.fillRect(22, 19, 52, 5.5);
-		c.beginPath(); c.ellipse(48, 15, 12.5, 8.5, 0, Math.PI, 7); c.fill();
+		c.beginPath(); c.ellipse(48, 15, 12.5, 8.5, 0, M.PI, 7); c.fill();
 		c.fillStyle = s.hat === "panama" ? "#c93a2e" : "#14100c"; c.fillRect(35.5, 17.5, 25, 3.4);
 	}
 	portraitCache[key] = cv;
@@ -99,10 +99,10 @@ function startCutscene(idx, onDone) {
 	const gp = G.contacts[giverKey].person.mesh.position;
 	const pp = G.player.mesh.position;
 	let dx = pp.x - gp.x, dz = pp.z - gp.z;
-	const dl = Math.sqrt(dx * dx + dz * dz) || 1; dx /= dl; dz /= dl;
+	const dl = M.sqrt(dx * dx + dz * dz) || 1; dx /= dl; dz /= dl;
 	G.player.mesh.position.set(gp.x + dx * 2.6, 0, gp.z + dz * 2.6);
-	G.player.mesh.rotation.y = Math.atan2(-dx, -dz);
-	G.contacts[giverKey].person.mesh.rotation.y = Math.atan2(dx, dz);
+	G.player.mesh.rotation.y = M.atan2(-dx, -dz);
+	G.contacts[giverKey].person.mesh.rotation.y = M.atan2(dx, dz);
 	G.cutscene = { idx, lines: CUTSCENES[idx], line: 0, t: 0, giverKey, onDone: onDone || null };
 	G.giverPrompt = null;
 	if (G.player.namePlate) G.player.namePlate.visible = false;
@@ -122,7 +122,7 @@ function csCameraPose(cs) {
 	const a = G.player.mesh.position, b = csGiverPerson(cs).mesh.position;
 	const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
 	let fx = b.x - a.x, fz = b.z - a.z;
-	const fl = Math.sqrt(fx * fx + fz * fz) || 1; fx /= fl; fz /= fl;
+	const fl = M.sqrt(fx * fx + fz * fz) || 1; fx /= fl; fz /= fl;
 	const shot = cs.line % 3;
 	if (shot === 0) return { pos: [mx - fz * 5.2, 2.1, mz + fx * 5.2], look: [mx, 1.45, mz] };
 	if (shot === 1) return { pos: [a.x - fx * 4.2 - fz * 1.35, 1.78, a.z - fz * 4.2 + fx * 1.35], look: [b.x, 1.5, b.z] };

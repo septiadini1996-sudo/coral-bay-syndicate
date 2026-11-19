@@ -38,7 +38,7 @@ function sfxInit() {
 	const len = ctx.sampleRate * 2;
 	const buf = ctx.createBuffer(1, len, ctx.sampleRate);
 	const data = buf.getChannelData(0);
-	for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+	for (let i = 0; i < len; i++) data[i] = M.random() * 2 - 1;
 	Sfx.rainSrc = ctx.createBufferSource(); Sfx.rainSrc.buffer = buf; Sfx.rainSrc.loop = true;
 	const bp = ctx.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 1600; bp.Q.value = 0.4;
 	Sfx.rainGain = ctx.createGain(); Sfx.rainGain.gain.value = 0;
@@ -54,7 +54,7 @@ function sfxTone(freq, dur, type, vol, slideTo, delay) {
 	const ctx = Sfx.ctx, t0 = ctx.currentTime + (delay || 0);
 	const o = ctx.createOscillator(), g = ctx.createGain();
 	o.type = type || "sine"; o.frequency.setValueAtTime(freq, t0);
-	if (slideTo) o.frequency.exponentialRampToValueAtTime(Math.max(20, slideTo), t0 + dur);
+	if (slideTo) o.frequency.exponentialRampToValueAtTime(M.max(20, slideTo), t0 + dur);
 	g.gain.setValueAtTime(0, t0);
 	g.gain.linearRampToValueAtTime(vol, t0 + 0.012);
 	g.gain.exponentialRampToValueAtTime(0.0008, t0 + dur);
@@ -64,10 +64,10 @@ function sfxTone(freq, dur, type, vol, slideTo, delay) {
 function sfxNoise(dur, vol, freq, delay) {
 	if (!Sfx.ctx) return;
 	const ctx = Sfx.ctx, t0 = ctx.currentTime + (delay || 0);
-	const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+	const len = M.max(1, M.floor(ctx.sampleRate * dur));
 	const buf = ctx.createBuffer(1, len, ctx.sampleRate);
 	const d = buf.getChannelData(0);
-	for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+	for (let i = 0; i < len; i++) d[i] = (M.random() * 2 - 1) * (1 - i / len);
 	const src = ctx.createBufferSource(); src.buffer = buf;
 	const f = ctx.createBiquadFilter(); f.type = "lowpass"; f.frequency.value = freq || 1200;
 	const g = ctx.createGain(); g.gain.value = vol;
@@ -99,7 +99,7 @@ const RST = [
 function sfxRadioNote() {
 	const st = RST[G.radioStation % RST.length];
 	const semi = st.scale[Sfx.radioStep % st.scale.length];
-	const freq = st.base * Math.pow(2, semi / 12);
+	const freq = st.base * M.pow(2, semi / 12);
 	if (!Sfx.ctx) return;
 	const ctx = Sfx.ctx, t0 = ctx.currentTime;
 	const o = ctx.createOscillator(), g = ctx.createGain();
@@ -116,7 +116,7 @@ function sfxUpdate(dt) {
 	const ctx = Sfx.ctx, now = ctx.currentTime;
 	let engineLevel = 0, engineFreq = 55;
 	if (!G.onFoot && G.vehicle && G.mode === "play") {
-		const sp = Math.abs(G.vehicle.speed || 0);
+		const sp = M.abs(G.vehicle.speed || 0);
 		engineLevel = G.vehicle.kind === "heli" ? 0.05 : 0.075;
 		engineFreq = 50 + sp * 3.4 + (G.keys["KeyW"] ? 14 : 0);
 	}

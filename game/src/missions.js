@@ -51,9 +51,9 @@ function startJob(i) {
 	G.job = { i, step: 0, t: 0, data: {} };
 	showBanner(def.title, def.brief + "  Payout: " + fmtCash(def.payout), 6);
 	sfxSting("start");
-	if (i === 0) { const c = fVeh("comet"); if (c && !c.alive) revV(c, -664, 96, Math.PI / 2); }
+	if (i === 0) { const c = fVeh("comet"); if (c && !c.alive) revV(c, -664, 96, M.PI / 2); }
 	if (i === 2) { const c = fVeh("crusher"); if (c && !c.alive) revV(c, SPOTS.crusherYard.x, SPOTS.crusherYard.z, 0.4); }
-	if (i === 3) { const f = fVeh("falco"); if (f && !f.alive) revV(f, SPOTS.beachFalco.x, SPOTS.beachFalco.z, Math.PI); }
+	if (i === 3) { const f = fVeh("falco"); if (f && !f.alive) revV(f, SPOTS.beachFalco.x, SPOTS.beachFalco.z, M.PI); }
 	if (i === 4) { const h = fVeh("heli"); if (h && !h.alive) revV(h, SPOTS.airportHeli.x, SPOTS.airportHeli.z, 0); }
 }
 function cJob() {
@@ -138,7 +138,7 @@ function jobUpdate(dt) {
 				if (fDst(next.x, next.z) < 3.4) {
 					next.taken = true; next.grp.visible = false; d.got++;
 					sfxPickup();
-					if (d.got === 3) { setWanted(Math.max(G.wanted, 1)); sToa("Last case taken — someone called it in. Back to Marco!"); job.step = 2; }
+					if (d.got === 3) { setWanted(M.max(G.wanted, 1)); sToa("Last case taken — someone called it in. Back to Marco!"); job.step = 2; }
 					else sToa("Case " + d.got + " of 3 secured");
 				}
 			}
@@ -152,7 +152,7 @@ function jobUpdate(dt) {
 		if (job.step === 0) {
 			sObj("Steal the Dune Crusher from the industrial yard", SPOTS.crusherYard.x, SPOTS.crusherYard.z);
 			sMrk(SPOTS.crusherYard.x, SPOTS.crusherYard.z, 0xffd94d);
-			if (G.vehicle === crusher) { job.step = 1; setWanted(Math.max(G.wanted, 2)); sToa("That's the one — the yard crew called the cops!"); }
+			if (G.vehicle === crusher) { job.step = 1; setWanted(M.max(G.wanted, 2)); sToa("That's the one — the yard crew called the cops!"); }
 		} else {
 			sObj("Deliver the Dune Crusher to Marco's lockup", SPOTS.lockup.x, SPOTS.lockup.z);
 			sMrk(SPOTS.lockup.x, SPOTS.lockup.z, 0xffd94d);
@@ -172,7 +172,7 @@ function jobUpdate(dt) {
 			if (G.vehicle === falco && fDst(cp.x, cp.z) < 12) {
 				d.cp++; sfxPickup();
 				if (d.cp >= RCP.length) {
-					const used = 95 - Math.max(0, d.timer);
+					const used = 95 - M.max(0, d.timer);
 					if (!G.raceBest || used < G.raceBest) G.raceBest = used;
 					cJob(); return;
 				}
@@ -184,12 +184,12 @@ function jobUpdate(dt) {
 		if (job.step === 0) {
 			sObj("Steal the helicopter at the airport", SPOTS.airportHeli.x, SPOTS.airportHeli.z);
 			sMrk(SPOTS.airportHeli.x, SPOTS.airportHeli.z, 0xffd94d);
-			if (G.vehicle === heli) { job.step = 1; setWanted(Math.max(G.wanted, 3)); sToa("Up, up — set her down on the marina helipad."); }
+			if (G.vehicle === heli) { job.step = 1; setWanted(M.max(G.wanted, 3)); sToa("Up, up — set her down on the marina helipad."); }
 		} else {
 			sObj("Land the helicopter on the marina helipad (H)", SPOTS.helipad.x, SPOTS.helipad.z);
 			sMrk(SPOTS.helipad.x, SPOTS.helipad.z, 0xffd94d);
-			if (G.vehicle === heli && heli.alt < 1.4 && Math.abs(heli.vy) < 2.5 && fDst(SPOTS.helipad.x, SPOTS.helipad.z) < 15) {
-				setWanted(Math.max(0, G.wanted - 1));
+			if (G.vehicle === heli && heli.alt < 1.4 && M.abs(heli.vy) < 2.5 && fDst(SPOTS.helipad.x, SPOTS.helipad.z) < 15) {
+				setWanted(M.max(0, G.wanted - 1));
 				cJob(); return;
 			}
 		}

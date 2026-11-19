@@ -21,13 +21,13 @@ function dAt(x, z) {
 	if (x < -580) return "The Marina";
 	if (x < -180 && z < -140) return "Palmera Heights";
 	if (x > 190 && z > 230) return "Industrial Yards";
-	if (Math.abs(x) < 370 && z > -370 && z < 230) return "Downtown";
+	if (M.abs(x) < 370 && z > -370 && z < 230) return "Downtown";
 	return "Coral Bay";
 }
-function isAirport(x, z) { return z > 540 && Math.abs(x) < 580; }
+function isAirport(x, z) { return z > 540 && M.abs(x) < 580; }
 function isLand(x, z) {
-	if (Math.abs(x) <= 852 && Math.abs(z) <= 852) return true;
-	for (const pz of PIERS) if (x < -852 && x > -1000 && Math.abs(z - pz) < 11) return true;
+	if (M.abs(x) <= 852 && M.abs(z) <= 852) return true;
+	for (const pz of PIERS) if (x < -852 && x > -1000 && M.abs(z - pz) < 11) return true;
 	return false;
 }
 const UNIT_BOX = () => new T3.BoxGeometry(1, 1, 1);
@@ -70,7 +70,7 @@ class Bucket {
 function vertexMat(opts) { return new T3.MeshLambertMaterial(Object.assign({ vertexColors: true }, opts || {})); }
 function buildGroundCanvas() {
 	const S = 2048, W = G.citySize, sc = S / W;
-	const cv = document.createElement("canvas"); cv.width = S; cv.height = S;
+	const cv = DC.createElement("canvas"); cv.width = S; cv.height = S;
 	const c = cv.getContext("2d");
 	const X = (x) => (x + W / 2) * sc, Y = (z) => (z + W / 2) * sc, U = (u) => u * sc;
 	const FR = (x, z, w, d) => c.fillRect(X(x), Y(z), U(w), U(d));
@@ -121,17 +121,25 @@ function buildGroundCanvas() {
 }
 const WT = [0xdfe8ee, 0xf3e3c2, 0xcfe0ea, 0xf6d9d0];
 function bTex(w, h, base) {
-	const cv = document.createElement("canvas"); cv.width = 64; cv.height = 128;
+	const cv = DC.createElement("canvas"); cv.width = 64; cv.height = 128;
 	const c = cv.getContext("2d");
 	c.fillStyle = base; c.fillRect(0, 0, 64, 128);
-	const cols = Math.max(2, Math.round(w / 9)), rows = Math.max(3, Math.round(h / 7));
+	const ec = DC.createElement("canvas"); ec.width = 64; ec.height = 128;
+	const g2 = ec.getContext("2d");
+	g2.fillStyle = "#000"; g2.fillRect(0, 0, 64, 128);
+	const cols = M.max(2, M.round(w / 9)), rows = M.max(3, M.round(h / 7));
 	for (let i = 0; i < cols; i++) for (let j = 0; j < rows; j++) {
 		const lit = rng() > 0.45;
 		c.fillStyle = lit ? "#ffd98c" : "#2c3e50";
-		c.fillRect(4 + i * (56 / cols), 5 + j * (118 / rows), 56 / cols - 5, 118 / rows - 6);
+		const wx = 4 + i * (56 / cols), wy = 5 + j * (118 / rows), ww = 56 / cols - 5, wh = 118 / rows - 6;
+		c.fillRect(wx, wy, ww, wh);
+		if (lit) { g2.fillStyle = "#ffc37a"; g2.fillRect(wx, wy, ww, wh); }
 	}
 	const t = new T3.CanvasTexture(cv);
 	t.colorSpace = T3.SRGBColorSpace;
+	const et = new T3.CanvasTexture(ec);
+	et.colorSpace = T3.SRGBColorSpace;
+	t.userData.e = et;
 	return t;
 }
 function buildWorld() {
@@ -142,12 +150,12 @@ function buildWorld() {
 	gtex.anisotropy = 4;
 	G.groundMat = new T3.MeshPhongMaterial({ map: gtex, shininess: 0, specular: 0x222222 });
 	const ground = new T3.Mesh(new T3.PlaneGeometry(G.citySize, G.citySize), G.groundMat);
-	ground.rotation.x = -Math.PI / 2;
+	ground.rotation.x = -M.PI / 2;
 	ground.receiveShadow = true;
 	scene.add(ground);
 	const waterMat = new T3.MeshPhongMaterial({ color: 0x1b6a8c, shininess: 140, specular: 0x99ccdd });
 	const water = new T3.Mesh(new T3.PlaneGeometry(6000, 6000), waterMat);
-	water.rotation.x = -Math.PI / 2; water.position.y = -0.5;
+	water.rotation.x = -M.PI / 2; water.position.y = -0.5;
 	scene.add(water);
 	G.waterMat = waterMat;
 	buildDistricts(scene);
@@ -160,6 +168,7 @@ function buildWorld() {
 }
 function aBld(scene, x, z, w, d, h, tex, tint) {
 	const mat = new T3.MeshLambertMaterial({ map: tex, color: tint });
+	if (tex.userData.e) { mat.emissive = new T3.Color(0xffc37a); mat.emissiveMap = tex.userData.e; mat.emissiveIntensity = 0; }
 	const m = new T3.Mesh(new T3.BoxGeometry(w, h, d), mat);
 	m.position.set(x, h / 2, z);
 	m.castShadow = true; m.receiveShadow = true;
@@ -200,7 +209,7 @@ function buildDistricts(scene) {
 				const hw = rand(24, 32), hd = rand(20, 28), hh = rand(8, 13);
 				aBld(scene, bx + ox, bz + oz, hw, hd, hh, houseTex, pick(WT));
 				roofs.add(new T3.ConeGeometry(1, 1, 4), bx + ox, hh + 3.4, bz + oz,
-					{ sx: hw * 0.78, sy: 7, sz: hd * 0.78, color: pick([0xb5502e, 0x8a5a34, 0x707880]), ry: Math.PI / 4 });
+					{ sx: hw * 0.78, sy: 7, sz: hd * 0.78, color: pick([0xb5502e, 0x8a5a34, 0x707880]), ry: M.PI / 4 });
 			}
 		}
 	}
@@ -213,14 +222,35 @@ function buildDistricts(scene) {
 	aBld(scene, 60, 348, 44, 30, 12, houseTex, 0xd8f2ee);
 	const doorGlow = new T3.Mesh(new T3.BoxGeometry(5, 8, 1), BM(0x2ee6c8));
 	doorGlow.position.set(60, 4, 332); scene.add(doorGlow);
-	const poles = new Bucket(), heads = new Bucket();
+	const poles = new Bucket(), heads = new Bucket(), lps = [];
 	for (const r of RL) for (let t = -800; t <= 800; t += 107) {
-		if (Math.abs(t - r) < 20) continue;
+		if (M.abs(t - r) < 20) continue;
 		poles.box(r + 17, 3.4, t, 0.5, 6.8, 0.5, 0x3a4046);
 		heads.box(r + 17, 7, t, 1.6, 0.5, 1.6, 0xffe6a3);
 		poles.box(t, 3.4, r - 17, 0.5, 6.8, 0.5, 0x3a4046);
 		heads.box(t, 7, r - 17, 1.6, 0.5, 1.6, 0xffe6a3);
+		lps.push(r + 17, t, t, r - 17);
 	}
+	const lgc = DC.createElement("canvas"); lgc.width = lgc.height = 64;
+	const lg = lgc.getContext("2d");
+	const grd = lg.createRadialGradient(32, 32, 2, 32, 32, 32);
+	grd.addColorStop(0, "rgba(255,255,255,1)"); grd.addColorStop(0.4, "rgba(255,255,255,0.45)"); grd.addColorStop(1, "rgba(255,255,255,0)");
+	lg.fillStyle = grd; lg.fillRect(0, 0, 64, 64);
+	G.glowTex = new T3.CanvasTexture(lgc);
+	const nL = lps.length / 2, lpA = new Float32Array(nL * 3), lpB = new Float32Array(nL * 3);
+	for (let i = 0; i < nL; i++) {
+		lpA[i * 3] = lps[i * 2]; lpA[i * 3 + 1] = 7; lpA[i * 3 + 2] = lps[i * 2 + 1];
+		lpB[i * 3] = lps[i * 2]; lpB[i * 3 + 1] = 0.3; lpB[i * 3 + 2] = lps[i * 2 + 1];
+	}
+	const mkPts = (arr, size, col) => {
+		const g2 = new T3.BufferGeometry();
+		g2.setAttribute("position", new T3.BufferAttribute(arr, 3));
+		const mt = new T3.PointsMaterial({ map: G.glowTex, color: col, size, sizeAttenuation: true, transparent: true, opacity: 0, depthWrite: false, blending: T3.AdditiveBlending });
+		const p2 = new T3.Points(g2, mt); p2.frustumCulled = false; scene.add(p2);
+		return mt;
+	};
+	G.lampGlowMat = mkPts(lpA, 11, 0xffd9a0);
+	G.poolMat = mkPts(lpB, 21, 0xffb765);
 	const poleMesh = poles.build(vertexMat()); scene.add(poleMesh);
 	G.lampMat = BM(0x8a7f5c);
 	const headMesh = heads.build(G.lampMat); scene.add(headMesh);
@@ -245,9 +275,9 @@ function buildVegetation(scene) {
 		const lean = rand(-0.7, 0.7);
 		trunks.add(new T3.CylinderGeometry(0.32, 0.45, 8, 6), x + lean, 4, z, { color: 0x8a6a44, rz: lean * 0.09 });
 		for (let i = 0; i < 6; i++) {
-			const a = (i / 6) * Math.PI * 2;
-			leaves.add(frond, x + lean * 2 + Math.cos(a) * 2.6, 8.6, z + Math.sin(a) * 2.6,
-				{ sx: s, sy: s, sz: s, color: 0x3f9e4d, rx: Math.sin(a) * 1.15, rz: -Math.cos(a) * 1.15 });
+			const a = (i / 6) * M.PI * 2;
+			leaves.add(frond, x + lean * 2 + M.cos(a) * 2.6, 8.6, z + M.sin(a) * 2.6,
+				{ sx: s, sy: s, sz: s, color: 0x3f9e4d, rx: M.sin(a) * 1.15, rz: -M.cos(a) * 1.15 });
 		}
 	}
 	function tree(x, z, s) {
@@ -259,11 +289,11 @@ function buildVegetation(scene) {
 	for (let i = 0; i < 26; i++) palm(rand(-830, -600), rand(-340, 340), rand(0.8, 1.1));
 	for (let i = 0; i < 22; i++) palm(rand(-560, -200), rand(-640, -350), rand(0.85, 1.2));
 	for (let i = 0; i < 14; i++) tree(80 + rand(-55, 55), -240 + rand(-55, 55), rand(0.9, 1.3));
-	for (let i = 0; i < 30; i++) { const x = rand(-560, 560), z = rand(-560, 520); if (Math.abs(x % 160) > 30 && Math.abs(z % 160) > 30) tree(x, z, rand(0.8, 1.2)); }
+	for (let i = 0; i < 30; i++) { const x = rand(-560, 560), z = rand(-560, 520); if (M.abs(x % 160) > 30 && M.abs(z % 160) > 30) tree(x, z, rand(0.8, 1.2)); }
 	const tuft = new T3.ConeGeometry(0.5, 1.1, 4);
 	for (let i = 0; i < 380; i++) {
 		const x = rand(-840, 840), z = rand(-840, 840);
-		if (Math.abs(x % 160) < 22 || Math.abs(z % 160) < 22 || isAirport(x, z)) continue;
+		if (M.abs(x % 160) < 22 || M.abs(z % 160) < 22 || isAirport(x, z)) continue;
 		leaves.add(tuft, x, 0.5, z, { sx: rand(0.8, 1.8), sy: rand(0.8, 1.6), sz: rand(0.8, 1.8), color: pick([0x5da248, 0x74bd5a, 0x4da653]) });
 	}
 	const tm = trunks.build(vertexMat()); tm.castShadow = true; scene.add(tm);
@@ -282,7 +312,7 @@ function buildMarina(scene) {
 		const bx2 = -668 + rand(-16, 16), bw = rand(52, 74), bd = rand(36, 48), bh = rand(9, 15);
 		aBld(scene, bx2, mz, bw, bd, bh, cafeTex, pick(WT));
 		const cs = cafeSigns[String(mz)];
-		if (cs) pSgn(cs[0], null, bx2 + bw / 2 + 0.3, bh * 0.66, mz, bd * 0.8, 4.2, cs[1], cs[2], Math.PI / 2);
+		if (cs) pSgn(cs[0], null, bx2 + bw / 2 + 0.3, bh * 0.66, mz, bd * 0.8, 4.2, cs[1], cs[2], M.PI / 2);
 	}
 	G.boats = [];
 	const hullCols = [0xe8e4da, 0x2e7fc9, 0xc93a2e, 0xf2b13d, 0x39b5a6];
@@ -298,9 +328,9 @@ function buildMarina(scene) {
 			mast.position.set(2.4, 6.4, 0); boat.add(mast);
 			const sail = new T3.Mesh(new T3.PlaneGeometry(4.6, 7.6),
 				new T3.MeshLambertMaterial({ color: 0xffffff, side: T3.DoubleSide }));
-			sail.position.set(0.6, 6, 0); sail.rotation.y = Math.PI / 2; boat.add(sail);
+			sail.position.set(0.6, 6, 0); sail.rotation.y = M.PI / 2; boat.add(sail);
 			boat.position.set(bx, 0, bz);
-			boat.rotation.y = Math.PI / 2 + rand(-0.06, 0.06);
+			boat.rotation.y = M.PI / 2 + rand(-0.06, 0.06);
 			boat.userData.phase = rand(0, 6);
 			scene.add(boat); G.boats.push(boat);
 		}
@@ -325,11 +355,11 @@ function buildAirport(scene) {
 	for (const hx of [-240, 60, 330]) G.colliders.push({ minX: hx - 45, maxX: hx + 45, minZ: 562, maxZ: 606 });
 	G.colliders.push({ minX: -125, maxX: 65, minZ: 553, maxZ: 579 });
 	const mesh = b.build(vertexMat()); mesh.castShadow = true; scene.add(mesh);
-	pSgn("CORAL BAY AIRPORT", null, -30, 11, 552.4, 120, 10, "#ffffff", "#14425e", Math.PI);
+	pSgn("CORAL BAY AIRPORT", null, -30, 11, 552.4, 120, 10, "#ffffff", "#14425e", M.PI);
 	const plane = new T3.Group();
 	const white = lam(0xf2f4f6);
 	const fus = new T3.Mesh(new T3.CylinderGeometry(3.1, 3.1, 34, 12), white);
-	fus.rotation.z = Math.PI / 2; fus.position.y = 4.6; plane.add(fus);
+	fus.rotation.z = M.PI / 2; fus.position.y = 4.6; plane.add(fus);
 	const nose = new T3.Mesh(new T3.SphereGeometry(3.1, 10, 8), white);
 	nose.position.set(17, 4.6, 0); plane.add(nose);
 	const wing = new T3.Mesh(new T3.BoxGeometry(9, 0.5, 30), lam(0xc93a2e));
@@ -340,23 +370,23 @@ function buildAirport(scene) {
 	fin.position.set(-16.5, 5.4, 0); plane.add(fin);
 	for (const s of [-8, 8]) {
 		const eng = new T3.Mesh(new T3.CylinderGeometry(1.3, 1.3, 4.6, 8), lam(0x596066));
-		eng.rotation.z = Math.PI / 2; eng.position.set(1, 3, s); plane.add(eng);
+		eng.rotation.z = M.PI / 2; eng.position.set(1, 3, s); plane.add(eng);
 	}
 	plane.position.set(330, 0, 712); plane.rotation.y = 0.04;
 	scene.add(plane);
 	G.colliders.push({ minX: 310, maxX: 352, minZ: 696, maxZ: 728 });
 }
 function signMesh(text, sub, w, h, fg, bg) {
-	const cv = document.createElement("canvas"); cv.width = 512; cv.height = Math.max(32, Math.round(512 * h / w));
+	const cv = DC.createElement("canvas"); cv.width = 512; cv.height = M.max(32, M.round(512 * h / w));
 	const c = cv.getContext("2d");
 	c.fillStyle = bg; c.fillRect(0, 0, cv.width, cv.height);
 	c.fillStyle = fg; c.textAlign = "center"; c.textBaseline = "middle";
-	let fs = Math.round(cv.height * (sub ? 0.42 : 0.6));
+	let fs = M.round(cv.height * (sub ? 0.42 : 0.6));
 	c.font = "bold " + fs + "px Trebuchet MS, sans-serif";
 	const tw = c.measureText(text).width;
-	if (tw > cv.width * 0.92) { fs = Math.floor(fs * cv.width * 0.92 / tw); c.font = "bold " + fs + "px Trebuchet MS, sans-serif"; }
+	if (tw > cv.width * 0.92) { fs = M.floor(fs * cv.width * 0.92 / tw); c.font = "bold " + fs + "px Trebuchet MS, sans-serif"; }
 	c.fillText(text, cv.width / 2, sub ? cv.height * 0.34 : cv.height / 2);
-	if (sub) { c.font = "bold " + Math.round(cv.height * 0.19) + "px Trebuchet MS, sans-serif"; c.fillText(sub, cv.width / 2, cv.height * 0.76); }
+	if (sub) { c.font = "bold " + M.round(cv.height * 0.19) + "px Trebuchet MS, sans-serif"; c.fillText(sub, cv.width / 2, cv.height * 0.76); }
 	const t = new T3.CanvasTexture(cv); t.colorSpace = T3.SRGBColorSpace;
 	return new T3.Mesh(new T3.PlaneGeometry(w, h), new T3.MeshBasicMaterial({ map: t }));
 }
@@ -374,30 +404,30 @@ function billboard(text, sub, x, z, fg, bg, ry, w, h, cy) {
 		pole.position.set(px, (cy + h / 2) / 2, 0); g.add(pole);
 	}
 	const f = signMesh(text, sub, w, h, fg, bg); f.position.set(0, cy, 0.35); g.add(f);
-	const b = signMesh(text, sub, w, h, fg, bg); b.position.set(0, cy, -0.35); b.rotation.y = Math.PI; g.add(b);
+	const b = signMesh(text, sub, w, h, fg, bg); b.position.set(0, cy, -0.35); b.rotation.y = M.PI; g.add(b);
 	g.position.set(x, 0, z); g.rotation.y = ry || 0;
 	G.scene.add(g);
 	G.colliders.push({ minX: x - 1, maxX: x + 1, minZ: z - 1, maxZ: z + 1 });
 }
 function buildSigns(scene) {
 	aBld(scene, 736, -160, 44, 44, 64, bTex(70, 100, "#b8c4cc"), 0xdfe8ee);
-	pSgn("HOTEL CORALIA", "ON THE BEACH", 713.6, 50, -160, 40, 7.5, "#7df9ff", "#0b2038", -Math.PI / 2);
+	pSgn("HOTEL CORALIA", "ON THE BEACH", 713.6, 50, -160, 40, 7.5, "#7df9ff", "#0b2038", -M.PI / 2);
 	aBld(scene, 30, -300, 48, 34, 26, bTex(40, 30, "#4a3550"), 0xf3e3c2);
-	pSgn("CASINO", "CORAL BAY", 30, 19, -317.4, 40, 6.5, "#ffd94d", "#2a0a2e", Math.PI);
+	pSgn("CASINO", "CORAL BAY", 30, 19, -317.4, 40, 6.5, "#ffd94d", "#2a0a2e", M.PI);
 	aBld(scene, -690, 20, 46, 34, 14, bTex(40, 14, "#d8dee2"), 0xffe9a3);
-	pSgn("BANCO DEL MAR", null, -666.6, 10.5, 20, 34, 5.5, "#ffe9a3", "#0e2a1e", Math.PI / 2);
+	pSgn("BANCO DEL MAR", null, -666.6, 10.5, 20, 34, 5.5, "#ffe9a3", "#0e2a1e", M.PI / 2);
 	aBld(scene, -668, -60, 40, 30, 8, bTex(40, 14, "#e8dcc4"), 0xf6d9d0);
-	pSgn("PASTA MARINA", null, -647.6, 6, -60, 30, 4.5, "#ffb37a", "#40260e", Math.PI / 2);
+	pSgn("PASTA MARINA", null, -647.6, 6, -60, 30, 4.5, "#ffb37a", "#40260e", M.PI / 2);
 	const huts = [["SURF SHACK", -520, "#fff3b0", "#7a4a21"], ["BEACH BAR", 60, "#ffd1dc", "#402030"], ["PIZZA BAY", 300, "#ffdf6b", "#7a1f1f"]];
 	for (const [nm, hz, fg, bg] of huts) {
 		aBld(scene, 706, hz, 20, 14, 6, bTex(20, 12, "#f0e6d2"), 0xe8e4da);
-		pSgn(nm, null, 695.6, 4.2, hz, 16, 3.6, fg, bg, -Math.PI / 2);
+		pSgn(nm, null, 695.6, 4.2, hz, 16, 3.6, fg, bg, -M.PI / 2);
 	}
 	billboard("PALMERA PLAZA", "MALL · CINEMA", -452, -292, "#ffb37a", "#14262e", 0, 30, 6, 9.5);
-	billboard("WELCOME TO CORAL BAY", null, 16, 344, "#12222e", "#ffd94d", Math.PI, 17, 4, 4.6);
-	billboard("VOLT COLA", "SPARK UP THE BAY", 706, -420, "#ffffff", "#c22030", -Math.PI / 2);
-	billboard("AERO AIR", "FLY THE BAY", 500, 520, "#dff4ff", "#1c4d8c", Math.PI);
-	billboard("CORAL BAY", "SUN · SEA · SYNDICATE", 672, -640, "#ffe9a3", "#0e3a4a", -Math.PI / 2);
+	billboard("WELCOME TO CORAL BAY", null, 16, 344, "#12222e", "#ffd94d", M.PI, 17, 4, 4.6);
+	billboard("VOLT COLA", "SPARK UP THE BAY", 706, -420, "#ffffff", "#c22030", -M.PI / 2);
+	billboard("AERO AIR", "FLY THE BAY", 500, 520, "#dff4ff", "#1c4d8c", M.PI);
+	billboard("CORAL BAY", "SUN · SEA · SYNDICATE", 672, -640, "#ffe9a3", "#0e3a4a", -M.PI / 2);
 }
 function buildSky(scene) {
 	G.sun = new T3.DirectionalLight(0xffe3b3, 3);
@@ -426,10 +456,10 @@ function buildSky(scene) {
 	const sp = new Float32Array(700 * 3);
 	const sr = mulberry32(777);
 	for (let i = 0; i < 700; i++) {
-		const a = sr() * Math.PI * 2, e = sr() * Math.PI * 0.48 + 0.05, r = 2600;
-		sp[i * 3] = Math.cos(a) * Math.cos(e) * r;
-		sp[i * 3 + 1] = Math.sin(e) * r;
-		sp[i * 3 + 2] = Math.sin(a) * Math.cos(e) * r;
+		const a = sr() * M.PI * 2, e = sr() * M.PI * 0.48 + 0.05, r = 2600;
+		sp[i * 3] = M.cos(a) * M.cos(e) * r;
+		sp[i * 3 + 1] = M.sin(e) * r;
+		sp[i * 3 + 2] = M.sin(a) * M.cos(e) * r;
 	}
 	starGeo.setAttribute("position", new T3.BufferAttribute(sp, 3));
 	G.starMat = new T3.PointsMaterial({ color: 0xdfe9ff, size: 5, sizeAttenuation: false, transparent: true, opacity: 0, fog: false });
@@ -446,7 +476,7 @@ function buildRain(scene) {
 	const rr = mulberry32(4242);
 	for (let i = 0; i < N; i++) { p[i * 3] = (rr() - 0.5) * 110; p[i * 3 + 1] = rr() * 60; p[i * 3 + 2] = (rr() - 0.5) * 110; }
 	geo.setAttribute("position", new T3.BufferAttribute(p, 3));
-	const rcv = document.createElement("canvas"); rcv.width = 16; rcv.height = 64;
+	const rcv = DC.createElement("canvas"); rcv.width = 16; rcv.height = 64;
 	const rc = rcv.getContext("2d");
 	const grad = rc.createLinearGradient(0, 0, 0, 64);
 	grad.addColorStop(0, "rgba(170,204,238,0)");
@@ -460,22 +490,22 @@ function buildRain(scene) {
 	scene.add(G.rain);
 }
 const SKY_KEYS = [
-	[0, 0x0b1026, 0x0b1026, 0x223, 0, 0.3, 1],
-	[5.5, 0x1a2340, 0x1a2340, 0x334, 0.1, 0.36, 0.9],
+	[0, 0x0b1026, 0x0b1026, 0x93b8e8, 0.42, 0.66, 1],
+	[5.5, 0x1a2340, 0x1a2340, 0x7d9cc4, 0.3, 0.6, 0.9],
 	[7, 0xffb37a, 0xffc490, 0xffb37a, 1.6, 0.55, 0.25],
 	[10, 0x7ec8e3, 0xbfe0ea, 0xfff2d8, 3, 0.95, 0],
 	[16, 0x86cde8, 0xc4e2ec, 0xfff0d0, 3, 0.95, 0],
 	[17.8, 0xffc478, 0xf7c489, 0xffbe78, 2.6, 0.92, 0],
-	[19.3, 0x8a5f8e, 0x9a6f8a, 0xff9a5c, 1.2, 0.58, 0.35],
-	[20.6, 0x27335e, 0x27335e, 0x445, 0.15, 0.4, 0.85],
-	[24, 0x0b1026, 0x0b1026, 0x223, 0, 0.3, 1],
+	[19.3, 0x8a5f8e, 0x9a6f8a, 0xff9a5c, 1.2, 0.68, 0.35],
+	[20.6, 0x27335e, 0x27335e, 0x87a8dd, 0.38, 0.62, 0.85],
+	[24, 0x0b1026, 0x0b1026, 0x93b8e8, 0.42, 0.66, 1],
 ];
 function skyAt(h) {
 	const mix = (a, b, t) => new T3.Color(a).lerp(new T3.Color(b), t);
 	for (let i = 0; i < SKY_KEYS.length - 1; i++) {
 		const a = SKY_KEYS[i], b = SKY_KEYS[i + 1];
 		if (h >= a[0] && h <= b[0]) {
-			const t = (h - a[0]) / Math.max(0.001, b[0] - a[0]);
+			const t = (h - a[0]) / M.max(0.001, b[0] - a[0]);
 			return {
 				sky: mix(a[1], b[1], t), fog: mix(a[2], b[2], t), sun: mix(a[3], b[3], t),
 				sunI: lerp(a[4], b[4], t), hemiI: lerp(a[5], b[5], t), night: lerp(a[6], b[6], t),
@@ -485,6 +515,32 @@ function skyAt(h) {
 	const a = SKY_KEYS[0];
 	return { sky: new T3.Color(a[1]), fog: new T3.Color(a[2]), sun: new T3.Color(a[3]), sunI: a[4], hemiI: a[5], night: a[6] };
 }
+let hlPts = null, hlPos = null;
+function hlTick(night) {
+	if (!G.vehicles || !G.vehicles.length || !G.glowTex) return;
+	if (!hlPts) {
+		hlPos = new Float32Array(48 * 3);
+		for (let i = 0; i < 48; i++) hlPos[i * 3 + 1] = -50;
+		const g2 = new T3.BufferGeometry();
+		g2.setAttribute("position", new T3.BufferAttribute(hlPos, 3));
+		G.hlGlowMat = new T3.PointsMaterial({ map: G.glowTex, color: 0xffe2ae, size: 6, sizeAttenuation: true, transparent: true, opacity: 0, depthWrite: false, blending: T3.AdditiveBlending });
+		hlPts = new T3.Points(g2, G.hlGlowMat); hlPts.frustumCulled = false;
+		G.scene.add(hlPts);
+	}
+	G.hlGlowMat.opacity = night * 0.75;
+	let n = 0;
+	for (const v of G.vehicles) {
+		if (n >= 48) break;
+		if (!v.alive || v.kind === "bicycle" || v.kind === "heli") continue;
+		const m = v.mesh;
+		hlPos[n * 3] = m.position.x + M.sin(m.rotation.y) * 2.5;
+		hlPos[n * 3 + 1] = 0.8 + (v.alt || 0);
+		hlPos[n * 3 + 2] = m.position.z + M.cos(m.rotation.y) * 2.5;
+		n++;
+	}
+	for (let i = n; i < 48; i++) hlPos[i * 3 + 1] = -50;
+	hlPts.geometry.attributes.position.needsUpdate = true;
+}
 function updateSkyAndWeather(dt) {
 	if (!G.stage) { G.hour += dt * (24 / 720); if (G.hour >= 24) G.hour -= 24; }
 	const sk = skyAt(G.hour);
@@ -493,25 +549,29 @@ function updateSkyAndWeather(dt) {
 	G.scene.fog.color.copy(sk.fog);
 	if (G.weather === "hot") G.scene.fog.near = 200, G.scene.fog.far = 1050;
 	else G.scene.fog.near = 280, G.scene.fog.far = 1550;
-	const sunAng = ((G.hour - 6) / 12) * Math.PI;
+	const sunAng = ((G.hour - 6) / 12) * M.PI;
 	const focus = G.vehicle && !G.onFoot ? G.vehicle.mesh.position : (G.player ? G.player.mesh.position : new T3.Vector3());
-	G.sun.position.set(focus.x + Math.cos(sunAng) * 260, Math.max(95, Math.sin(sunAng) * 300), focus.z + 120);
+	G.sun.position.set(focus.x + M.cos(sunAng) * 260, M.max(95, M.sin(sunAng) * 300), focus.z + 120);
 	G.sun.target.position.set(focus.x, 0, focus.z);
 	G.sun.intensity = sk.sunI; G.sun.color.copy(sk.sun);
 	G.hemi.intensity = sk.hemiI;
 	G.starMat.opacity = sk.night * 0.95;
 	G.stars.position.set(focus.x, 0, focus.z);
-	const moonAng = sunAng + Math.PI;
-	G.moon.position.set(focus.x + Math.cos(moonAng) * 2200, Math.max(60, Math.sin(moonAng + 0.4) * 1500 + 300), focus.z - 1400);
+	const moonAng = sunAng + M.PI;
+	G.moon.position.set(focus.x + M.cos(moonAng) * 2200, M.max(60, M.sin(moonAng + 0.4) * 1500 + 300), focus.z - 1400);
 	G.moon.lookAt(G.camera.position);
 	G.moon.material.opacity = sk.night;
 	G.lampMat.color.setHex(0xffe6a3).multiplyScalar(0.35 + sk.night * 1.5);
+	if (G.lampGlowMat) { G.lampGlowMat.opacity = sk.night * 0.85; G.poolMat.opacity = sk.night * 0.15; }
+	for (const m of G.buildingMats) if (m.emissiveMap) m.emissiveIntensity = sk.night * 0.95;
+	if (G.hlMats) for (const m of G.hlMats) m.color.setHex(0xffe9b0).multiplyScalar(0.25 + sk.night * 2.4);
+	hlTick(sk.night);
 	G.lighthouseMat.color.setHex(0xffe9a3).multiplyScalar(0.4 + sk.night * 1.6);
 	if (G.clubSignMat) G.clubSignMat.color.setHex(0xff4fa3).multiplyScalar(0.55 + sk.night * 1.3);
 	for (const cl of G.clouds) { cl.position.x += dt * 2.2; if (cl.position.x > 1150) cl.position.x = -1150; }
 	for (const b of G.boats) {
-		b.position.y = Math.sin(G.time * 0.9 + b.userData.phase) * 0.22;
-		b.rotation.z = Math.sin(G.time * 0.7 + b.userData.phase) * 0.03;
+		b.position.y = M.sin(G.time * 0.9 + b.userData.phase) * 0.22;
+		b.rotation.z = M.sin(G.time * 0.7 + b.userData.phase) * 0.03;
 	}
 	G.weatherTimer -= dt;
 	if (G.weatherTimer <= 0 && !G.stage) {
@@ -524,7 +584,7 @@ function updateSkyAndWeather(dt) {
 	const raining = G.weather === "rain";
 	G.rain.visible = raining;
 	if (raining) {
-		G.rainMat.opacity = Math.min(0.5, G.rainMat.opacity + dt * 0.5);
+		G.rainMat.opacity = M.min(0.5, G.rainMat.opacity + dt * 0.5);
 		G.rain.position.set(focus.x, 0, focus.z);
 		const arr = G.rain.geometry.attributes.position.array;
 		for (let i = 0; i < arr.length; i += 3) {
@@ -534,7 +594,7 @@ function updateSkyAndWeather(dt) {
 		G.rain.geometry.attributes.position.needsUpdate = true;
 		G.groundMat.shininess = 90; G.groundMat.specular.setHex(0x666666);
 	} else {
-		G.rainMat.opacity = Math.max(0, G.rainMat.opacity - dt * 0.5);
+		G.rainMat.opacity = M.max(0, G.rainMat.opacity - dt * 0.5);
 		G.groundMat.shininess = 0; G.groundMat.specular.setHex(0x222222);
 	}
 }

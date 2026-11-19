@@ -7,7 +7,7 @@ function bootGame() {
 	G.camera = new T3.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 6000);
 	G.renderer = new T3.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
 	G.renderer.setSize(innerWidth, innerHeight);
-	G.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+	G.renderer.setPixelRatio(M.min(devicePixelRatio || 1, 2));
 	G.renderer.shadowMap.enabled = true;
 	G.renderer.shadowMap.type = T3.PCFShadowMap;
 	G.renderer.toneMapping = T3.ACESFilmicToneMapping;
@@ -57,7 +57,7 @@ function bindInput() {
 	});
 	addEventListener("mousemove", (e) => {
 		if (!mouseDown) return;
-		mouseMoved += Math.abs(e.movementX) + Math.abs(e.movementY);
+		mouseMoved += M.abs(e.movementX) + M.abs(e.movementY);
 		G.camYaw -= e.movementX * 0.0052;
 		G.camPitch = clamp(G.camPitch + e.movementY * 0.004, 0.06, 1.15);
 		lastDragT = G.time;
@@ -66,7 +66,7 @@ function bindInput() {
 		if (mouseDown && mouseMoved < 6 && performance.now() - mouseDownAt < 350 && G.mode === "play" && G.onFoot && !isGun(G.weapon)) playerAttack();
 		mouseDown = false;
 	});
-	dom.addEventListener("wheel", (e) => { G.camDist = clamp(G.camDist + Math.sign(e.deltaY) * 1.4, 5.5, 22); }, { passive: true });
+	dom.addEventListener("wheel", (e) => { G.camDist = clamp(G.camDist + M.sign(e.deltaY) * 1.4, 5.5, 22); }, { passive: true });
 	addEventListener("resize", () => {
 		G.camera.aspect = innerWidth / innerHeight;
 		G.camera.updateProjectionMatrix();
@@ -78,36 +78,36 @@ function updateCamera(dt) {
 	const cam = G.camera;
 	if (G.mode === "title") {
 		const a = G.time * 0.05;
-		cam.position.set(-260 + Math.cos(a) * 210, 52 + Math.sin(G.time * 0.11) * 8, -60 + Math.sin(a) * 210);
+		cam.position.set(-260 + M.cos(a) * 210, 52 + M.sin(G.time * 0.11) * 8, -60 + M.sin(a) * 210);
 		cam.lookAt(60, 8, -40);
 		return;
 	}
 	const f = fPt();
 	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
-	const moving = G.onFoot ? (G.player.speed || 0) > 0.5 : Math.abs(G.vehicle.speed) > 1;
+	const moving = G.onFoot ? (G.player.speed || 0) > 0.5 : M.abs(G.vehicle.speed) > 1;
 	if (moving && G.time - lastDragT > 2.2) {
-		const rate = G.onFoot ? 3.2 : clamp(Math.abs(G.vehicle.speed) * 0.14, 1.2, 4.2);
+		const rate = G.onFoot ? 3.2 : clamp(M.abs(G.vehicle.speed) * 0.14, 1.2, 4.2);
 		G.camYaw = angLerp(G.camYaw, heading, clamp(dt * rate, 0, 1));
 	}
 	const dist = G.camDist, pitch = G.camPitch;
-	const bx = Math.sin(G.camYaw), bz = Math.cos(G.camYaw);
+	const bx = M.sin(G.camYaw), bz = M.cos(G.camYaw);
 	cTgP.set(
-		f.x - bx * Math.cos(pitch) * dist,
-		(f.y || 0) + 1.7 + Math.sin(pitch) * dist,
-		f.z - bz * Math.cos(pitch) * dist
+		f.x - bx * M.cos(pitch) * dist,
+		(f.y || 0) + 1.7 + M.sin(pitch) * dist,
+		f.z - bz * M.cos(pitch) * dist
 	);
 	const fixed = colC(cTgP.x, cTgP.z, 1.2);
 	cTgP.x = fixed.x; cTgP.z = fixed.z;
-	cTgP.y = Math.max(cTgP.y, 1.1);
+	cTgP.y = M.max(cTgP.y, 1.1);
 	cam.position.lerp(cTgP, clamp(dt * 7, 0, 1));
-	const lead = !G.onFoot && G.vehicle ? clamp(Math.abs(G.vehicle.speed) * 0.14, 0, 5) : 0;
+	const lead = !G.onFoot && G.vehicle ? clamp(M.abs(G.vehicle.speed) * 0.14, 0, 5) : 0;
 	cam.lookAt(f.x + bx * lead, (f.y || 0) + 2.1, f.z + bz * lead);
 }
 let lastNow = performance.now(), fpsAccum = 0, fpsCount = 0, fpsStage = 0, hudAccum = 0;
 function frameLoop(now) {
 	requestAnimationFrame(frameLoop);
 	const rawDt = (now - lastNow) / 1000;
-	let dt = Math.min(0.05, rawDt);
+	let dt = M.min(0.05, rawDt);
 	lastNow = now;
 	if (dt <= 0) dt = 0.016;
 	G.time += dt;
@@ -164,15 +164,15 @@ function setupStage(name) {
 	if (name === "chase") {
 		G.hour = 17.7; G.weather = "clear";
 		const comet = fVeh("comet");
-		comet.mesh.position.set(0, 0, 215); comet.mesh.rotation.set(0, Math.PI, 0);
+		comet.mesh.position.set(0, 0, 215); comet.mesh.rotation.set(0, M.PI, 0);
 		enterVehicle(comet); comet.speed = 15;
 		setWanted(4);
-		const i1 = spV("interceptor", -2.85, 217.2, Math.PI, 0x30343a, "police");
-		const i2 = spV("interceptor", 5, 217.6, Math.PI, 0x30343a, "police");
+		const i1 = spV("interceptor", -2.85, 217.2, M.PI, 0x30343a, "police");
+		const i2 = spV("interceptor", 5, 217.6, M.PI, 0x30343a, "police");
 		i1.speed = 15; i2.speed = 15;
 		G.police.push(i1, i2);
 		for (const t of G.traffic) {
-			if (Math.abs(t.mesh.position.x) < 60 && t.mesh.position.z > -460 && t.mesh.position.z < 300) {
+			if (M.abs(t.mesh.position.x) < 60 && t.mesh.position.z > -460 && t.mesh.position.z < 300) {
 				t.mesh.position.x = 320; t.aiTarget = null;
 			}
 		}
@@ -183,7 +183,7 @@ function setupStage(name) {
 	} else if (name === "drive") {
 		G.hour = 17.9; G.weather = "clear";
 		const falco = fVeh("falco");
-		falco.mesh.position.set(640, 0, 300); falco.mesh.rotation.set(0, Math.PI, 0);
+		falco.mesh.position.set(640, 0, 300); falco.mesh.rotation.set(0, M.PI, 0);
 		enterVehicle(falco); falco.speed = 17;
 		stageRig = { cars: [falco], speed: 17 };
 		sObj("Bay Runner — checkpoint run down the coast", 640, -420);
@@ -233,7 +233,7 @@ function stageTick(dt) {
 		if (G.stage === "chase") {
 			cam.position.set(lead.mesh.position.x + 4.8, 1.5, lead.mesh.position.z + 8.6);
 			cam.lookAt(lead.mesh.position.x - 2.2, 1, lead.mesh.position.z - 10);
-			const flash = Math.floor(G.time * 2.4) % 2 === 0;
+			const flash = M.floor(G.time * 2.4) % 2 === 0;
 			for (const c of stageRig.cars.slice(1)) {
 				const bar = c.mesh.userData.lightBar;
 				if (bar) { bar.children[0].visible = flash; bar.children[1].visible = !flash; }
@@ -276,16 +276,16 @@ window.CBS = {
 	state() {
 		const f = fPt();
 		return {
-			mode: G.mode, cash: G.cash, wanted: G.wanted, health: Math.round(G.health),
+			mode: G.mode, cash: G.cash, wanted: G.wanted, health: M.round(G.health),
 			jobIndex: G.jobIndex, job: G.job ? G.job.i : -1, step: G.job ? G.job.step : -1,
 			hustle: G.hustle ? G.hustle.type : null,
 			onFoot: G.onFoot, vehicle: G.vehicle ? G.vehicle.kind : null,
-			weapon: G.weapon, x: Math.round(f.x), z: Math.round(f.z),
+			weapon: G.weapon, x: M.round(f.x), z: M.round(f.z),
 			hour: G.hour, weather: G.weather,
 			cutscene: G.cutscene ? G.cutscene.idx + ":" + G.cutscene.line : null,
 			playerVisible: G.player.mesh.visible,
-			playerPos: [Math.round(G.player.mesh.position.x * 10) / 10, Math.round(G.player.mesh.position.y * 10) / 10, Math.round(G.player.mesh.position.z * 10) / 10],
+			playerPos: [M.round(G.player.mesh.position.x * 10) / 10, M.round(G.player.mesh.position.y * 10) / 10, M.round(G.player.mesh.position.z * 10) / 10],
 		};
 	},
 };
-document.addEventListener("DOMContentLoaded", bootGame);
+DC.addEventListener("DOMContentLoaded", bootGame);

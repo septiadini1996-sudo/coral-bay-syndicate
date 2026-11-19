@@ -1,24 +1,26 @@
 "use strict";
 const T3 = THREE;
+const M = Math;
+const DC = document;
 function mulberry32(seed) {
 	let a = seed >>> 0;
 	return function () {
 		a |= 0; a = (a + 0x6D2B79F5) | 0;
-		let t = Math.imul(a ^ (a >>> 15), 1 | a);
-		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		let t = M.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + M.imul(t ^ (t >>> 7), 61 | t)) ^ t;
 		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
 	};
 }
 let rng = mulberry32(20261119);
 function rand(a, b) { return a + rng() * (b - a); }
-function randi(a, b) { return Math.floor(rand(a, b + 1)); }
-function pick(arr) { return arr[Math.floor(rng() * arr.length) % arr.length]; }
+function randi(a, b) { return M.floor(rand(a, b + 1)); }
+function pick(arr) { return arr[M.floor(rng() * arr.length) % arr.length]; }
 function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 function lerp(a, b, t) { return a + (b - a) * t; }
-function dist2d(ax, az, bx, bz) { const dx = ax - bx, dz = az - bz; return Math.sqrt(dx * dx + dz * dz); }
-function angWrap(a) { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; }
+function dist2d(ax, az, bx, bz) { const dx = ax - bx, dz = az - bz; return M.sqrt(dx * dx + dz * dz); }
+function angWrap(a) { while (a > M.PI) a -= M.PI * 2; while (a < -M.PI) a += M.PI * 2; return a; }
 function angLerp(a, b, t) { return a + angWrap(b - a) * clamp(t, 0, 1); }
-function el(id) { return document.getElementById(id); }
+function el(id) { return DC.getElementById(id); }
 function key(c) { return !!G.keys[c]; }
 function BM(c, o) { return new T3.MeshBasicMaterial(Object.assign({ color: c }, o || {})); }
 function glowDisc(color, r, op) {
@@ -34,10 +36,10 @@ function beam(r, h, color, op) {
 function ringM(r0, r1, color, op) {
 	const m = new T3.Mesh(new T3.RingGeometry(r0, r1, 24),
 		BM(color, { transparent: true, opacity: op, side: T3.DoubleSide }));
-	m.rotation.x = -Math.PI / 2;
+	m.rotation.x = -M.PI / 2;
 	return m;
 }
-function fmtCash(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
+function fmtCash(n) { return "$" + M.round(n).toLocaleString("en-US"); }
 const G = {
 	mode: "boot",
 	scene: null, camera: null, renderer: null, three: null,
@@ -92,7 +94,7 @@ function colC(x, z, r) {
 		if (x > c.minX - r && x < c.maxX + r && z > c.minZ - r && z < c.maxZ + r) {
 			const dxl = x - (c.minX - r), dxr = (c.maxX + r) - x;
 			const dzl = z - (c.minZ - r), dzr = (c.maxZ + r) - z;
-			const m = Math.min(dxl, dxr, dzl, dzr);
+			const m = M.min(dxl, dxr, dzl, dzr);
 			if (m === dxl) x = c.minX - r; else if (m === dxr) x = c.maxX + r;
 			else if (m === dzl) z = c.minZ - r; else z = c.maxZ + r;
 		}

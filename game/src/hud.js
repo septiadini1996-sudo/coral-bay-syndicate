@@ -30,13 +30,13 @@ function buildTokoh() {
 	if (!wrap || wrap.children.length) return;
 	for (const key of ["rico", "celia", "marco", "don"]) {
 		const ch = CHARACTERS[key];
-		const fig = document.createElement("div");
+		const fig = DC.createElement("div");
 		fig.className = "tokoh-item";
-		const cv = document.createElement("canvas");
+		const cv = DC.createElement("canvas");
 		cv.width = 96; cv.height = 96; cv.className = "tokoh-face";
 		fig.appendChild(cv);
-		const nm = document.createElement("div"); nm.className = "tokoh-name"; nm.textContent = ch.name; fig.appendChild(nm);
-		const rl = document.createElement("div"); rl.className = "tokoh-role"; rl.textContent = ch.role; fig.appendChild(rl);
+		const nm = DC.createElement("div"); nm.className = "tokoh-name"; nm.textContent = ch.name; fig.appendChild(nm);
+		const rl = DC.createElement("div"); rl.className = "tokoh-role"; rl.textContent = ch.role; fig.appendChild(rl);
 		wrap.appendChild(fig);
 		drawPortrait(cv, key);
 	}
@@ -70,7 +70,7 @@ function setBustUI(v) {
 	const w = el("bust-wrap");
 	if (v <= 0.02) { w.style.display = "none"; return; }
 	w.style.display = "block";
-	el("bust-fill").style.width = Math.round(v * 100) + "%";
+	el("bust-fill").style.width = M.round(v * 100) + "%";
 }
 function showHurt() { hurtT = 0.55; }
 function uHud() {
@@ -89,17 +89,17 @@ function uHud() {
 	const driving = !G.onFoot && G.vehicle;
 	el("speedo").style.display = driving ? "block" : "none";
 	if (driving) {
-		el("speed-val").textContent = Math.round(Math.abs(G.vehicle.speed) * 3.1);
-		el("speed-name").textContent = G.vehicle.name + (G.vehicle.kind === "heli" ? " · alt " + Math.round(G.vehicle.alt) + "m" : "");
+		el("speed-val").textContent = M.round(M.abs(G.vehicle.speed) * 3.1);
+		el("speed-name").textContent = G.vehicle.name + (G.vehicle.kind === "heli" ? " · alt " + M.round(G.vehicle.alt) + "m" : "");
 	}
 	const tp = G.track || G.objectivePos;
 	if (tp) {
 		const f = fPt();
-		el("obj-dist").textContent = Math.round(dist2d(f.x, f.z, tp.x, tp.z)) + "m";
+		el("obj-dist").textContent = M.round(dist2d(f.x, f.z, tp.x, tp.z)) + "m";
 	} else el("obj-dist").textContent = "";
 	if (G.objTimer !== null && G.objTimer !== undefined) {
-		const t = Math.max(0, Math.ceil(G.objTimer));
-		el("obj-timer").textContent = "⏱ " + Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
+		const t = M.max(0, M.ceil(G.objTimer));
+		el("obj-timer").textContent = "⏱ " + M.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
 	} else el("obj-timer").textContent = "";
 	const f = fPt();
 	const dname = dAt(f.x, f.z);
@@ -133,8 +133,8 @@ function refreshTracker(f) {
 		head = "STORY COMPLETE — Coral Bay is yours";
 		obj = "Free roam: Celia's deliveries & the Bay Runner rematch keep paying";
 	}
-	let dist = tx !== null ? Math.round(dist2d(f.x, f.z, tx, tz)) + "m" : "";
-	if (G.track) { obj = "Melacak: " + G.track.name; dist = Math.round(dist2d(f.x, f.z, G.track.x, G.track.z)) + "m"; }
+	let dist = tx !== null ? M.round(dist2d(f.x, f.z, tx, tz)) + "m" : "";
+	if (G.track) { obj = "Melacak: " + G.track.name; dist = M.round(dist2d(f.x, f.z, G.track.x, G.track.z)) + "m"; }
 	const sig = head + "|" + obj + "|" + dist;
 	if (sig === trkCache) return;
 	trkCache = sig;
@@ -171,7 +171,7 @@ function drawMinimap() {
 		if (dx * dx + dz * dz > (S / 2 - 5) * (S / 2 - 5)) return;
 		ctx.fillStyle = color; ctx.beginPath(); ctx.arc(S / 2 + dx, S / 2 + dz, r, 0, 7); ctx.fill();
 	}
-	const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
+	const flashBlue = M.floor(G.time * 2.4) % 2 === 0;
 	for (const c of G.police) dot(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", 4);
 	if (typeof pHeli !== "undefined" && pHeli) dot(pHeli.mesh.position.x, pHeli.mesh.position.z, "#ff3b30", 4);
 	const cgKey = cgK();
@@ -190,11 +190,11 @@ function drawMinimap() {
 		}
 	}
 	if (G.objectivePos) {
-		const pulse = 5 + Math.sin(G.time * 5) * 1.6;
+		const pulse = 5 + M.sin(G.time * 5) * 1.6;
 		dot(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
 	}
 	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
-	ctx.translate(S / 2, S / 2); ctx.rotate(Math.PI - heading);
+	ctx.translate(S / 2, S / 2); ctx.rotate(M.PI - heading);
 	ctx.fillStyle = "#ffffff";
 	ctx.strokeStyle = "#12303f"; ctx.lineWidth = 1.6;
 	ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(5.4, 6.4); ctx.lineTo(0, 3.4); ctx.lineTo(-5.4, 6.4); ctx.closePath();
@@ -213,7 +213,7 @@ function hudTick(dt) {
 	if (hurtT > 0) { hurtT -= dt; el("hurt").style.opacity = String(clamp(hurtT, 0, 0.55)); }
 	else el("hurt").style.opacity = "0";
 	if (jMrk && jMrk.visible) {
-		const s = 1 + Math.sin(G.time * 4) * 0.08;
+		const s = 1 + M.sin(G.time * 4) * 0.08;
 		jMrk.scale.set(s, 1, s);
 	}
 	routeTick(dt);
@@ -250,7 +250,7 @@ function beginPlay() {
 	el("hud").style.display = "block";
 	G.mode = "play";
 	rspH();
-	G.cash = Math.max(G.cash, 0);
+	G.cash = M.max(G.cash, 0);
 	uHud();
 }
 function tPau(force) {
@@ -320,7 +320,7 @@ function drawBigMap() {
 		}
 	}
 	ctx.textAlign = "center";
-	ctx.font = "bold " + Math.round(S * 0.021) + "px Trebuchet MS, sans-serif";
+	ctx.font = "bold " + M.round(S * 0.021) + "px Trebuchet MS, sans-serif";
 	const labels = [[0, -60, "DOWNTOWN"], [-735, 30, "THE MARINA"], [712, 0, "BEACHFRONT"],
 		[-390, -505, "PALMERA HEIGHTS"], [395, 395, "INDUSTRIAL YARDS"], [0, 705, "CORAL BAY AIRPORT"]];
 	for (const [x, z, name] of labels) {
@@ -334,19 +334,19 @@ function drawBigMap() {
 		ctx.lineWidth = 2; ctx.strokeStyle = "rgba(10,25,35,0.8)"; ctx.stroke();
 		return [bx, bz];
 	}
-	const flashBlue = Math.floor(G.time * 2.4) % 2 === 0;
+	const flashBlue = M.floor(G.time * 2.4) % 2 === 0;
 	for (const c of G.police) blip(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", S * 0.008);
 	if (typeof pHeli !== "undefined" && pHeli) blip(pHeli.mesh.position.x, pHeli.mesh.position.z, "#ff3b30", S * 0.008);
 	const cgKey = cgK();
-	ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
+	ctx.font = "bold " + M.round(S * 0.016) + "px Trebuchet MS, sans-serif";
 	for (const key of ["celia", "marco", "don"]) {
 		const ct = G.contacts[key];
 		const isNext = key === cgKey && !G.job;
 		const [bx, bz] = blip(ct.spot.x, ct.spot.z, "#ffd94d", isNext ? S * 0.017 : S * 0.011);
 		if (isNext) {
-			ctx.fillStyle = "#12222e"; ctx.font = "bold " + Math.round(S * 0.02) + "px Trebuchet MS, sans-serif";
+			ctx.fillStyle = "#12222e"; ctx.font = "bold " + M.round(S * 0.02) + "px Trebuchet MS, sans-serif";
 			ctx.fillText(String(G.jobIndex + 1), bx, bz + S * 0.007);
-			ctx.font = "bold " + Math.round(S * 0.016) + "px Trebuchet MS, sans-serif";
+			ctx.font = "bold " + M.round(S * 0.016) + "px Trebuchet MS, sans-serif";
 		}
 		if (G.track && G.track.key === key) {
 			ctx.lineWidth = 3; ctx.strokeStyle = "#2ee6c8";
@@ -359,19 +359,19 @@ function drawBigMap() {
 	}
 	el("btn-follow").style.display = G.track ? "inline-block" : "none";
 	if (G.track) {
-		ctx.font = "bold " + Math.round(S * 0.019) + "px Trebuchet MS, sans-serif"; ctx.textAlign = "left";
+		ctx.font = "bold " + M.round(S * 0.019) + "px Trebuchet MS, sans-serif"; ctx.textAlign = "left";
 		const label = "Melacak: " + G.track.name;
 		ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,25,35,0.85)";
 		ctx.strokeText(label, 14, 28); ctx.fillStyle = "#2ee6c8"; ctx.fillText(label, 14, 28);
 	}
 	if (G.objectivePos) {
-		const pulse = S * 0.013 + Math.sin(G.time * 5) * S * 0.003;
+		const pulse = S * 0.013 + M.sin(G.time * 5) * S * 0.003;
 		blip(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
 	}
 	const f = fPt();
 	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
 	ctx.save();
-	ctx.translate(clamp(w2m(f.x), 16, S - 16), clamp(w2m(f.z), 16, S - 16)); ctx.rotate(Math.PI - heading);
+	ctx.translate(clamp(w2m(f.x), 16, S - 16), clamp(w2m(f.z), 16, S - 16)); ctx.rotate(M.PI - heading);
 	const as = S * 0.016;
 	ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#12303f"; ctx.lineWidth = 2;
 	ctx.beginPath(); ctx.moveTo(0, -as); ctx.lineTo(as * 0.68, as * 0.8); ctx.lineTo(0, as * 0.42); ctx.lineTo(-as * 0.68, as * 0.8); ctx.closePath();
@@ -399,7 +399,7 @@ function buildMissionList() {
 		else if (G.job && G.job.i === i) { status = "Aktif"; cls = "active"; }
 		else if (i === G.jobIndex) { status = "Berikutnya"; cls = "next"; }
 		else { status = "Terkunci"; cls = "locked"; }
-		const row = document.createElement("div");
+		const row = DC.createElement("div");
 		row.className = "mission-row " + cls;
 		let html = "<div class='mission-head'><span class='mission-chip'>CHAPTER " + (i + 1) + "</span>" +
 			"<span class='mission-title'>" + def.title + "</span>" +
@@ -409,7 +409,7 @@ function buildMissionList() {
 		else if (cls === "next") html += "<div class='mission-obj'>" + def.brief + "</div>";
 		row.innerHTML = html;
 		if (cls === "active" || cls === "next") {
-			const btn = document.createElement("button");
+			const btn = DC.createElement("button");
 			btn.className = "mission-track"; btn.textContent = "🧭 Lacak";
 			btn.addEventListener("click", () => {
 				if (cls === "active" && G.objectivePos) setTrack({ x: G.objectivePos.x, z: G.objectivePos.z, name: "Tujuan — " + def.title });
@@ -423,7 +423,7 @@ function buildMissionList() {
 		wrap.appendChild(row);
 	});
 	if (G.jobIndex >= JOBS.length) {
-		const note = document.createElement("div");
+		const note = DC.createElement("div");
 		note.className = "mission-note";
 		note.textContent = "Cerita selesai — Coral Bay milikmu. Pekerjaan sampingan tetap buka: antar paket untuk Celia, atau Bay Runner rematch di garis start pantai ($400).";
 		wrap.appendChild(note);
@@ -446,17 +446,17 @@ function computeRoute(sx, sz, tx, tz) {
 		const self = P.length; P.push([px, pz]);
 		let fi = 0, fj = 0;
 		for (let i = 0; i < n; i++) {
-			if (Math.abs(L[i] - px) < Math.abs(L[fi] - px)) fi = i;
-			if (Math.abs(L[i] - pz) < Math.abs(L[fj] - pz)) fj = i;
+			if (M.abs(L[i] - px) < M.abs(L[fi] - px)) fi = i;
+			if (M.abs(L[i] - pz) < M.abs(L[fj] - pz)) fj = i;
 		}
 		const v = P.length; P.push([L[fi], pz]);
-		link(self, v, Math.abs(px - L[fi]));
+		link(self, v, M.abs(px - L[fi]));
 		let j = 0; while (j < n - 2 && L[j + 1] < pz) j++;
-		link(v, fi * n + j, Math.abs(pz - L[j])); link(v, fi * n + j + 1, Math.abs(pz - L[j + 1]));
+		link(v, fi * n + j, M.abs(pz - L[j])); link(v, fi * n + j + 1, M.abs(pz - L[j + 1]));
 		const hx = clamp(px, -840, 840), h = P.length; P.push([hx, L[fj]]);
-		link(self, h, Math.hypot(px - hx, pz - L[fj]));
+		link(self, h, M.hypot(px - hx, pz - L[fj]));
 		let k = 0; while (k < n - 2 && L[k + 1] < hx) k++;
-		link(h, k * n + fj, Math.abs(hx - L[k])); link(h, (k + 1) * n + fj, Math.abs(hx - L[k + 1]));
+		link(h, k * n + fj, M.abs(hx - L[k])); link(h, (k + 1) * n + fj, M.abs(hx - L[k + 1]));
 		return self;
 	}
 	const S = addEnd(sx, sz), D = addEnd(tx, tz), N = P.length;
@@ -482,7 +482,7 @@ function computeRoute(sx, sz, tx, tz) {
 	const out = [];
 	for (let i = 0; i < path.length; i++) {
 		if (i) {
-			const a = path[i - 1], b = path[i], d = dist2d(a[0], a[1], b[0], b[1]), steps = Math.floor(d / 40);
+			const a = path[i - 1], b = path[i], d = dist2d(a[0], a[1], b[0], b[1]), steps = M.floor(d / 40);
 			for (let s = 1; s <= steps; s++) out.push([a[0] + (b[0] - a[0]) * s / (steps + 1), a[1] + (b[1] - a[1]) * s / (steps + 1)]);
 		}
 		out.push(path[i]);
@@ -497,7 +497,7 @@ function buildRibbon() {
 	for (let i = 0; i < rPts.length - 1; i++) {
 		const a = rPts[i], b = rPts[i + 1];
 		let dx = b[0] - a[0], dz = b[1] - a[1];
-		const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
+		const len = M.hypot(dx, dz) || 1; dx /= len; dz /= len;
 		const px = -dz * 1.15, pz = dx * 1.15, y = 0.22;
 		pos.push(a[0] + px, y, a[1] + pz, a[0] - px, y, a[1] - pz, b[0] + px, y, b[1] + pz,
 			a[0] - px, y, a[1] - pz, b[0] - px, y, b[1] - pz, b[0] + px, y, b[1] + pz);
@@ -514,15 +514,15 @@ function routeTick(dt) {
 	const active = !G.stage && rPts && rPts.length > 1 && G.mode === "play" && !G.cutscene;
 	if (rMsh) {
 		rMsh.visible = !!active;
-		if (active) routeMat.opacity = 0.42 + Math.sin(G.time * 4) * 0.13;
+		if (active) routeMat.opacity = 0.42 + M.sin(G.time * 4) * 0.13;
 	}
 	if (active) {
 		const f = fPt();
 		while (routeWp < rPts.length - 1 && dist2d(f.x, f.z, rPts[routeWp][0], rPts[routeWp][1]) < 16) routeWp++;
 		const wp = rPts[routeWp];
-		const a = Math.atan2(wp[0] - f.x, wp[1] - f.z);
+		const a = M.atan2(wp[0] - f.x, wp[1] - f.z);
 		navEl.style.display = "block";
-		navEl.style.transform = "rotate(" + Math.round((G.camYaw - a) * 57.2958) + "deg)";
+		navEl.style.transform = "rotate(" + M.round((G.camYaw - a) * 57.2958) + "deg)";
 	} else navEl.style.display = "none";
 	if (G.mode !== "play" || G.cutscene || G.stage) return;
 	const f = fPt();
@@ -541,7 +541,7 @@ function routeTick(dt) {
 		if (dist2d(f.x, f.z, rPts[0][0], rPts[0][1]) > 30) redo = true;
 		else {
 			let md = 1e9;
-			for (const p of rPts) md = Math.min(md, dist2d(f.x, f.z, p[0], p[1]));
+			for (const p of rPts) md = M.min(md, dist2d(f.x, f.z, p[0], p[1]));
 			if (md > 40) redo = true;
 		}
 	}
@@ -559,7 +559,7 @@ function bigMapClick(e) {
 	const cv = el("bigmap-canvas"), r = cv.getBoundingClientRect(), S = cv.width;
 	const cx = e.offsetX / r.width * S, cy = e.offsetY / r.height * S;
 	const w2m = (v) => (v + G.citySize / 2) / G.citySize * S;
-	const hit = (x, z, rad) => Math.hypot(cx - clamp(w2m(x), rad + 2, S - rad - 2), cy - clamp(w2m(z), rad + 2, S - rad - 2)) < 30;
+	const hit = (x, z, rad) => M.hypot(cx - clamp(w2m(x), rad + 2, S - rad - 2), cy - clamp(w2m(z), rad + 2, S - rad - 2)) < 30;
 	const cg = cgK();
 	for (const key of ["celia", "marco", "don"]) {
 		const ct = G.contacts[key];

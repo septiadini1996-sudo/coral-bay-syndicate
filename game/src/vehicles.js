@@ -17,9 +17,9 @@ const CAR_COLORS = [0xc93a2e, 0x2e7fc9, 0xf2b13d, 0x39b5a6, 0xe8e4da, 0x30343a, 
 function vMat(color) { return new T3.MeshLambertMaterial({ color }); }
 function makeWheel(r, w) {
 	const m = new T3.Mesh(new T3.CylinderGeometry(r, r, w, 12), vMat(0x181a1c));
-	m.rotation.z = Math.PI / 2;
+	m.rotation.z = M.PI / 2;
 	const hub = new T3.Mesh(new T3.CylinderGeometry(r * 0.45, r * 0.45, w + 0.04, 8), vMat(0xb9bec2));
-	hub.rotation.z = Math.PI / 2; m.add(hub);
+	hub.rotation.z = M.PI / 2; m.add(hub);
 	m.castShadow = true;
 	return m;
 }
@@ -123,6 +123,7 @@ function makeVehicleMesh(kind, color) {
 function spV(kind, x, z, heading, color, driver) {
 	const built = makeVehicleMesh(kind, color !== undefined ? color : pick(CAR_COLORS));
 	built.group.traverse((o) => { if (o.material && o.material.color) o.userData.c = o.material.color.clone(); });
+	if (built.group.userData.headlightMat) (G.hlMats || (G.hlMats = [])).push(built.group.userData.headlightMat);
 	built.group.position.set(x, 0, z);
 	built.group.rotation.y = heading || 0;
 	G.scene.add(built.group);
@@ -136,9 +137,9 @@ function spV(kind, x, z, heading, color, driver) {
 	return v;
 }
 function buildVehicles(scene) {
-	spV("comet", -664, 96, Math.PI / 2, 0xff5f9e);
+	spV("comet", -664, 96, M.PI / 2, 0xff5f9e);
 	spV("crusher", SPOTS.crusherYard.x, SPOTS.crusherYard.z, 0.4, 0xf2762e);
-	spV("falco", SPOTS.beachFalco.x, SPOTS.beachFalco.z, Math.PI, 0x2e7fc9);
+	spV("falco", SPOTS.beachFalco.x, SPOTS.beachFalco.z, M.PI, 0x2e7fc9);
 	spV("roadster", SPOTS.roadster.x, SPOTS.roadster.z, 2.4, 0x7a1f24);
 	spV("bicycle", SPOTS.bicycle.x, SPOTS.bicycle.z, 0, 0x39b5a6);
 	spV("marlin", -596, -216, 0.3, 0x58a05c);
@@ -153,21 +154,21 @@ function buildVehicles(scene) {
 		const road = pick(RL), along = rand(-760, 760), horiz = rng() > 0.5;
 		const tk = pick(["sedan", "pickup", "van", "taxi", "sedan"]);
 		const v = spV(tk, horiz ? along : road, horiz ? road : along, 0, tk === "taxi" ? 0xf7b731 : undefined, "traffic");
-		v.mesh.rotation.y = horiz ? (rng() > 0.5 ? Math.PI / 2 : -Math.PI / 2) : (rng() > 0.5 ? 0 : Math.PI);
+		v.mesh.rotation.y = horiz ? (rng() > 0.5 ? M.PI / 2 : -M.PI / 2) : (rng() > 0.5 ? 0 : M.PI);
 		v.aiTarget = nxTP(v);
 	}
 }
 function nxTP(v) {
 	const p = v.mesh.position;
-	const fx = Math.sin(v.mesh.rotation.y), fz = Math.cos(v.mesh.rotation.y);
-	let nx = Math.round((p.x + fx * 90) / 160) * 160, nz = Math.round((p.z + fz * 90) / 160) * 160;
+	const fx = M.sin(v.mesh.rotation.y), fz = M.cos(v.mesh.rotation.y);
+	let nx = M.round((p.x + fx * 90) / 160) * 160, nz = M.round((p.z + fz * 90) / 160) * 160;
 	nx = clamp(nx, -640, 640); nz = clamp(nz, -640, 640);
 	if (rng() > 0.55) {
-		if (Math.abs(fx) > Math.abs(fz)) nz = clamp(Math.round(p.z / 160) * 160 + pick([-160, 160]), -640, 640);
-		else nx = clamp(Math.round(p.x / 160) * 160 + pick([-160, 160]), -640, 640);
+		if (M.abs(fx) > M.abs(fz)) nz = clamp(M.round(p.z / 160) * 160 + pick([-160, 160]), -640, 640);
+		else nx = clamp(M.round(p.x / 160) * 160 + pick([-160, 160]), -640, 640);
 	}
 	const lane = 6.5;
-	return { x: nx + (Math.abs(fz) > 0.5 ? lane * Math.sign(fz || 1) : 0), z: nz + (Math.abs(fx) > 0.5 ? -lane * Math.sign(fx || 1) : 0) };
+	return { x: nx + (M.abs(fz) > 0.5 ? lane * M.sign(fz || 1) : 0), z: nz + (M.abs(fx) > 0.5 ? -lane * M.sign(fx || 1) : 0) };
 }
 function nearestVehicle(x, z, maxD) {
 	let best = null, bd = maxD;
@@ -188,7 +189,7 @@ const SEATS = {
 function seatV(v) {
 	const s = SEATS[v.kind]; if (!s || !G.player) return;
 	const m = v.mesh, p = G.player.mesh;
-	const c = Math.cos(m.rotation.y), sn = Math.sin(m.rotation.y);
+	const c = M.cos(m.rotation.y), sn = M.sin(m.rotation.y);
 	p.position.set(
 		m.position.x + s.x * c + s.z * sn,
 		m.position.y + s.y,
@@ -214,7 +215,7 @@ function exitVehicle() {
 	const v = G.vehicle; if (!v) return;
 	v.driver = null;
 	const m = v.mesh, side = 2.4;
-	const px = m.position.x + Math.cos(m.rotation.y) * -side, pz = m.position.z - Math.sin(m.rotation.y) * -side;
+	const px = m.position.x + M.cos(m.rotation.y) * -side, pz = m.position.z - M.sin(m.rotation.y) * -side;
 	const fixed = colC(px, pz, 0.55);
 	G.player.mesh.position.set(fixed.x, 0, fixed.z);
 	G.player.mesh.visible = true;
@@ -237,30 +238,30 @@ function driveVehicle(v, dt, input) {
 	const throttle = (input.up ? 1 : 0) - (input.down ? 1 : 0);
 	const steerIn = (input.left ? 1 : 0) - (input.right ? 1 : 0);
 	v.steer = lerp(v.steer, steerIn, clamp(dt * 7, 0, 1));
-	if (throttle > 0) v.speed += K.accel * dt * (1 - Math.max(0, v.speed) / K.top);
+	if (throttle > 0) v.speed += K.accel * dt * (1 - M.max(0, v.speed) / K.top);
 	else if (throttle < 0) v.speed += (v.speed > 0.5 ? -34 : -K.accel * 0.6) * dt;
 	else v.speed -= v.speed * 0.55 * dt;
 	if (input.brake) v.speed -= v.speed * 3.2 * dt;
-	v.speed -= v.speed * Math.abs(v.steer) * 0.35 * dt;
+	v.speed -= v.speed * M.abs(v.steer) * 0.35 * dt;
 	v.speed = clamp(v.speed, -13, K.top);
-	if (Math.abs(v.speed) < 0.04 && throttle === 0) v.speed = 0;
-	const turnRate = v.steer * clamp(Math.abs(v.speed) / 9, 0, 1) * (K.bike ? 1.5 : 0.95);
+	if (M.abs(v.speed) < 0.04 && throttle === 0) v.speed = 0;
+	const turnRate = v.steer * clamp(M.abs(v.speed) / 9, 0, 1) * (K.bike ? 1.5 : 0.95);
 	m.rotation.y += turnRate * dt * (v.speed >= 0 ? 1 : -1);
-	const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y);
+	const fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y);
 	const prevX = m.position.x, prevZ = m.position.z;
 	let nx = m.position.x + fx * v.speed * dt;
 	let nz = m.position.z + fz * v.speed * dt;
 	const fixed = colC(nx, nz, K.radius);
-	const impact = Math.abs(fixed.x - nx) + Math.abs(fixed.z - nz);
+	const impact = M.abs(fixed.x - nx) + M.abs(fixed.z - nz);
 	nx = fixed.x; nz = fixed.z;
 	if (!isLand(nx, nz) && isLand(prevX, prevZ)) { nx = prevX; nz = prevZ; if (v.speed > 4) dmgV(v, 3); v.speed *= 0.3; }
-	if (impact > 0.4 && Math.abs(v.speed) > 9) { dmgV(v, Math.abs(v.speed) * 0.22); if (v.driver === "player") sfxCrash(Math.abs(v.speed)); v.speed *= 0.35; }
+	if (impact > 0.4 && M.abs(v.speed) > 9) { dmgV(v, M.abs(v.speed) * 0.22); if (v.driver === "player") sfxCrash(M.abs(v.speed)); v.speed *= 0.35; }
 	m.position.x = nx; m.position.z = nz;
 	const wr = v.speed * dt / 0.42;
 	for (const w of v.wheels) w.rotation.x += wr;
 	for (const w of v.steerW) w.rotation.y = v.steer * 0.42;
 	if (K.bike) {
-		const targetRoll = -v.steer * clamp(Math.abs(v.speed) / K.top, 0, 1) * 0.55;
+		const targetRoll = -v.steer * clamp(M.abs(v.speed) / K.top, 0, 1) * 0.55;
 		m.rotation.z = lerp(m.rotation.z, targetRoll, clamp(dt * 6, 0, 1));
 		if (v.driver === "player") seatB(v);
 	} else {
@@ -291,7 +292,7 @@ function flyHelicopter(v, dt, input) {
 		const fwd = (input.up ? 1 : 0) - (input.down ? 1 : 0);
 		v.speed = lerp(v.speed, fwd * VKD.heli.top, clamp(dt * 1.4, 0, 1));
 	} else v.speed = lerp(v.speed, 0, dt * 4);
-	const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y);
+	const fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y);
 	m.position.x = clamp(m.position.x + fx * v.speed * dt, -1000, 1000);
 	m.position.z = clamp(m.position.z + fz * v.speed * dt, -1000, 1000);
 	v.alt = clamp(v.alt + v.vy * dt, 0, 130);
@@ -307,7 +308,7 @@ function dmgV(v, amt) {
 		v.health = 0; v.alive = false; v.speed = 0;
 		v.mesh.traverse((o) => { if (o.material && o.material.color) o.material = o.material.clone(), o.material.color.multiplyScalar(0.35); });
 		if (v.driver === "player") {
-			G.health = Math.max(5, G.health - 18);
+			G.health = M.max(5, G.health - 18);
 			sToa("The " + v.name + " is wrecked!");
 			exitVehicle();
 		}
@@ -341,7 +342,7 @@ function updateSmoke(dt) {
 		s.life -= dt;
 		s.spr.position.y += dt * 2.6;
 		s.spr.scale.multiplyScalar(1 + dt * 1.4);
-		s.spr.material.opacity = Math.max(0, s.life * 0.45);
+		s.spr.material.opacity = M.max(0, s.life * 0.45);
 		if (s.life <= 0) s.spr.visible = false;
 	}
 }
@@ -355,10 +356,10 @@ function collideVehicles(dt) {
 			const rr = (VKD[a.kind].radius + VKD[b.kind].radius) * 0.92;
 			const d2 = dx * dx + dz * dz;
 			if (d2 > rr * rr || d2 === 0) continue;
-			const d = Math.sqrt(d2), push = (rr - d) / 2, ux = dx / d, uz = dz / d;
+			const d = M.sqrt(d2), push = (rr - d) / 2, ux = dx / d, uz = dz / d;
 			if (!VKD[a.kind].heli || a.alt < 3) { a.mesh.position.x -= ux * push; a.mesh.position.z -= uz * push; }
 			if (!VKD[b.kind].heli || b.alt < 3) { b.mesh.position.x += ux * push; b.mesh.position.z += uz * push; }
-			const rel = Math.abs(a.speed - b.speed);
+			const rel = M.abs(a.speed - b.speed);
 			if (rel > 7) {
 				panicAt((a.mesh.position.x + b.mesh.position.x) / 2, (a.mesh.position.z + b.mesh.position.z) / 2, 24);
 				dmgV(a, rel * 0.3); dmgV(b, rel * 0.3);
@@ -366,7 +367,7 @@ function collideVehicles(dt) {
 				a.speed *= 0.55; b.speed *= 0.55;
 			}
 		}
-		if (a.driver === "player" && Math.abs(a.speed) > 6) {
+		if (a.driver === "player" && M.abs(a.speed) > 6) {
 			for (const p of G.peds) {
 				if (p.dead > 0) continue;
 				if (dist2d(a.mesh.position.x, a.mesh.position.z, p.mesh.position.x, p.mesh.position.z) < 2.1) {
@@ -385,7 +386,7 @@ function uTraf(dt) {
 		if (far > 720) {
 			const road = pick(RL), horiz = rng() > 0.5, along = clamp(pp.x + rand(-420, 420), -780, 780);
 			m.position.set(horiz ? along : road, 0, horiz ? road : clamp(pp.z + rand(-420, 420), -780, 780));
-			m.rotation.y = horiz ? Math.PI / 2 : 0;
+			m.rotation.y = horiz ? M.PI / 2 : 0;
 			v.aiTarget = nxTP(v);
 			continue;
 		}
@@ -393,22 +394,22 @@ function uTraf(dt) {
 		const t = v.aiTarget;
 		const dx = t.x - m.position.x, dz = t.z - m.position.z;
 		if (dx * dx + dz * dz < 90) { v.aiTarget = nxTP(v); continue; }
-		const want = Math.atan2(dx, dz);
+		const want = M.atan2(dx, dz);
 		const diff = angWrap(want - m.rotation.y);
 		let blocked = false;
-		const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y);
+		const fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y);
 		for (const o of G.vehicles) {
 			if (o === v || !o.alive) continue;
 			const ox = o.mesh.position.x - m.position.x, oz = o.mesh.position.z - m.position.z;
-			if (ox * fx + oz * fz > 0 && ox * fx + oz * fz < 10 && Math.abs(ox * fz - oz * fx) < 3.4) { blocked = true; break; }
+			if (ox * fx + oz * fz > 0 && ox * fx + oz * fz < 10 && M.abs(ox * fz - oz * fx) < 3.4) { blocked = true; break; }
 		}
 		if (!blocked && G.onFoot && (pp.x - m.position.x) * fx + (pp.z - m.position.z) * fz > 0 &&
-				(pp.x - m.position.x) * fx + (pp.z - m.position.z) * fz < 9 && Math.abs((pp.x - m.position.x) * fz - (pp.z - m.position.z) * fx) < 3) blocked = true;
+				(pp.x - m.position.x) * fx + (pp.z - m.position.z) * fz < 9 && M.abs((pp.x - m.position.x) * fz - (pp.z - m.position.z) * fx) < 3) blocked = true;
 		const input = {
-			up: !blocked && Math.abs(diff) < 1.2, down: false,
+			up: !blocked && M.abs(diff) < 1.2, down: false,
 			left: diff > 0.06, right: diff < -0.06, brake: blocked,
 		};
-		if (Math.abs(v.speed) > 17) input.up = false;
+		if (M.abs(v.speed) > 17) input.up = false;
 		driveVehicle(v, dt, input);
 	}
 }

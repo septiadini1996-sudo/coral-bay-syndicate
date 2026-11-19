@@ -2,7 +2,7 @@
 "use strict";
 
 function setWanted(n) {
-	n = clamp(Math.round(n), 0, 5);
+	n = clamp(M.round(n), 0, 5);
 	if (n === G.wanted) { uHud(); return; }
 	G.wanted = n; G.wantedCalm = 0;
 	if (n > 0) sToa("Wanted level " + n + " — the CBPD is rolling");
@@ -11,7 +11,7 @@ function setWanted(n) {
 function addCrime(n) {
 	if (G.mode !== "play" && !G.stage) return;
 	if (n <= 0) { if (G.wanted === 0) setWanted(1); G.wantedCalm = 0; return; }
-	setWanted(Math.min(5, G.wanted + n));
+	setWanted(M.min(5, G.wanted + n));
 	G.wantedCalm = 0;
 }
 
@@ -24,9 +24,9 @@ function rmVeh(v) {
 }
 
 function spawnInterceptor(nearX, nearZ) {
-	const a = rand(0, Math.PI * 2), d = rand(105, 150);
-	let x = clamp(nearX + Math.cos(a) * d, -820, 820), z = clamp(nearZ + Math.sin(a) * d, -820, 820);
-	x = Math.round(x / 160) * 160; 
+	const a = rand(0, M.PI * 2), d = rand(105, 150);
+	let x = clamp(nearX + M.cos(a) * d, -820, 820), z = clamp(nearZ + M.sin(a) * d, -820, 820);
+	x = M.round(x / 160) * 160; 
 	const v = spV("interceptor", x, z, rand(0, 6.28), 0x30343a, "police");
 	G.police.push(v);
 	return v;
@@ -46,16 +46,16 @@ function updateRoadblocks(dt) {
 		}
 		return;
 	}
-	if (G.wanted < 3 || G.onFoot || !G.vehicle || Math.abs(G.vehicle.speed) < 11 || rbState.cooldown > 0) return;
+	if (G.wanted < 3 || G.onFoot || !G.vehicle || M.abs(G.vehicle.speed) < 11 || rbState.cooldown > 0) return;
 	const m = G.vehicle.mesh;
-	const fx = Math.sin(m.rotation.y), fz = Math.cos(m.rotation.y);
+	const fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y);
 	let bx = m.position.x + fx * 100, bz = m.position.z + fz * 100;
 	
-	if (Math.abs(fx) > Math.abs(fz)) bz = Math.round(bz / 160) * 160; else bx = Math.round(bx / 160) * 160;
+	if (M.abs(fx) > M.abs(fz)) bz = M.round(bz / 160) * 160; else bx = M.round(bx / 160) * 160;
 	bx = clamp(bx, -700, 700); bz = clamp(bz, -700, 700);
-	const across = Math.atan2(fx, fz) + Math.PI / 2;
+	const across = M.atan2(fx, fz) + M.PI / 2;
 	for (const off of [-4.5, 4.5]) {
-		const c = spV("interceptor", bx + Math.sin(across) * off, bz + Math.cos(across) * off, across, 0x30343a, "roadblock");
+		const c = spV("interceptor", bx + M.sin(across) * off, bz + M.cos(across) * off, across, 0x30343a, "roadblock");
 		c.roadblock = true;
 		rbState.cars.push(c);
 	}
@@ -96,11 +96,11 @@ function updatePoliceHeli(dt) {
 	const m = pHeli.mesh;
 	pHeli.rotorSpin += dt * 30;
 	if (m.userData.rotor) m.userData.rotor.rotation.y = pHeli.rotorSpin * 3;
-	const tx = pp.x + Math.sin(G.time * 0.4) * 16, tz = pp.z + Math.cos(G.time * 0.33) * 16;
+	const tx = pp.x + M.sin(G.time * 0.4) * 16, tz = pp.z + M.cos(G.time * 0.33) * 16;
 	m.position.x = lerp(m.position.x, tx, clamp(dt * 1.6, 0, 1));
 	m.position.z = lerp(m.position.z, tz, clamp(dt * 1.6, 0, 1));
 	m.position.y = lerp(m.position.y, 44, dt);
-	m.rotation.y = Math.atan2(pp.x - m.position.x, pp.z - m.position.z);
+	m.rotation.y = M.atan2(pp.x - m.position.x, pp.z - m.position.z);
 	hLit.position.set(m.position.x, m.position.y - 1, m.position.z);
 	hLit.target.position.set(pp.x, 0, pp.z);
 	heliCone.position.set(m.position.x, m.position.y - 1, m.position.z);
@@ -116,7 +116,7 @@ function updatePolice(dt) {
 		while (G.police.length < wantedCount) spawnInterceptor(pp.x, pp.z);
 		while (G.police.length > wantedCount) rmVeh(G.police[G.police.length - 1]);
 	}
-	const flash = Math.floor(G.time * 2.4) % 2 === 0;
+	const flash = M.floor(G.time * 2.4) % 2 === 0;
 	for (const c of G.police) {
 		if (!c.alive) continue;
 		const bar = c.mesh.userData.lightBar;
@@ -124,24 +124,24 @@ function updatePolice(dt) {
 		const m = c.mesh;
 		const d = dist2d(m.position.x, m.position.z, pp.x, pp.z);
 		if (d > 640) { 
-			const a = rand(0, Math.PI * 2);
-			m.position.set(clamp(pp.x + Math.cos(a) * 130, -820, 820), 0, clamp(pp.z + Math.sin(a) * 130, -820, 820));
+			const a = rand(0, M.PI * 2);
+			m.position.set(clamp(pp.x + M.cos(a) * 130, -820, 820), 0, clamp(pp.z + M.sin(a) * 130, -820, 820));
 			continue;
 		}
 		const targetSpeed = G.onFoot ? 15 : 47;
 		const dx = pp.x - m.position.x, dz = pp.z - m.position.z;
-		const want = Math.atan2(dx, dz);
+		const want = M.atan2(dx, dz);
 		const diff = angWrap(want - m.rotation.y);
 		const input = {
-			up: d > 6 && Math.abs(diff) < 1.25, down: d < 5 && Math.abs(v_angDiff(m, pp)) > 2.4,
+			up: d > 6 && M.abs(diff) < 1.25, down: d < 5 && M.abs(v_angDiff(m, pp)) > 2.4,
 			left: diff > 0.05, right: diff < -0.05, brake: d < 7 && G.onFoot,
 		};
-		if (Math.abs(c.speed) > targetSpeed) input.up = false;
+		if (M.abs(c.speed) > targetSpeed) input.up = false;
 		driveVehicle(c, dt, input);
 		
-		if (G.onFoot && d < 2.4 && Math.abs(c.speed) > 5) {
-			G.health -= 11; G.player.mesh.position.x += Math.sin(m.rotation.y) * 3;
-			G.player.mesh.position.z += Math.cos(m.rotation.y) * 3;
+		if (G.onFoot && d < 2.4 && M.abs(c.speed) > 5) {
+			G.health -= 11; G.player.mesh.position.x += M.sin(m.rotation.y) * 3;
+			G.player.mesh.position.z += M.cos(m.rotation.y) * 3;
 			showHurt(); sfxCrash(8);
 		}
 	}
@@ -149,18 +149,18 @@ function updatePolice(dt) {
 	updatePoliceHeli(dt);
 	updateBusted(dt);
 }
-function v_angDiff(m, pp) { return angWrap(Math.atan2(pp.x - m.position.x, pp.z - m.position.z) - m.rotation.y); }
+function v_angDiff(m, pp) { return angWrap(M.atan2(pp.x - m.position.x, pp.z - m.position.z) - m.rotation.y); }
 
 function updateBusted(dt) {
-	if (G.mode !== "play" || G.wanted === 0) { G.bustMeter = Math.max(0, G.bustMeter - dt * 0.5); setBustUI(G.bustMeter); return; }
+	if (G.mode !== "play" || G.wanted === 0) { G.bustMeter = M.max(0, G.bustMeter - dt * 0.5); setBustUI(G.bustMeter); return; }
 	const pp = fPt();
 	let near = false;
 	for (const c of G.police) {
 		if (dist2d(c.mesh.position.x, c.mesh.position.z, pp.x, pp.z) < 8.5) { near = true; break; }
 	}
-	const slow = G.onFoot ? (G.player.speed || 0) < 2.2 : Math.abs(G.vehicle.speed) < 1.6;
+	const slow = G.onFoot ? (G.player.speed || 0) < 2.2 : M.abs(G.vehicle.speed) < 1.6;
 	if (near && slow) G.bustMeter += dt / 2.8;
-	else G.bustMeter = Math.max(0, G.bustMeter - dt * 0.35);
+	else G.bustMeter = M.max(0, G.bustMeter - dt * 0.35);
 	setBustUI(G.bustMeter);
 	if (G.bustMeter >= 1) doBusted();
 }
@@ -182,7 +182,7 @@ function rspH() {
 }
 function doBusted() {
 	G.bustMeter = 0;
-	const fine = Math.min(G.cash, Math.max(50, Math.round(G.cash * 0.12)));
+	const fine = M.min(G.cash, M.max(50, M.round(G.cash * 0.12)));
 	G.cash -= fine;
 	rspH();
 	sfxSting("bad");
@@ -190,7 +190,7 @@ function doBusted() {
 	saveGame(); uHud();
 }
 function doWasted() {
-	const fine = Math.min(G.cash, Math.max(40, Math.round(G.cash * 0.1)));
+	const fine = M.min(G.cash, M.max(40, M.round(G.cash * 0.1)));
 	G.cash -= fine;
 	rspH();
 	sfxSting("bad");
@@ -199,5 +199,5 @@ function doWasted() {
 }
 function checkHealth(dt) {
 	if (G.health <= 0 && G.mode === "play") { G.health = 0; doWasted(); return; }
-	if (G.health < 100 && G.mode === "play") { G.health = Math.min(100, G.health + dt * 1.1); uHud(); }
+	if (G.health < 100 && G.mode === "play") { G.health = M.min(100, G.health + dt * 1.1); uHud(); }
 }
