@@ -1,5 +1,5 @@
 "use strict";
-let mmCtx = null, toastTimer = 0, bannerTimer = 0, hurtT = 0, lastDistrict = "";
+let mmCtx = null, toastTimer = 0, bannerTimer = 0, hurtT = 0, lastDistrict = "", wbCache = "", rkCache = -1, rToastTimer = 0;
 function clk(id, fn, init) { el(id).addEventListener("click", () => { if (init) sfxInit(); sfxClick(); fn(); }); }
 function hudInit() {
 	mmCtx = el("minimap").getContext("2d");
@@ -46,6 +46,15 @@ function sToa(text, dur) {
 	t.textContent = text; t.style.opacity = "1";
 	toastTimer = dur || 3.4;
 }
+function radioToast(name) {
+	const t = el("rtoast");
+	t.textContent = "♪ RADIO · " + name;
+	t.style.opacity = "1";
+	rToastTimer = 2.5;
+}
+function radioLine() {
+	return G.rO ? "RADIO · " + RST[G.rS % RST.length].name : "RADIO · OFF — Q turns it on";
+}
 function showBanner(title, text, dur) {
 	el("banner-title").textContent = title;
 	el("banner-text").textContent = text;
@@ -82,16 +91,9 @@ function uHud() {
 	st.style.color = G.wn > 0 ? "#ffcf3f" : "rgba(255,255,255,0.35)";
 	el("healthfill").style.width = zm(G.hp, 0, 100) + "%";
 	el("healthfill").style.background = G.hp > 35 ? "#58d06a" : "#e84a3c";
-	const wname = { fists: "Fists", bat: "Baseball bat", pipe: "Lead pipe", pistol: "Pistol", smg: "SMG" }[G.wp];
-	el("weapon").textContent = G.wp === "pistol" ? wname + " · " + G.ammoP : G.wp === "smg" ? wname + " · " + G.ammoS : wname;
 	el("crosshair").style.display = isGun(G.wp) && G.oF && G.md === "play" ? "block" : "none";
 	if (G.gU) { G.gU.visible = isGun(G.wp) && G.oF; G.gU.scale.z = G.wp === "smg" ? 1.45 : 1; }
-	const driving = !G.oF && G.vh;
-	el("speedo").style.display = driving ? "block" : "none";
-	if (driving) {
-		el("speed-val").textContent = M.round(M.abs(G.vh.speed) * 3.1);
-		el("speed-name").textContent = G.vh.name + (G.vh.kind === "heli" ? " · alt " + M.round(G.vh.alt) + "m" : "");
-	}
+	updPanels();
 	const tp = G.tk || G.oP;
 	if (tp) {
 		const f = fPt();
@@ -105,6 +107,61 @@ function uHud() {
 	const dname = dAt(f.x, f.z);
 	if (dname !== lastDistrict) { lastDistrict = dname; el("district").textContent = dname; }
 	refreshTracker(f);
+}
+const RANK_NAMES = ["Outsider", "Runner", "Earner", "Fixer", "Lieutenant", "Captain", "Kingpin"];
+function setSlot(id, eq, owned) {
+	el(id).className = "wslot" + (eq ? " eq" : "") + (owned ? "" : " dim");
+}
+function updPanels() {
+	const wSig = G.wp + "|" + (G.gn.pistol ? 1 : 0) + (G.gn.smg ? 1 : 0) + "|" + G.ammoP + "|" + G.ammoS;
+	if (wSig !== wbCache) {
+		wbCache = wSig;
+		setSlot("ws-fists", !isGun(G.wp), true);
+		setSlot("ws-pistol", G.wp === "pistol", G.gn.pistol);
+		setSlot("ws-smg", G.wp === "smg", G.gn.smg);
+		el("wa-pistol").textContent = G.ammoP;
+		el("wa-smg").textContent = G.ammoS;
+	}
+	const driving = !G.oF && G.vh;
+	el("vehpanel").style.display = driving ? "block" : "none";
+	if (driving) {
+		el("veh-speed").textContent = M.round(M.abs(G.vh.speed) * 3.1);
+		el("veh-name").textContent = G.vh.name + (G.vh.kind === "heli" ? " · alt " + M.round(G.vh.alt) + "m" : "");
+		const cond = M.max(0, M.round(G.vh.health));
+		el("veh-cond").textContent = cond + "%";
+		const cf = el("veh-condfill");
+		cf.style.width = cond + "%";
+		cf.style.background = cond > 50 ? "#58d06a" : cond > 25 ? "#f2a93d" : "#e84a3c";
+		el("veh-radio").textContent = radioLine();
+	}
+	const showPol = G.wn > 0;
+	el("policepanel").style.display = showPol ? "block" : "none";
+	if (showPol) {
+		const f = fPt();
+		let units = 0, near = 1e9;
+		for (const c of G.po) {
+			if (!c.alive) continue;
+			units++;
+			const d = d3(c.mesh.position.x, c.mesh.position.z, f.x, f.z);
+			if (d < near) near = d;
+		}
+		if (typeof pHeli !== "undefined" && pHeli) {
+			units++;
+			const d = d3(pHeli.mesh.position.x, pHeli.mesh.position.z, f.x, f.z);
+			if (d < near) near = d;
+		}
+		const pursuit = units > 0 && near <= 55;
+		el("pol-state").textContent = pursuit ? "PURSUIT" : "SEARCHING";
+		el("pol-dot").style.color = pursuit ? "#ff5a4d" : "#ffd94d";
+		el("pol-info").textContent = units + (units === 1 ? " unit" : " units") + " · nearest " + (near < 1e8 ? M.round(near) + "m" : "—");
+	}
+	if (G.jD !== rkCache) {
+		rkCache = G.jD;
+		const r = zm(G.jD, 0, 6);
+		el("rank-name").textContent = RANK_NAMES[r];
+		el("rank-fill").style.width = M.round(r / 6 * 100) + "%";
+		el("rank-sub").textContent = r >= 6 ? "Top rank — the bay is yours" : "Syndicate rank · " + r + "/6 jobs done";
+	}
 }
 let trkCache = "";
 function cgK() {
@@ -135,12 +192,22 @@ function refreshTracker(f) {
 	}
 	let dist = tx !== null ? M.round(d3(f.x, f.z, tx, tz)) + "m" : "";
 	if (G.tk) { obj = "Tracking: " + G.tk.name; dist = M.round(d3(f.x, f.z, G.tk.x, G.tk.z)) + "m"; }
-	const sig = head + "|" + obj + "|" + dist;
+	let stepTxt = "";
+	if (G.job) {
+		const ji = G.job.i, js = G.job.step;
+		if (ji === 3 && js === 1) stepTxt = "CHECKPOINT " + M.min((G.job.data.cp || 0) + 1, 6) + "/6";
+		else if (ji === 1 || ji === 5) stepTxt = "STEP " + (js >= 2 ? 2 : 1) + "/2";
+		else stepTxt = "STEP " + (js + 1) + "/2";
+	} else if (G.hu && G.hu.type === "race") {
+		stepTxt = "CHECKPOINT " + M.min(G.hu.cp + 1, 6) + "/6";
+	}
+	const sig = head + "|" + obj + "|" + dist + "|" + stepTxt;
 	if (sig === trkCache) return;
 	trkCache = sig;
 	el("trk-chapter").textContent = head;
 	el("trk-obj").textContent = obj;
 	el("trk-dist").textContent = dist;
+	el("trk-step").textContent = stepTxt;
 }
 function drawMinimap() {
 	if (!mmCtx || !G.gC) return;
@@ -206,6 +273,7 @@ function drawMinimap() {
 }
 function hudTick(dt) {
 	if (toastTimer > 0) { toastTimer -= dt; if (toastTimer <= 0) el("toast").style.opacity = "0"; }
+	if (rToastTimer > 0) { rToastTimer -= dt; if (rToastTimer <= 0) el("rtoast").style.opacity = "0"; }
 	if (bannerTimer > 0) {
 		bannerTimer -= dt;
 		if (bannerTimer <= 0) { el("banner").style.opacity = "0"; el("banner").style.transform = "translate(-50%, -12px)"; }

@@ -423,7 +423,7 @@ function updatePlayerVehicle(dt) {
 	};
 	driveVehicle(v, dt, input);
 	if (key("KeyE")) { G.ky["KeyE"] = false; if (VKD[v.kind].heli && v.alt > 2) { sToa("Too high to bail out!"); } else exitVehicle(); }
-	if (key("KeyQ")) { G.ky["KeyQ"] = false; G.rO = !G.rO; sToa(G.rO ? "Radio on — " + RST[G.rS].name : "Radio off"); }
+	if (key("KeyQ")) { G.ky["KeyQ"] = false; G.rO = !G.rO; if (G.rO) radioToast(RST[G.rS].name); else sToa("Radio off"); }
 	if (key("KeyR") && !VKD[v.kind].heli) {  }
 	if (key("Digit1")) { G.ky["Digit1"] = false; cycleRadio(-1); }
 	if (key("Digit2")) { G.ky["Digit2"] = false; cycleRadio(1); }
@@ -431,5 +431,5 @@ function updatePlayerVehicle(dt) {
 function cycleRadio(d) {
 	G.rS = (G.rS + d + RST.length) % RST.length;
 	G.rO = true;
-	sToa("Radio — " + RST[G.rS].name);
+	radioToast(RST[G.rS].name);
 }
