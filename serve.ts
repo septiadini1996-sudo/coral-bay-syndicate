@@ -1,49 +1,110 @@
-// Coral Bay Syndicate — tiny local static server for game/.
-// Run `node serve.ts`, then open http://localhost:8080 in a desktop browser.
-// Standard library only; serves nothing outside game/ and never the network
-// beyond this machine.
-import { readFile } from 'node:fs/promises';
+// serve.ts - a small static file server for developing Coral Bay Syndicate.
+//
+// The game is plain static files under game/, with no build step, so all it
+// takes to play it locally is something that answers HTTP requests with
+// those files and the right content types:
+//
+//   node serve.ts              serves game/ at http://localhost:8080
+//   node serve.ts --port 9000  the same, on another port
+//
+// Node's standard library does all the work. Requests are confined to
+// game/: a path that tries to climb out of it is refused, a directory is
+// answered with its index.html, and nothing is cached, so an edit is one
+// refresh away. This is a development convenience, not a hardened server.
+
+import { createReadStream } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { createServer } from 'node:http';
-import { dirname, extname, join, normalize } from 'node:path';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import { extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const root = join(dirname(fileURLToPath(import.meta.url)), 'game');
-const port = Number(process.env.PORT ?? 8080);
+const gameRoot = resolve(fileURLToPath(new URL('./game', import.meta.url)));
 
-const types: Record<string, string> = {
-  '.html': 'text/html; charset=utf-8',
-  '.js': 'text/javascript; charset=utf-8',
-  '.mjs': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8',
-  '.json': 'application/json; charset=utf-8',
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.svg': 'image/svg+xml',
-  '.wasm': 'application/wasm',
-};
+/** The content type each extension is served as; anything unlisted is a plain byte stream. */
+const CONTENT_TYPES: ReadonlyMap<string, string> = new Map([
+  ['.html', 'text/html; charset=utf-8'],
+  ['.js', 'text/javascript; charset=utf-8'],
+  ['.mjs', 'text/javascript; charset=utf-8'],
+  ['.css', 'text/css; charset=utf-8'],
+  ['.json', 'application/json; charset=utf-8'],
+  ['.png', 'image/png'],
+  ['.jpg', 'image/jpeg'],
+  ['.jpeg', 'image/jpeg'],
+  ['.gif', 'image/gif'],
+  ['.webp', 'image/webp'],
+  ['.svg', 'image/svg+xml'],
+  ['.ico', 'image/x-icon'],
+  ['.woff', 'font/woff'],
+  ['.woff2', 'font/woff2'],
+  ['.ttf', 'font/ttf'],
+  ['.otf', 'font/otf'],
+  ['.wasm', 'application/wasm'],
+  ['.glb', 'model/gltf-binary'],
+  ['.gltf', 'model/gltf+json'],
+  ['.bin', 'application/octet-stream'],
+  ['.wav', 'audio/wav'],
+  ['.mp3', 'audio/mpeg'],
+  ['.ogg', 'audio/ogg'],
+  ['.txt', 'text/plain; charset=utf-8'],
+  ['.webmanifest', 'application/manifest+json; charset=utf-8'],
+]);
 
-const server = createServer(async (req, res) => {
+/** The port to listen on: --port N when it names a usable port, else 8080. */
+function chosenPort(argv: string[]): number {
+  const at = argv.indexOf('--port');
+  const n = at < 0 ? NaN : Number(argv[at + 1]);
+  return Number.isInteger(n) && n > 0 && n < 65536 ? n : 8080;
+}
+
+/** Answers with a bare status line and no body worth mentioning. */
+function refuse(res: ServerResponse, status: number, message: string): void {
+  res.writeHead(status, { 'content-type': 'text/plain; charset=utf-8' });
+  res.end(message);
+}
+
+async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  let pathname: string;
   try {
-    const url = new URL(req.url ?? '/', 'http://localhost');
-    let path = decodeURIComponent(url.pathname);
-    if (path.endsWith('/')) path += 'index.html';
-    const file = normalize(join(root, path));
-    if (!file.startsWith(root)) {
-      res.writeHead(403).end('forbidden');
-      return;
-    }
-    const body = await readFile(file);
-    res.writeHead(200, {
-      'content-type': types[extname(file).toLowerCase()] ?? 'application/octet-stream',
-      'cache-control': 'no-store',
-    });
-    res.end(body);
+    pathname = decodeURIComponent(new URL(req.url ?? '/', 'http://localhost').pathname);
   } catch {
-    res.writeHead(404, { 'content-type': 'text/plain' }).end('not found');
+    refuse(res, 400, 'bad request');
+    return;
   }
-});
 
-server.listen(port, () => {
-  console.log(`Coral Bay Syndicate at http://localhost:${port}`);
+  // The file the path names inside game/; a trailing slash asks for the directory's page.
+  const rel = pathname.endsWith('/') ? `${pathname}index.html` : pathname;
+  const file = resolve(join(gameRoot, `.${rel}`));
+  if (file !== gameRoot && !file.startsWith(gameRoot + sep)) {
+    refuse(res, 403, 'forbidden');
+    return;
+  }
+
+  let size: number;
+  try {
+    const info = await stat(file);
+    if (!info.isFile()) throw new Error('not a file');
+    size = info.size;
+  } catch {
+    refuse(res, 404, 'not found');
+    return;
+  }
+
+  res.writeHead(200, {
+    'content-type': CONTENT_TYPES.get(extname(file).toLowerCase()) ?? 'application/octet-stream',
+    'content-length': size,
+    'cache-control': 'no-store',
+  });
+  if (req.method === 'HEAD') {
+    res.end();
+    return;
+  }
+  createReadStream(file).pipe(res);
+}
+
+const port = chosenPort(process.argv.slice(2));
+createServer((req, res) => {
+  handle(req, res).catch(() => refuse(res, 500, 'server error'));
+}).listen(port, '127.0.0.1', () => {
+  console.log(`Coral Bay Syndicate: game/ is being served at http://localhost:${port}`);
 });
