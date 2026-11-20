@@ -58,8 +58,9 @@ return G.rO ? "RADIO · " + RST[G.rS % RST.length].name : "RADIO · OFF — Q tu
 function sBan(title, text, dur) {
 el("banner-title").textContent = title;
 el("banner-text").textContent = text;
-el("banner").style.opacity = "1";
-el("banner").style.transform = "translate(-50%, 0)";
+const b = el("banner");
+b.style.opacity = "1";
+b.style.transform = "translate(-50%, 0)";
 bannerTimer = dur || 5;
 }
 function sObj(text, x, z, timer) {
@@ -89,8 +90,9 @@ for (let i = 0; i < 5; i++) stars += i < G.wn ? "★" : "☆";
 const st = el("stars");
 st.textContent = stars;
 st.style.color = G.wn > 0 ? "#ffcf3f" : "rgba(255,255,255,0.35)";
-el("healthfill").style.width = zm(G.hp, 0, 100) + "%";
-el("healthfill").style.background = G.hp > 35 ? "#58d06a" : "#e84a3c";
+const hf = el("healthfill");
+hf.style.width = zm(G.hp, 0, 100) + "%";
+hf.style.background = G.hp > 35 ? "#58d06a" : "#e84a3c";
 el("armorbar").style.display = G.ar > 0 ? "block" : "none";
 el("armorfill").style.width = zm(G.ar, 0, 100) + "%";
 el("crosshair").style.display = isGun(G.wp) && G.oF && G.md === "play" ? "block" : "none";

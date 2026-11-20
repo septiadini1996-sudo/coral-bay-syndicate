@@ -71,8 +71,7 @@ const sh = new MS(new BG(0.52, 0.13, 0.08), BM(0x101418));
 sh.position.set(0, 2.04, 0.26); inner.add(sh);
 }
 if (style.chain) {
-const chain = new MS(new T3.TorusGeometry(0.17, 0.04, 6, 12),
-BM(0xffd94d));
+const chain = new MS(new T3.TorusGeometry(0.17, 0.04, 6, 12), BM(0xffd94d));
 chain.position.set(0, 1.6, 0.3); chain.rotation.x = 0.5; inner.add(chain);
 }
 g.scale.setScalar(0.84);

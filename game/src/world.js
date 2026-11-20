@@ -35,11 +35,10 @@ class Bucket {
 constructor() { this.items = []; }
 add(geo, x, y, z, o) {
 o = o || {};
-const m = new T3.Matrix4();
 const q = new T3.Quaternion().setFromEuler(new T3.Euler(o.rx || 0, o.ry || 0, o.rz || 0));
-m.compose(new T3.Vector3(x, y, z), q, new T3.Vector3(o.sx || 1, o.sy || 1, o.sz || 1));
-const c = new T3.Color(o.color === undefined ? 0xffffff : o.color);
-this.items.push({ geo, m, c });
+const m = new T3.Matrix4().compose(
+new T3.Vector3(x, y, z), q, new T3.Vector3(o.sx || 1, o.sy || 1, o.sz || 1));
+this.items.push({ geo, m, c: new T3.Color(o.color === undefined ? 0xffffff : o.color) });
 }
 box(x, y, z, sx, sy, sz, color, ry) { this.add(UNIT_BOX(), x, y, z, { sx, sy, sz, color, ry: ry || 0 }); }
 build(material) {
@@ -149,8 +148,7 @@ return t;
 }
 function bWld() {
 const scene = G.sc;
-const groundCv = bGC();
-const gtex = new CT(groundCv);
+const gtex = new CT(bGC());
 gtex.colorSpace = SC;
 gtex.anisotropy = 4;
 G.gM = new T3.MeshPhongMaterial({ map: gtex, shininess: 0, specular: 0x222222 });
@@ -271,14 +269,14 @@ return mt;
 };
 G.lG = mkPts(lpA, 11, 0xffd9a0);
 G.poolMat = mkPts(lpB, 21, 0xffb765);
-const poleMesh = poles.build(vxM()); scene.add(poleMesh);
+scene.add(poles.build(vxM()));
 G.lM = BM(0x8a7f5c);
-const headMesh = heads.build(G.lM); scene.add(headMesh);
+scene.add(heads.build(G.lM));
 const crates = roofs.build(vxM()); crates.castShadow = true; scene.add(crates);
 const rails = new Bucket();
 for (const bx of [-640, -480]) {
 rails.box(bx - 16, 0.7, 417, 1.2, 1.4, 26, 0xd8d3c3);
-rails.box(bx + 16, 0.7, 417 + 26, 1.2, 1.4, 26, 0xd8d3c3);
+rails.box(bx + 16, 0.7, 443, 1.2, 1.4, 26, 0xd8d3c3);
 G.co.push({ minX: bx - 17, maxX: bx - 15, minZ: 404, maxZ: 456 });
 G.co.push({ minX: bx + 15, maxX: bx + 17, minZ: 404, maxZ: 456 });
 }
@@ -389,8 +387,7 @@ const cabin = new MS(new BG(4.5, 2, 3.4), lam(0xf4f1e8));
 cabin.position.set(-0.5, 2.4, 0); boat.add(cabin);
 const mast = new MS(new CY(0.16, 0.16, 11, 5), lam(0x8a8f94));
 mast.position.set(2.4, 6.4, 0); boat.add(mast);
-const sail = new MS(new PG(4.6, 7.6),
-new ML({ color: 0xffffff, side: DS }));
+const sail = new MS(new PG(4.6, 7.6), new ML({ color: 0xffffff, side: DS }));
 sail.position.set(0.6, 6, 0); sail.rotation.y = M.PI / 2; boat.add(sail);
 boat.position.set(bx, 0, bz);
 boat.rotation.y = M.PI / 2 + rand(-0.06, 0.06);
@@ -500,9 +497,9 @@ function bSky(scene) {
 G.sun = new T3.DirectionalLight(0xffe3b3, 3);
 G.sun.castShadow = true;
 G.sun.shadow.mapSize.set(1024, 1024);
-G.sun.shadow.camera.left = -150; G.sun.shadow.camera.right = 150;
-G.sun.shadow.camera.top = 150; G.sun.shadow.camera.bottom = -150;
-G.sun.shadow.camera.far = 900; G.sun.shadow.bias = -0.0006;
+const sc2 = G.sun.shadow.camera;
+sc2.left = -150; sc2.right = 150; sc2.top = 150; sc2.bottom = -150; sc2.far = 900;
+G.sun.shadow.bias = -0.0006;
 scene.add(G.sun); scene.add(G.sun.target);
 G.hm = new T3.HemisphereLight(0xbfe3ff, 0x8a7a5a, 0.9);
 scene.add(G.hm);
@@ -614,8 +611,8 @@ const sk = sAt(G.hr);
 G.night = sk.night;
 G.sc.background = sk.sky;
 G.sc.fog.color.copy(sk.fog);
-if (G.we === "hot") G.sc.fog.near = 200, G.sc.fog.far = 1050;
-else G.sc.fog.near = 280, G.sc.fog.far = 1550;
+if (G.we === "hot") { G.sc.fog.near = 200; G.sc.fog.far = 1050; }
+else { G.sc.fog.near = 280; G.sc.fog.far = 1550; }
 const sunAng = ((G.hr - 6) / 12) * M.PI;
 const focus = G.vh && !G.oF ? G.vh.mesh.position : (G.pl ? G.pl.mesh.position : new T3.Vector3());
 G.sun.position.set(focus.x + M.cos(sunAng) * 260, M.max(95, M.sin(sunAng) * 300), focus.z + 120);
