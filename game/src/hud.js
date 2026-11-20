@@ -92,7 +92,7 @@ function uHud() {
 	el("healthfill").style.width = zm(G.hp, 0, 100) + "%";
 	el("healthfill").style.background = G.hp > 35 ? "#58d06a" : "#e84a3c";
 	el("crosshair").style.display = isGun(G.wp) && G.oF && G.md === "play" ? "block" : "none";
-	if (G.gU) { G.gU.visible = isGun(G.wp) && G.oF; G.gU.scale.z = G.wp === "smg" ? 1.45 : 1; }
+	if (G.gU) { G.gU.visible = isGun(G.wp) && G.oF; G.gU.children[0].visible = G.wp === "pistol"; G.gU.children[1].visible = G.wp === "smg"; }
 	updPanels();
 	const tp = G.tk || G.oP;
 	if (tp) {
@@ -105,9 +105,21 @@ function uHud() {
 	} else el("obj-timer").textContent = "";
 	const f = fPt();
 	const dname = dAt(f.x, f.z);
-	if (dname !== lastDistrict) { lastDistrict = dname; el("district").textContent = dname; }
+	if (dname !== lastDistrict) { lastDistrict = dname; el("district").textContent = dname; el("district-sub").textContent = DIST_SUB[dname] || ""; }
 	rTrk(f);
 }
+const DIST_SUB = {
+	"Downtown": "Neon towers · syndicate turf", "The Marina": "Piers, yachts & Celia's café",
+	"Palmera Heights": "Quiet money behind high walls", "Industrial Yards": "Warehouses & hot cargo",
+	"Beachfront": "Palms, surf & fast cars", "Coral Bay Airport": "Runways & one-way tickets",
+	"Coral Bay": "Open streets of the bay",
+};
+const VEH_TAGS = {
+	comet: "The bay's loudest flex", roadster: "Top down, worries off", crusher: "Traffic is merely a suggestion",
+	marlin: "Weaves through anything", falco: "Built to outrun the radio", bicycle: "Eco-friendly getaway vehicle",
+	sedan: "Blends in anywhere", taxi: "Meter's broken — you're welcome", pickup: "Hauls anything, asks nothing",
+	van: "Cargo space for days", interceptor: "Borrowed from the CBPD", heli: "Coral Bay from above",
+};
 const RANK_NAMES = ["Outsider", "Runner", "Earner", "Fixer", "Lieutenant", "Captain", "Kingpin"];
 function setSlot(id, eq, owned) {
 	el(id).className = "wslot" + (eq ? " eq" : "") + (owned ? "" : " dim");
@@ -133,6 +145,7 @@ function updPanels() {
 	cf.style.width = cond + "%";
 	cf.style.background = cond > 50 ? "#58d06a" : cond > 25 ? "#f2a93d" : "#e84a3c";
 	el("veh-radio").textContent = radioLine();
+	el("veh-tag").textContent = VEH_TAGS[G.vh.kind] || "";
 	}
 	const showPol = G.wn > 0;
 	el("policepanel").style.display = showPol ? "block" : "none";
@@ -153,7 +166,8 @@ function updPanels() {
 	const pursuit = units > 0 && near <= 55;
 	el("pol-state").textContent = pursuit ? "PURSUIT" : "SEARCHING";
 	el("pol-dot").style.color = pursuit ? "#ff5a4d" : "#ffd94d";
-	el("pol-info").textContent = units + (units === 1 ? " unit" : " units") + " · nearest " + (near < 1e8 ? M.round(near) + "m" : "—");
+	el("pol-info").textContent = !units ? "No units in range — break line of sight" :
+	units + (units === 1 ? " unit" : " units") + (pursuit ? (near < 25 ? " closing in" : " on your tail") : " sweeping the area") + " · nearest " + (near < 1e8 ? M.round(near) + "m" : "—");
 	}
 	if (G.jD !== rkCache) {
 	rkCache = G.jD;

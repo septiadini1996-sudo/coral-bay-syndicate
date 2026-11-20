@@ -164,6 +164,7 @@ function bWld() {
 	scene.add(water);
 	G.waterMat = waterMat;
 	bDst(scene);
+	bTL(scene);
 	bVeg(scene);
 	bMar(scene);
 	bAir(scene);
@@ -286,6 +287,47 @@ function bDst(scene) {
 	for (const s of segs) G.co.push({ minX: s[0], maxX: s[1], minZ: side - 2, maxZ: side + 2 });
 	}
 	scene.add(rails.build(vxM()));
+}
+const TLX = [[0, 0], [160, 0], [-160, 0], [0, 160], [0, -160], [160, 160], [-160, -160], [320, 160], [-320, -160], [-640, 80]];
+function bTL(scene) {
+	G.tL = []; G.tlSet = {}; G.tlNs = 0; G.tlEw = 2;
+	const poleG = new CY(0.14, 0.18, 5.6, 8), lampG = new SG(0.15, 8, 8);
+	const poleM = lam(0x2c3138), headM = lam(0x14171c);
+	for (const [x, z] of TLX) {
+	G.tlSet[x + "," + z] = 1;
+	const cx = x + (x === -640 ? -19 : 19), cz = z + (x === -640 ? -19 : 19);
+	const pole = new MS(poleG, poleM);
+	pole.position.set(cx, 2.8, cz); pole.castShadow = true; scene.add(pole);
+	G.co.push({ minX: cx - 0.6, maxX: cx + 0.6, minZ: cz - 0.6, maxZ: cz + 0.6 });
+	const entry = { ns: [], ew: [] };
+	for (const ew of [false, true]) {
+	const hx = ew ? cx - 3.2 : cx, hz = ew ? cz : cz - 3.2;
+	const arm = new MS(new BG(ew ? 3.2 : 0.18, 0.18, ew ? 0.18 : 3.2), poleM);
+	arm.position.set(ew ? cx - 1.6 : cx, 5.55, ew ? cz : cz - 1.6); scene.add(arm);
+	const head = new MS(new BG(ew ? 0.34 : 0.46, 1.25, ew ? 0.46 : 0.34), headM);
+	head.position.set(hx, 5.1, hz); scene.add(head);
+	const arr = ew ? entry.ew : entry.ns;
+	for (let i = 0; i < 3; i++) {
+	const mat = BM(0x2a2a2a);
+	const lamp = new MS(lampG, mat);
+	lamp.position.set(ew ? hx + 0.19 : hx, 5.45 - i * 0.35, ew ? hz : hz + 0.19);
+	scene.add(lamp); arr.push(mat);
+	}
+	}
+	G.tL.push(entry);
+	}
+}
+function setL(lm, s) {
+	lm[0].color.setHex(s === 2 ? 0xff3524 : 0x3a130e);
+	lm[1].color.setHex(s === 1 ? 0xffc21f : 0x3a2f0d);
+	lm[2].color.setHex(s === 0 ? 0x2eff6a : 0x0e3319);
+}
+function uTL() {
+	if (!G.tL) return;
+	const t = G.tm % 13;
+	G.tlNs = t < 5 ? 0 : t < 6 ? 1 : 2;
+	G.tlEw = t < 6.5 ? 2 : t < 11.5 ? 0 : t < 12.5 ? 1 : 2;
+	for (const e of G.tL) { setL(e.ns, G.tlNs); setL(e.ew, G.tlEw); }
 }
 function bVeg(scene) {
 	const trunks = new Bucket(), leaves = new Bucket();
@@ -622,4 +664,5 @@ function uSky(dt) {
 	G.rM.opacity = M.max(0, G.rM.opacity - dt * 0.5);
 	G.gM.shininess = 0; G.gM.specular.setHex(0x222222);
 	}
+	uTL();
 }

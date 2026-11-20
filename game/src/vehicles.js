@@ -405,6 +405,19 @@ function uTraf(dt) {
 	}
 	if (!blocked && G.oF && (pp.x - m.position.x) * fx + (pp.z - m.position.z) * fz > 0 &&
 	(pp.x - m.position.x) * fx + (pp.z - m.position.z) * fz < 9 && M.abs((pp.x - m.position.x) * fz - (pp.z - m.position.z) * fx) < 3) blocked = true;
+	if (!blocked && G.tlSet) {
+	const axX = M.abs(fx) > M.abs(fz), dir = axX ? M.sign(fx) : M.sign(fz);
+	const cross = axX ? m.position.z : m.position.x;
+	let rz = null;
+	for (const c of RL) if (M.abs(cross - c) < 10) { rz = c; break; }
+	if (rz !== null && (axX ? G.tlEw : G.tlNs) !== 0) {
+	const along = axX ? m.position.x : m.position.z;
+	for (const c of RL) {
+	const d = (c - 15 * dir - along) * dir;
+	if (d > 0.5 && d < 11 && G.tlSet[axX ? c + "," + rz : rz + "," + c]) { blocked = true; break; }
+	}
+	}
+	}
 	const input = {
 	up: !blocked && M.abs(diff) < 1.2, down: false,
 	left: diff > 0.06, right: diff < -0.06, brake: blocked,

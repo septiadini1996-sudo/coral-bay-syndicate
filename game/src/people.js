@@ -102,8 +102,38 @@ function bCst(scene) {
 	rico.mesh.position.set(SP.sH.x, 0, SP.sH.z);
 	scene.add(rico.mesh);
 	G.pl = rico; rico.heading = M.PI; rico.vy = 0; rico.y = 0; rico.attackT = 0;
-	const gunMesh = new MS(new BG(0.09, 0.14, 0.46), lam(0x1c1f24));
-	gunMesh.position.set(0, -0.82, 0.14); gunMesh.visible = false; rico.ra.add(gunMesh); G.gU = gunMesh;
+	const gunDark = lam(0x1c1f24), gunGrip = lam(0x4a3423);
+	function mGun(parts) {
+	const g = new GR();
+	for (const p of parts) {
+	const m = new MS(p[0], p[5] ? gunGrip : gunDark);
+	m.position.set(p[1], p[2], p[3]);
+	if (p[4]) m.rotation.x = p[4];
+	m.castShadow = true;
+	g.add(m);
+	}
+	return g;
+	}
+	const gP = mGun([
+	[new BG(0.07, 0.09, 0.44), 0, 0.05, 0.17],
+	[new BG(0.06, 0.08, 0.24), 0, -0.03, 0.08],
+	[new BG(0.028, 0.07, 0.13), 0, -0.07, 0.15],
+	[new BG(0.065, 0.21, 0.1), 0, -0.15, -0.03, 0.28, 1],
+	[new BG(0.05, 0.035, 0.05), 0, 0.11, -0.05],
+	[new BG(0.03, 0.03, 0.03), 0, 0.105, 0.36],
+	]);
+	const gS = mGun([
+	[new BG(0.085, 0.12, 0.55), 0, 0.03, 0.16],
+	[new CY(0.032, 0.032, 0.34, 8), 0, 0.06, 0.58, M.PI / 2],
+	[new BG(0.05, 0.07, 0.14), 0, 0, 0.44],
+	[new BG(0.06, 0.25, 0.09), 0, -0.17, 0.12, 0.12, 1],
+	[new BG(0.065, 0.2, 0.09), 0, -0.14, -0.1, 0.3, 1],
+	[new BG(0.06, 0.09, 0.27), 0, 0.03, -0.3],
+	[new BG(0.04, 0.05, 0.18), 0, 0.115, 0.18],
+	]);
+	const gunMesh = new GR();
+	gunMesh.add(gP); gunMesh.add(gS);
+	gunMesh.position.set(0, -0.82, 0.05); gunMesh.visible = false; rico.ra.add(gunMesh); G.gU = gunMesh;
 	const plate = tSpr("Rico Solano", "#ffe9a3");
 	plate.position.set(0, 3.35, 0); plate.scale.set(6.4, 1.4, 1);
 	rico.mesh.add(plate); rico.nP = plate;
