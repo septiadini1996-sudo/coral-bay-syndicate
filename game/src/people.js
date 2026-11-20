@@ -391,14 +391,14 @@ if (key("Digit0") || key("KeyQ")) { G.ky["Digit0"] = false; G.ky["KeyQ"] = false
 if (key("KeyF")) { G.ky["KeyF"] = false; pAtk(); }
 }
 function isGun(w) { return w === "pistol" || w === "smg"; }
-let gunCd = 0, lastCrimeT = -9, flashMesh = null, flashT = 0;
+let gunCd = 0, lastCrimeT = -9, flashMesh = null, flashT = 0, xhR = 0;
 function sFl(x, z, fx, fz) {
 if (!flashMesh) { flashMesh = new MS(new SG(0.16, 6, 5), BM(0xffd94d)); G.sc.add(flashMesh); }
 flashMesh.position.set(x + fx * 0.8, 1.55, z + fz * 0.8);
 flashMesh.visible = true; flashT = 0.045;
 }
 function fGun() {
-const p = G.pl, m = p.mesh;
+const p = G.pl, m = p.mesh, px = m.position.x, pz = m.position.z;
 if (gunCd > 0 || G.cs) return;
 const smg = G.wp === "smg", ak = smg ? "ammoS" : "ammoP";
 if (G[ak] <= 0) { gunCd = 0.3; sToa("Out of ammo — grab a glowing ammo pickup"); return; }
@@ -408,20 +408,20 @@ const fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y), range = smg ? 42 : 34,
 let best = null, bestD = range;
 for (const q of G.pd) {
 if (q.dead > 0) continue;
-const dx = q.mesh.position.x - m.position.x, dz = q.mesh.position.z - m.position.z;
+const dx = q.mesh.position.x - px, dz = q.mesh.position.z - pz;
 const d = M.sqrt(dx * dx + dz * dz);
 if (d < bestD && (dx * fx + dz * fz) / M.max(1, d) > cone) { best = q; bestD = d; }
 }
 let sHit = null;
 for (const k in G.ct) {
-const cp = G.ct[k].person, dx = cp.mesh.position.x - m.position.x, dz = cp.mesh.position.z - m.position.z;
+const cp = G.ct[k].person, dx = cp.mesh.position.x - px, dz = cp.mesh.position.z - pz;
 const d = M.sqrt(dx * dx + dz * dz);
 if (d < bestD && (dx * fx + dz * fz) / M.max(1, d) > cone) { sHit = G.ct[k]; bestD = d; }
 }
 let vHit = null;
 for (const v of G.vs) {
 if (!v.alive || VKD[v.kind].heli) continue;
-const dx = v.mesh.position.x - m.position.x, dz = v.mesh.position.z - m.position.z;
+const dx = v.mesh.position.x - px, dz = v.mesh.position.z - pz;
 const d = M.sqrt(dx * dx + dz * dz);
 if (d < bestD && (dx * fx + dz * fz) / M.max(1, d) > 0.85) { vHit = v; bestD = d; }
 }
@@ -429,14 +429,14 @@ if (vHit) { best = null; sHit = null; }
 else if (sHit) best = null;
 let hitD = (best || sHit || vHit) ? bestD : range, copHit = false, witness = false;
 for (const c of G.po) {
-const dx = c.mesh.position.x - m.position.x, dz = c.mesh.position.z - m.position.z;
+const dx = c.mesh.position.x - px, dz = c.mesh.position.z - pz;
 const d = M.sqrt(dx * dx + dz * dz);
 if (d < 100) witness = true;
 if (d < range + 2 && (dx * fx + dz * fz) / M.max(1, d) > 0.9) { copHit = true; if (d < hitD) hitD = d; }
 }
-sTrc(m.position.x, m.position.z, fx, fz, hitD);
-sFl(m.position.x, m.position.z, fx, fz);
-pnc(m.position.x, m.position.z, 26);
+sTrc(px, pz, fx, fz, hitD);
+sFl(px, pz, fx, fz);
+pnc(px, pz, 26);
 if (best) hPed(best, smg ? 1 : 2, true);
 if (sHit) sHit.duckT = 2.6;
 if (vHit) dmgV(vHit, smg ? 8 : 12, "shot");
@@ -494,4 +494,17 @@ if (tracerT > 0) { tracerT -= dt; if (tracerT <= 0 && trcM) trcM.visible = false
 if (flashT > 0) { flashT -= dt; if (flashT <= 0 && flashMesh) flashMesh.visible = false; }
 if (gunCd > 0) gunCd -= dt;
 if (mouseDown && mouseMoved < 6 && G.wp === "smg" && G.md === "play" && G.oF && !G.cs) fGun();
+uXh();
+}
+function uXh() {
+const m = G.pl.mesh, fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y), smg = G.wp === "smg", rg = smg ? 42 : 34, cn = smg ? .9 : .93;
+let h = 0;
+const ck = (o, c, r) => { const dx = o.x - m.position.x, dz = o.z - m.position.z, d = M.sqrt(dx * dx + dz * dz); if (d < r && (dx * fx + dz * fz) / M.max(1, d) > c) h = 1; };
+if (isGun(G.wp) && G.oF && G.md === "play") {
+for (const q of G.pd) if (q.dead <= 0) ck(q.mesh.position, cn, rg);
+for (const k in G.ct) ck(G.ct[k].person.mesh.position, cn, rg);
+for (const v of G.vs) if (v.alive && !VKD[v.kind].heli) ck(v.mesh.position, .85, rg);
+for (const c of G.po) ck(c.mesh.position, .9, rg + 2);
+}
+if (h !== xhR) { xhR = h; el("crosshair").style.color = h ? "#ff5a4d" : ""; }
 }

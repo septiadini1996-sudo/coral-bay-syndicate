@@ -72,7 +72,7 @@ G.cm.updateProjectionMatrix();
 G.rd.setSize(innerWidth, innerHeight);
 });
 }
-const cTgP = new T3.Vector3();
+const cTgP = new T3.Vector3(); let shK = 0;
 function uCam(dt) {
 const cam = G.cm;
 if (G.md === "title") {
@@ -90,17 +90,19 @@ G.yW = aLp(G.yW, heading, zm(dt * rate, 0, 1));
 }
 const dist = G.cD, pitch = G.cP;
 const bx = M.sin(G.yW), bz = M.cos(G.yW);
+shK += ((G.oF && isGun(G.wp) ? 1 : 0) - shK) * zm(dt * 6, 0, 1);
+const sx = -bz * shK * 2, sz = bx * shK * 2;
 cTgP.set(
-f.x - bx * M.cos(pitch) * dist,
+f.x - bx * M.cos(pitch) * dist + sx,
 (f.y || 0) + 1.7 + M.sin(pitch) * dist,
-f.z - bz * M.cos(pitch) * dist
+f.z - bz * M.cos(pitch) * dist + sz
 );
 const fixed = colC(cTgP.x, cTgP.z, 1.2);
 cTgP.x = fixed.x; cTgP.z = fixed.z;
 cTgP.y = M.max(cTgP.y, 1.1);
 cam.position.lerp(cTgP, zm(dt * 7, 0, 1));
 const lead = !G.oF && G.vh ? zm(M.abs(G.vh.speed) * 0.14, 0, 5) : 0;
-cam.lookAt(f.x + bx * lead, (f.y || 0) + 2.1, f.z + bz * lead);
+cam.lookAt(f.x + bx * lead + sx, (f.y || 0) + 2.1 - shK * .45, f.z + bz * lead + sz);
 }
 let lastNow = performance.now(), fpsAccum = 0, fpsCount = 0, fpsStage = 0, hudAccum = 0;
 function fLoop(now) {
