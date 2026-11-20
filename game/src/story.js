@@ -1,9 +1,9 @@
 "use strict";
 const CHARACTERS = {
-	rico: { name: "Rico Solano", role: "Sang fixer — tokoh utama cerita ini", skin: "#d99e63", hair: "#1c1410", hat: "fedora", shades: true, chain: true, shirt: "#f26d5b", print: true },
-	celia: { name: "Celia", role: "Kontak marina — pekerjaan pertama & balapan pantai", skin: "#f2c09a", hair: "#4a2a12", hat: null, shades: false, chain: false, shirt: "#ff8fab", print: true, longHair: true },
-	marco: { name: "Marco", role: "Pengurus buku & gudang downtown", skin: "#a96f3f", hair: "#14100c", hat: "fedora", shades: true, chain: true, shirt: "#2e4053", print: false },
-	don: { name: "Don Falso", role: "Bos sindikat di Palmera Heights", skin: "#ffd9b3", hair: "#5a4632", hat: "panama", shades: true, chain: true, shirt: "#e8e4da", print: false },
+	rico: { name: "Rico Solano", role: "The fixer — the main character of this story", skin: "#d99e63", hair: "#1c1410", hat: "fedora", shades: true, chain: true, shirt: "#f26d5b", print: true },
+	celia: { name: "Celia", role: "Marina contact — first job & the beach race", skin: "#f2c09a", hair: "#4a2a12", hat: null, shades: false, chain: false, shirt: "#ff8fab", print: true, longHair: true },
+	marco: { name: "Marco", role: "Keeps the books & the downtown warehouse", skin: "#a96f3f", hair: "#14100c", hat: "fedora", shades: true, chain: true, shirt: "#2e4053", print: false },
+	don: { name: "Don Falso", role: "Syndicate boss in Palmera Heights", skin: "#ffd9b3", hair: "#5a4632", hat: "panama", shades: true, chain: true, shirt: "#e8e4da", print: false },
 };
 const portraitCache = {};
 function portraitCanvas(key) {
@@ -50,46 +50,46 @@ function drawPortrait(canvas, key) {
 }
 const CUTSCENES = [
 	[
-		{ who: "celia", text: "Rico! Akhirnya kau kembali ke Coral Bay. Lama sekali, sayang." },
-		{ who: "rico", text: "Aku pulang tanpa apa-apa, Celia. Kota ini berutang penjelasan padaku." },
-		{ who: "celia", text: "Mulai dari yang kecil: antarkan aku ke Starfish Club sebelum pintu dibuka." },
-		{ who: "rico", text: "Naiklah. Malam ini, roda nasib kita berputar lagi." },
+		{ who: "celia", text: "Rico! You're finally back in Coral Bay. It's been so long, darling." },
+		{ who: "rico", text: "I came home with nothing, Celia. This city owes me an explanation." },
+		{ who: "celia", text: "Start small: drive me to the Starfish Club before the doors open." },
+		{ who: "rico", text: "Get in. Tonight, the wheel of fate spins again." },
 	],
 	[
-		{ who: "marco", text: "Rico, dengar. Buku besarku dicuri — uang sindikat ikut lenyap di dalamnya." },
-		{ who: "rico", text: "Berapa banyak yang hilang, Marco?" },
-		{ who: "marco", text: "Cukup untuk membuat kita tidur di dasar teluk. Tiga koper, di gang-gang downtown." },
-		{ who: "rico", text: "Tenang. Koper-koper itu kembali sebelum fajar." },
+		{ who: "marco", text: "Rico, listen. My ledger was stolen — the syndicate's money vanished with it." },
+		{ who: "rico", text: "How much is gone, Marco?" },
+		{ who: "marco", text: "Enough to put us at the bottom of the bay. Three cases, in the downtown alleys." },
+		{ who: "rico", text: "Easy. Those cases will be back before dawn." },
 	],
 	[
-		{ who: "marco", text: "Kau menemukannya? Bagus. Sekarang kita butuh otot, bukan sekadar kertas." },
-		{ who: "rico", text: "Dune Crusher di halaman industri itu?" },
-		{ who: "marco", text: "Itu dia. Ambil, bawa ke gudangku. Kalau polisi bertanya, kau tidak kenal aku." },
-		{ who: "rico", text: "Aku tidak pernah kenal siapa-siapa, Marco." },
+		{ who: "marco", text: "You found them? Good. Now we need muscle, not just paper." },
+		{ who: "rico", text: "The Dune Crusher in the industrial yard?" },
+		{ who: "marco", text: "That's the one. Take it, bring it to my lockup. If the cops ask, you don't know me." },
+		{ who: "rico", text: "I never know anybody, Marco." },
 	],
 	[
-		{ who: "celia", text: "Don Falso mulai mendengar namamu, Rico. Itu bisa bagus — atau sangat buruk." },
-		{ who: "rico", text: "Bagaimana cara membuatnya jadi bagus?" },
-		{ who: "celia", text: "Menangkan lari pantai ini. Enam pos, satu catatan waktu. Seluruh teluk menonton." },
-		{ who: "rico", text: "Kalau begitu, beri mereka pertunjukan." },
+		{ who: "celia", text: "Don Falso is starting to hear your name, Rico. That could be good — or very bad." },
+		{ who: "rico", text: "How do I make it good?" },
+		{ who: "celia", text: "Win this beach run. Six checkpoints, one clock. The whole bay is watching." },
+		{ who: "rico", text: "Then let's give them a show." },
 	],
 	[
-		{ who: "don", text: "Jadi kau Rico Solano. Nama kecil, gema yang besar." },
-		{ who: "rico", text: "Aku datang untuk bekerja, Don. Bukan untuk basa-basi." },
-		{ who: "don", text: "Bagus. Helikopter di bandara — bawa ke helipad marina. Polisi pasti keberatan." },
-		{ who: "rico", text: "Keberatan mereka bukan urusanku. Anggap selesai." },
+		{ who: "don", text: "So you're Rico Solano. A small name with a big echo." },
+		{ who: "rico", text: "I came here to work, Don. Not for small talk." },
+		{ who: "don", text: "Good. The helicopter at the airport — bring it to the marina helipad. The cops will object." },
+		{ who: "rico", text: "Their objections aren't my problem. Consider it done." },
 	],
 	[
-		{ who: "don", text: "Satu pekerjaan terakhir, Rico. Setelah ini, kau keluarga — atau kenangan." },
-		{ who: "rico", text: "Keluarga, kalau begitu. Apa targetnya?" },
-		{ who: "don", text: "Setoran dari tiga titik di kota ini. Lalu pulang — hidup — selagi semua memburumu." },
-		{ who: "rico", text: "Coral Bay akan belajar satu nama malam ini." },
+		{ who: "don", text: "One last job, Rico. After this, you're family — or a memory." },
+		{ who: "rico", text: "Family, then. What's the target?" },
+		{ who: "don", text: "Tribute from three spots across this city. Then get home — alive — while everyone hunts you." },
+		{ who: "rico", text: "Coral Bay will learn one name tonight." },
 	],
 	[
-		{ who: "don", text: "Kau berhasil. Setoran penuh, dan kau masih bernapas. Jarang sekali." },
-		{ who: "rico", text: "Aku bilang pekerjaanku akan selesai, Don." },
-		{ who: "don", text: "Mulai malam ini kau bukan orang suruhan lagi. Kau mitrku, Rico Solano." },
-		{ who: "rico", text: "Coral Bay... akhirnya kau milikku." },
+		{ who: "don", text: "You did it. Full tribute, and you're still breathing. A rare thing." },
+		{ who: "rico", text: "I told you my work would get done, Don." },
+		{ who: "don", text: "From tonight you're no errand boy. You're my partner, Rico Solano." },
+		{ who: "rico", text: "Coral Bay... you're finally mine." },
 	],
 ];
 const CUT_LINE_SECONDS = 2.9;

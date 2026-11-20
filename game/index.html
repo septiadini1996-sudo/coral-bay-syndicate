@@ -29,10 +29,10 @@
 	<div id="tracker"><div id="trk-chapter"></div><div id="trk-obj"></div><div id="trk-dist"></div></div>
 	<div id="navarrow">▲</div>
 	<div id="crosshair">+</div>
-	<div id="subtitle"><canvas id="sub-face" width="96" height="96"></canvas><div><div id="sub-name"></div><div id="sub-text"></div></div><div id="sub-skip">Lewati ▸▸ (Enter)</div></div>
+	<div id="subtitle"><canvas id="sub-face" width="96" height="96"></canvas><div><div id="sub-name"></div><div id="sub-text"></div></div><div id="sub-skip">Skip ▸▸ (Enter)</div></div>
 	<button id="btn-mute" class="hud-btn" style="bottom:16px" title="Mute">🔊</button>
-	<button id="btn-map" class="hud-btn" title="Peta penuh (M)">🗺️</button>
-	<button id="btn-missions" class="hud-btn" title="Menu misi (Tab)">📋</button>
+	<button id="btn-map" class="hud-btn" title="Full map (M)">🗺️</button>
+	<button id="btn-missions" class="hud-btn" title="Mission menu (Tab)">📋</button>
 </div>
 <div id="hurt"></div>
 
@@ -40,20 +40,20 @@
 	<div id="bigmap-title">CORAL BAY</div>
 	<canvas id="bigmap-canvas" width="920" height="920"></canvas>
 	<div id="bigmap-legend">
-		<span><span class="lg-dot" style="background:#ffd94d"></span>Pemberi misi (nomor = chapter)</span>
-		<span><span class="lg-dot" style="background:#2ee6c8"></span>Tujuan</span>
-		<span><span class="lg-dot" style="background:#ff3b30"></span>Polisi</span>
+		<span><span class="lg-dot" style="background:#ffd94d"></span>Job givers (number = chapter)</span>
+		<span><span class="lg-dot" style="background:#2ee6c8"></span>Objective</span>
+		<span><span class="lg-dot" style="background:#ff3b30"></span>Police</span>
 		<span><span class="lg-dot" style="background:#ffffff"></span>Rico</span>
 	</div>
-	<button id="btn-follow">Ikuti Misi — kembali ke tujuan utama</button>
-	<div id="bigmap-hint">Klik penanda pemberi misi untuk melacaknya · M / Esc untuk menutup</div>
+	<button id="btn-follow">Follow Mission — back to the main objective</button>
+	<div id="bigmap-hint">Click a job giver's marker to track them · M / Esc to close</div>
 </div>
 
 <div id="menu-missions" class="overlay">
 	<div class="panel">
-		<h2 class="menu-head">MISI — THE SYNDICATE</h2>
+		<h2 class="menu-head">MISSIONS — THE SYNDICATE</h2>
 		<div id="mission-list"></div>
-		<button id="btn-missions-close" class="menu-btn">Tutup</button>
+		<button id="btn-missions-close" class="menu-btn">Close</button>
 	</div>
 </div>
 
@@ -76,7 +76,7 @@
 		<button id="btn-restart" class="menu-btn secondary">Back to Safehouse</button>
 		<button id="btn-help2" class="menu-btn secondary">How to Play</button>
 		<button id="btn-quit" class="menu-btn secondary">Quit to Title</button>
-		<div id="tokoh"><h3>TOKOH</h3><div id="tokoh-list"></div></div>
+		<div id="tokoh"><h3>CHARACTERS</h3><div id="tokoh-list"></div></div>
 	</div>
 </div>
 

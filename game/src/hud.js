@@ -134,7 +134,7 @@ function refreshTracker(f) {
 		obj = "Free roam: Celia's deliveries & the Bay Runner rematch keep paying";
 	}
 	let dist = tx !== null ? M.round(d3(f.x, f.z, tx, tz)) + "m" : "";
-	if (G.tk) { obj = "Melacak: " + G.tk.name; dist = M.round(d3(f.x, f.z, G.tk.x, G.tk.z)) + "m"; }
+	if (G.tk) { obj = "Tracking: " + G.tk.name; dist = M.round(d3(f.x, f.z, G.tk.x, G.tk.z)) + "m"; }
 	const sig = head + "|" + obj + "|" + dist;
 	if (sig === trkCache) return;
 	trkCache = sig;
@@ -360,7 +360,7 @@ function drawBigMap() {
 	el("btn-follow").style.display = G.tk ? "inline-block" : "none";
 	if (G.tk) {
 		ctx.font = "bold " + M.round(S * 0.019) + "px Trebuchet MS, sans-serif"; ctx.textAlign = "left";
-		const label = "Melacak: " + G.tk.name;
+		const label = "Tracking: " + G.tk.name;
 		ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,25,35,0.85)";
 		ctx.strokeText(label, 14, 28); ctx.fillStyle = "#2ee6c8"; ctx.fillText(label, 14, 28);
 	}
@@ -395,28 +395,28 @@ function buildMissionList() {
 	JOBS.forEach((def, i) => {
 		const spot = G.ct[def.giver].spot;
 		let status, cls;
-		if (i < G.ji) { status = "Selesai ✓"; cls = "done"; }
-		else if (G.job && G.job.i === i) { status = "Aktif"; cls = "active"; }
-		else if (i === G.ji) { status = "Berikutnya"; cls = "next"; }
-		else { status = "Terkunci"; cls = "locked"; }
+		if (i < G.ji) { status = "Done ✓"; cls = "done"; }
+		else if (G.job && G.job.i === i) { status = "Active"; cls = "active"; }
+		else if (i === G.ji) { status = "Next"; cls = "next"; }
+		else { status = "Locked"; cls = "locked"; }
 		const row = CE("div");
 		row.className = "mission-row " + cls;
 		let html = "<div class='mission-head'><span class='mission-chip'>CHAPTER " + (i + 1) + "</span>" +
 			"<span class='mission-title'>" + def.title + "</span>" +
 			"<span class='mission-status " + cls + "'>" + status + "</span></div>" +
 			"<div class='mission-meta'>" + gNam(def.giver) + " · " + dAt(spot.x, spot.z) + " · " + fmtCash(def.payout) + "</div>";
-		if (cls === "active") html += "<div class='mission-obj'>Tujuan: " + (el("obj-text").textContent || def.brief) + "</div>";
+		if (cls === "active") html += "<div class='mission-obj'>Objective: " + (el("obj-text").textContent || def.brief) + "</div>";
 		else if (cls === "next") html += "<div class='mission-obj'>" + def.brief + "</div>";
 		row.innerHTML = html;
 		if (cls === "active" || cls === "next") {
 			const btn = CE("button");
-			btn.className = "mission-track"; btn.textContent = "🧭 Lacak";
+			btn.className = "mission-track"; btn.textContent = "🧭 Track";
 			btn.addEventListener("click", () => {
-				if (cls === "active" && G.oP) setTrack({ x: G.oP.x, z: G.oP.z, name: "Tujuan — " + def.title });
+				if (cls === "active" && G.oP) setTrack({ x: G.oP.x, z: G.oP.z, name: "Objective — " + def.title });
 				else setTrack({ x: spot.x, z: spot.z, name: gNam(def.giver) + " — " + dAt(spot.x, spot.z), key: def.giver });
 				forceRoute();
 				tMis(false);
-				if (G.tk) sToa("Melacak: " + G.tk.name);
+				if (G.tk) sToa("Tracking: " + G.tk.name);
 			});
 			row.appendChild(btn);
 		}
@@ -425,7 +425,7 @@ function buildMissionList() {
 	if (G.ji >= JOBS.length) {
 		const note = CE("div");
 		note.className = "mission-note";
-		note.textContent = "Cerita selesai — Coral Bay milikmu. Pekerjaan sampingan tetap buka: antar paket untuk Celia, atau Bay Runner rematch di garis start pantai ($400).";
+		note.textContent = "Story complete — Coral Bay is yours. Side work stays open: run packages for Celia, or the Bay Runner rematch at the beach start line ($400).";
 		wrap.appendChild(note);
 	}
 }
@@ -527,7 +527,7 @@ function routeTick(dt) {
 	if (G.md !== "play" || G.cs || G.sg) return;
 	const f = fPt();
 	if (G.tk && d3(f.x, f.z, G.tk.x, G.tk.z) < 15) {
-		sToa("Sampai: " + G.tk.name);
+		sToa("Arrived: " + G.tk.name);
 		setTrack(null);
 	}
 	routeClock += dt;
