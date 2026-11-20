@@ -4,122 +4,114 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Coral Bay Syndicate — an open-world crime game</title>
-<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:#0b1026}body{font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;color:#f4f1e8}#app,#app canvas{position:fixed;inset:0;width:100%;height:100%;display:block}#hud{position:fixed;inset:0;pointer-events:none;z-index:5}#topleft{position:absolute;top:14px;left:14px;text-align:center}#minimap{width:168px;height:168px;border-radius:50%;border:3px solid rgba(255,217,77,.85);box-shadow:0 4px 18px rgba(0,0,0,.5);background:#1b6a8c;pointer-events:auto;cursor:pointer}#tracker{position:absolute;top:216px;left:14px;width:224px;display:none;background:rgba(8,24,34,.82);border:1px solid rgba(255,217,77,.55);border-radius:10px;padding:8px 11px}#trk-chapter{font-size:13.5px;font-weight:bold;color:#ffd94d;letter-spacing:.04em}#trk-obj{font-size:12.5px;line-height:1.35;margin-top:2px;color:#eef4f6}#trk-dist{font-size:12.5px;font-weight:bold;color:#2ee6c8;margin-top:2px}.hud-btn{position:absolute;left:16px;pointer-events:auto;background:rgba(8,24,34,.8);border:1px solid rgba(255,255,255,.35);border-radius:9px;font-size:16px;padding:5px 9px;cursor:pointer;color:#f4f1e8}#btn-map{bottom:58px}#btn-missions{bottom:100px}#bigmap{position:fixed;inset:0;z-index:9;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(4,12,20,.88);pointer-events:auto}#bigmap-title{font-size:24px;font-weight:bold;color:#ffd94d;letter-spacing:.14em;margin-bottom:8px}#bigmap-canvas{width:min(86vmin,900px);height:min(86vmin,900px);border:2px solid rgba(255,217,77,.7);border-radius:12px;box-shadow:0 12px 44px rgba(0,0,0,.7);background:#1b6a8c}#bigmap-legend{margin-top:10px;font-size:14px;color:#dfe9f2;display:flex;gap:18px;flex-wrap:wrap;justify-content:center}.lg-dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}#bigmap-hint{margin-top:6px;font-size:13px;color:rgba(240,244,248,.75)}#subtitle{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);width:min(680px,92vw);display:none;align-items:center;gap:13px;background:rgba(5,12,20,.88);border:1px solid rgba(255,217,77,.5);border-radius:12px;padding:10px 16px 10px 10px}#sub-face{width:76px;height:76px;border-radius:9px;border:2px solid rgba(255,217,77,.75);flex:none}#sub-name{font-size:14px;font-weight:bold;color:#ffd94d;letter-spacing:.05em}#sub-text{font-size:16.5px;line-height:1.4;margin-top:1px}#sub-skip{margin-left:auto;flex:none;font-size:12.5px;color:rgba(240,244,248,.75);align-self:flex-start}.mission-row{text-align:left;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:9px 13px;margin:7px 0;background:rgba(255,255,255,.04)}.mission-row.active{border-color:rgba(255,217,77,.85);background:rgba(255,217,77,.08)}.mission-row.locked{opacity:.55}.mission-head{display:flex;align-items:center;gap:9px}.mission-chip{font-size:11px;font-weight:bold;color:#12222e;background:#ffd94d;border-radius:5px;padding:2px 6px}.mission-title{font-size:16.5px;font-weight:bold;flex:1}.mission-status{font-size:12.5px;font-weight:bold}.mission-status.done{color:#7be495}.mission-status.active{color:#ffd94d}.mission-status.next{color:#2ee6c8}.mission-status.locked{color:#9fb3bd}.mission-meta{font-size:13px;color:#b9cdd4;margin-top:3px}.mission-obj{font-size:13.5px;line-height:1.4;margin-top:4px;color:#eef4f6}.mission-note{font-size:13.5px;line-height:1.45;color:#ffe9a3;margin-top:10px;text-align:left}#menu-missions .panel{width:min(600px,94vw);max-height:92vh;overflow-y:auto}#tokoh{margin-top:16px;border-top:1px solid rgba(255,255,255,.18);padding-top:12px}#tokoh h3{color:#ffd94d;letter-spacing:.14em;font-size:15px;margin-bottom:10px}#tokoh-list{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.tokoh-item{width:118px;text-align:center}.tokoh-face{width:62px;height:62px;border-radius:8px;border:2px solid rgba(255,217,77,.6)}.tokoh-name{font-size:13.5px;font-weight:bold;margin-top:4px}.tokoh-role{font-size:11px;line-height:1.3;color:#b9cdd4;margin-top:2px}#navarrow{position:absolute;top:62px;left:50%;margin-left:-17px;width:34px;height:34px;line-height:32px;text-align:center;font-size:19px;color:#12222e;background:rgba(255,217,77,.92);display:none;border:2px solid rgba(8,24,34,.65);border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.5)}#crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:24px;font-weight:bold;color:rgba(255,233,163,.92);text-shadow:0 1px 3px #000;display:none}#btn-follow{display:none;margin-top:10px;pointer-events:auto;background:linear-gradient(180deg,#ffd94d,#f2a93d);color:#12222e;border:none;border-radius:9px;font-size:14.5px;font-weight:bold;padding:8px 18px;cursor:pointer;font-family:inherit}.mission-track{margin-top:6px;background:rgba(46,230,200,.16);color:#2ee6c8;border:1px solid rgba(46,230,200,.6);border-radius:7px;font-size:12.5px;font-weight:bold;padding:4px 12px;cursor:pointer;font-family:inherit}#district{margin-top:5px;font-size:13px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;color:#ffe9a3;text-shadow:0 1px 3px rgba(0,0,0,.8)}#district-sub{font-size:11px;color:rgba(240,244,248,.88);letter-spacing:.04em;text-shadow:0 1px 3px rgba(0,0,0,.85)}#veh-tag{font-size:11.5px;font-style:italic;color:#b9cdd4;margin-top:3px}#pause-keys{margin-top:14px;font-size:12.5px;line-height:1.55;color:rgba(240,244,248,.82)}#pause-keys b{color:#ffd94d}#menu-pause .panel{max-height:94vh;overflow-y:auto}#topright{position:absolute;top:14px;right:16px;text-align:right}#stars{font-size:25px;letter-spacing:3px;text-shadow:0 2px 4px rgba(0,0,0,.7);min-height:30px}#cash{font-size:27px;font-weight:bold;color:#7be495;text-shadow:0 2px 4px rgba(0,0,0,.75)}#healthbar{margin-top:6px;margin-left:auto;width:168px;height:11px;border-radius:6px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.35);overflow:hidden}#healthfill{height:100%;width:100%;background:#58d06a;transition:width .25s}#trk-step{font-size:12.5px;font-weight:bold;color:#ffd94d;margin-top:3px;letter-spacing:.03em}#weaponbar{position:absolute;right:16px;bottom:16px;display:flex;gap:6px}.wslot{width:62px;padding:6px 3px 5px;text-align:center;background:rgba(8,24,34,.82);border:2px solid rgba(255,255,255,.28);border-radius:10px}.wslot svg{width:34px;height:23px;fill:#cfe0e8}.wslot .wlab{display:block;font-size:9px;font-weight:bold;letter-spacing:.09em;color:#9fb3bd;margin-top:1px}.wslot .wammo{display:block;font-size:13.5px;font-weight:bold;color:#ffe9a3;line-height:1.15}.wslot.eq{border-color:#ffd94d;box-shadow:0 0 11px rgba(255,217,77,.55)}.wslot.eq svg{fill:#ffd94d}.wslot.dim{opacity:.35}#vehpanel{position:absolute;right:16px;bottom:122px;width:214px;display:none;background:rgba(8,24,34,.82);border:1px solid rgba(255,217,77,.55);border-radius:10px;padding:9px 12px;text-align:right}#veh-name{font-size:14px;font-weight:bold;color:#ffe9a3}#veh-speed{font-size:42px;font-weight:bold;line-height:1.05;text-shadow:0 2px 5px rgba(0,0,0,.8)}#vehpanel small{font-size:14px;margin-left:4px}#veh-condrow{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:10.5px;font-weight:bold;letter-spacing:.07em;color:#9fb3bd}#veh-condbar{flex:1;height:8px;border-radius:4px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.3);overflow:hidden}#veh-condfill{height:100%;width:100%;background:#58d06a}#veh-cond{font-size:12.5px;color:#f4f1e8}#veh-radio{font-size:12.5px;font-weight:bold;color:#2ee6c8;margin-top:6px}#policepanel{position:absolute;right:16px;top:158px;width:214px;display:none;background:rgba(8,24,34,.85);border:1px solid rgba(255,90,77,.65);border-radius:10px;padding:8px 12px;text-align:right}#pol-state{font-size:16.5px;font-weight:bold;letter-spacing:.07em}#pol-info{font-size:12.5px;color:#dfe9f2;margin-top:1px}#rankchip{position:absolute;left:14px;bottom:148px;width:198px;background:rgba(8,24,34,.82);border:1px solid rgba(255,217,77,.55);border-radius:10px;padding:8px 11px}#rank-name{font-size:15px;font-weight:bold;color:#ffd94d;letter-spacing:.03em}#rank-bar{height:7px;border-radius:4px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.3);overflow:hidden;margin:5px 0 3px}#rank-fill{height:100%;width:0%;background:linear-gradient(90deg,#f2a93d,#ffd94d)}#rank-sub{font-size:11.5px;color:#b9cdd4}#rtoast{position:absolute;left:50%;bottom:172px;transform:translateX(-50%);font-size:21px;font-weight:bold;color:#ffe9a3;background:rgba(8,24,34,.9);border:1px solid rgba(255,217,77,.75);border-radius:11px;padding:10px 22px;opacity:0;transition:opacity .25s;white-space:nowrap;text-shadow:0 1px 3px #000}#objective{position:absolute;top:14px;left:50%;transform:translateX(-50%);max-width:560px;background:rgba(8,24,34,.82);border:1px solid rgba(46,230,200,.55);border-radius:10px;padding:8px 16px;text-align:center;display:none}#obj-text{font-size:15.5px;font-weight:bold}#obj-dist{color:#2ee6c8;font-weight:bold;margin-left:9px}#obj-timer{color:#ffd94d;font-weight:bold;margin-left:9px}#banner{position:absolute;top:86px;left:50%;transform:translate(-50%,-12px);width:min(620px,86vw);background:linear-gradient(135deg,rgba(64,28,64,.92),rgba(10,30,44,.92));border:1px solid rgba(255,217,77,.7);border-radius:12px;padding:13px 20px;text-align:center;opacity:0;transition:opacity .4s,transform .4s}#banner-title{font-size:21px;font-weight:bold;color:#ffd94d;letter-spacing:.06em}#banner-text{font-size:14.5px;margin-top:3px;line-height:1.35}#interact{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);display:none;background:rgba(8,24,34,.88);border:1px solid rgba(255,217,77,.8);color:#ffe9a3;font-weight:bold;font-size:15.5px;border-radius:9px;padding:8px 16px}#toast{position:absolute;left:50%;bottom:66px;transform:translateX(-50%);max-width:84vw;text-align:center;background:rgba(8,24,34,.85);border-radius:9px;padding:8px 18px;font-size:15px;opacity:0;transition:opacity .3s}#bust-wrap{position:absolute;left:50%;top:34%;transform:translateX(-50%);width:300px;display:none;text-align:center}#bust-label{font-size:24px;font-weight:bold;color:#ff5a4d;letter-spacing:.3em;text-shadow:0 2px 6px #000}#bust-bar{height:13px;border-radius:7px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.4);overflow:hidden}#bust-fill{height:100%;width:0%;background:#ff5a4d}#btn-mute{position:absolute;left:16px;bottom:16px;pointer-events:auto;background:rgba(8,24,34,.8);border:1px solid rgba(255,255,255,.35);border-radius:9px;font-size:17px;padding:5px 9px;cursor:pointer}#hurt{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;background:radial-gradient(ellipse at center,transparent 42%,rgba(200,20,10,.55) 100%)}.overlay{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;background:linear-gradient(180deg,rgba(30,10,40,.55),rgba(5,15,25,.78))}.panel{background:rgba(8,22,32,.92);border:1px solid rgba(255,217,77,.55);border-radius:16px;padding:28px 36px;max-width:min(620px,92vw);box-shadow:0 12px 44px rgba(0,0,0,.6)}h1.game-title{font-size:clamp(38px,7vw,88px);line-height:.98;letter-spacing:.02em;background:linear-gradient(180deg,#ffe9a3 15%,#ff9a5c 55%,#ff4fa3 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 10px rgba(0,0,0,.65))}.tagline{margin:10px 0 20px;font-size:16.5px;color:#dfe9f2;text-shadow:0 1px 4px #000}.menu-btn{pointer-events:auto;display:block;width:280px;margin:8px auto;padding:12px 18px;cursor:pointer;font-family:inherit;font-size:17px;font-weight:bold;color:#12222e;border:none;border-radius:10px;background:linear-gradient(180deg,#ffd94d,#f2a93d);box-shadow:0 4px 14px rgba(0,0,0,.45)}.menu-btn:hover{filter:brightness(1.09)}.menu-btn.secondary{background:linear-gradient(180deg,#e8f2f2,#b9cdd4)}#continue-note{font-size:13.5px;color:#ffe9a3;margin-top:2px}.controls-note{margin-top:18px;font-size:13.5px;color:rgba(240,244,248,.85);line-height:1.5;text-shadow:0 1px 3px #000}#card-title{font-size:30px;color:#ffd94d;letter-spacing:.04em}#card-text{font-size:16px;line-height:1.5;margin:12px 0 18px}#story-line{font-size:15px;color:#2ee6c8;margin-bottom:14px}.help-grid{text-align:left;font-size:15px;line-height:1.65;margin:8px 0 16px}.help-grid b{color:#ffd94d;display:inline-block;min-width:128px}h2.menu-head{font-size:32px;color:#ffd94d;letter-spacing:.08em;margin-bottom:8px}</style>
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body{width:100%;height:100%;overflow:hidden;background:#0b1026}body{font-family:"Trebuchet MS","Segoe UI",Verdana,sans-serif;color:#f4f1e8}#app,#app canvas{position:fixed;inset:0;width:100%;height:100%;display:block}#hud{position:fixed;inset:0;pointer-events:none;z-index:5}#topleft{position:absolute;top:14px;left:14px;text-align:center}#minimap{width:168px;height:168px;border-radius:50%;border:3px solid rgba(255,217,77,.85);box-shadow:0 4px 18px rgba(0,0,0,.5);background:#1b6a8c;pointer-events:auto;cursor:pointer}#tracker{position:absolute;top:216px;left:14px;width:224px;display:none;background:rgba(8,24,34,.82);border:1px solid rgba(255,217,77,.55);border-radius:10px;padding:8px 11px}#trk-chapter{font-size:13.5px;font-weight:bold;color:#ffd94d;letter-spacing:.04em}#trk-obj{font-size:12.5px;line-height:1.35;margin-top:2px;color:#eef4f6}#trk-dist{font-size:12.5px;font-weight:bold;color:#2ee6c8;margin-top:2px}.hud-btn{position:absolute;left:16px;pointer-events:auto;background:rgba(8,24,34,.8);border:1px solid rgba(255,255,255,.35);border-radius:9px;font-size:16px;padding:5px 9px;cursor:pointer;color:#f4f1e8}#btn-map{bottom:58px}#btn-missions{bottom:100px}#bigmap{position:fixed;inset:0;z-index:9;display:none;align-items:center;justify-content:center;flex-direction:column;background:rgba(4,12,20,.88);pointer-events:auto}#bigmap-title{font-size:24px;font-weight:bold;color:#ffd94d;letter-spacing:.14em;margin-bottom:8px}#bigmap-canvas{width:min(86vmin,900px);height:min(86vmin,900px);border:2px solid rgba(255,217,77,.7);border-radius:12px;box-shadow:0 12px 44px rgba(0,0,0,.7);background:#1b6a8c}#bigmap-legend{margin-top:10px;font-size:14px;color:#dfe9f2;display:flex;gap:18px;flex-wrap:wrap;justify-content:center}.lg-dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px}#bigmap-hint{margin-top:6px;font-size:13px;color:rgba(240,244,248,.75)}#subtitle{position:absolute;left:50%;bottom:26px;transform:translateX(-50%);width:min(680px,92vw);display:none;align-items:center;gap:13px;background:rgba(5,12,20,.88);border:1px solid rgba(255,217,77,.5);border-radius:12px;padding:10px 16px 10px 10px}#sub-face{width:76px;height:76px;border-radius:9px;border:2px solid rgba(255,217,77,.75);flex:none}#sub-name{font-size:14px;font-weight:bold;color:#ffd94d;letter-spacing:.05em}#sub-text{font-size:16.5px;line-height:1.4;margin-top:1px}#sub-skip{margin-left:auto;flex:none;font-size:12.5px;color:rgba(240,244,248,.75);align-self:flex-start}.mission-row{text-align:left;border:1px solid rgba(255,255,255,.16);border-radius:10px;padding:9px 13px;margin:7px 0;background:rgba(255,255,255,.04)}.mission-row.active{border-color:rgba(255,217,77,.85);background:rgba(255,217,77,.08)}.mission-row.locked{opacity:.55}.mission-head{display:flex;align-items:center;gap:9px}.mission-chip{font-size:11px;font-weight:bold;color:#12222e;background:#ffd94d;border-radius:5px;padding:2px 6px}.mission-title{font-size:16.5px;font-weight:bold;flex:1}.mission-status{font-size:12.5px;font-weight:bold}.mission-status.done{color:#7be495}.mission-status.active{color:#ffd94d}.mission-status.next{color:#2ee6c8}.mission-status.locked{color:#9fb3bd}.mission-meta{font-size:13px;color:#b9cdd4;margin-top:3px}.mission-obj{font-size:13.5px;line-height:1.4;margin-top:4px;color:#eef4f6}.mission-note{font-size:13.5px;line-height:1.45;color:#ffe9a3;margin-top:10px;text-align:left}#menu-missions .panel{width:min(600px,94vw);max-height:92vh;overflow-y:auto}#tokoh{margin-top:16px;border-top:1px solid rgba(255,255,255,.18);padding-top:12px}#tokoh h3{color:#ffd94d;letter-spacing:.14em;font-size:15px;margin-bottom:10px}#tokoh-list{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}.tokoh-item{width:118px;text-align:center}.tokoh-face{width:62px;height:62px;border-radius:8px;border:2px solid rgba(255,217,77,.6)}.tokoh-name{font-size:13.5px;font-weight:bold;margin-top:4px}.tokoh-role{font-size:11px;line-height:1.3;color:#b9cdd4;margin-top:2px}#navarrow{position:absolute;top:62px;left:50%;margin-left:-17px;width:34px;height:34px;line-height:32px;text-align:center;font-size:19px;color:#12222e;background:rgba(255,217,77,.92);display:none;border:2px solid rgba(8,24,34,.65);border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.5)}#crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-size:24px;font-weight:bold;color:rgba(255,233,163,.92);text-shadow:0 1px 3px #000;display:none}#btn-follow{display:none;margin-top:10px;pointer-events:auto;background:linear-gradient(180deg,#ffd94d,#f2a93d);color:#12222e;border:none;border-radius:9px;font-size:14.5px;font-weight:bold;padding:8px 18px;cursor:pointer;font-family:inherit}.mission-track{margin-top:6px;background:rgba(46,230,200,.16);color:#2ee6c8;border:1px solid rgba(46,230,200,.6);border-radius:7px;font-size:12.5px;font-weight:bold;padding:4px 12px;cursor:pointer;font-family:inherit}#district{margin-top:5px;font-size:13px;font-weight:bold;letter-spacing:.12em;text-transform:uppercase;color:#ffe9a3;text-shadow:0 1px 3px rgba(0,0,0,.8)}#district-sub{font-size:11px;color:rgba(240,244,248,.88);letter-spacing:.04em;text-shadow:0 1px 3px rgba(0,0,0,.85)}#veh-tag{font-size:11.5px;font-style:italic;color:#b9cdd4;margin-top:3px}#pause-keys{margin-top:14px;font-size:12.5px;line-height:1.55;color:rgba(240,244,248,.82)}#pause-keys b{color:#ffd94d}#menu-pause .panel{max-height:94vh;overflow-y:auto}#topright{position:absolute;top:14px;right:16px;text-align:right}#stars{font-size:25px;letter-spacing:3px;text-shadow:0 2px 4px rgba(0,0,0,.7);min-height:30px}#cash{font-size:27px;font-weight:bold;color:#7be495;text-shadow:0 2px 4px rgba(0,0,0,.75)}#healthbar,#armorbar{margin-left:auto;width:168px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.35);overflow:hidden}#healthbar{margin-top:6px;height:11px;border-radius:6px}#armorbar{margin-top:4px;height:8px;border-radius:5px;display:none}#healthfill{height:100%;width:100%;background:#58d06a;transition:width .25s}#armorfill{height:100%;width:0%;background:#5aa2e8;transition:width .25s}#trk-step{font-size:12.5px;font-weight:bold;color:#ffd94d;margin-top:3px;letter-spacing:.03em}#weaponbar{position:absolute;right:16px;bottom:16px;display:flex;gap:6px}.wslot{width:62px;padding:6px 3px 5px;text-align:center;background:rgba(8,24,34,.82);border:2px solid rgba(255,255,255,.28);border-radius:10px}.wslot svg{width:34px;height:23px;fill:#cfe0e8}.wslot .wlab{display:block;font-size:9px;font-weight:bold;letter-spacing:.09em;color:#9fb3bd;margin-top:1px}.wslot .wammo{display:block;font-size:13.5px;font-weight:bold;color:#ffe9a3;line-height:1.15}.wslot.eq{border-color:#ffd94d;box-shadow:0 0 11px rgba(255,217,77,.55)}.wslot.eq svg{fill:#ffd94d}.wslot.dim{opacity:.35}#vehpanel{position:absolute;right:16px;bottom:122px;width:214px;display:none;background:rgba(8,24,34,.82);border:1px solid rgba(255,217,77,.55);border-radius:10px;padding:9px 12px;text-align:right}#veh-name{font-size:14px;font-weight:bold;color:#ffe9a3}#veh-speed{font-size:42px;font-weight:bold;line-height:1.05;text-shadow:0 2px 5px rgba(0,0,0,.8)}#vehpanel small{font-size:14px;margin-left:4px}#veh-condrow{display:flex;align-items:center;gap:7px;margin-top:5px;font-size:10.5px;font-weight:bold;letter-spacing:.07em;color:#9fb3bd}#veh-condbar{flex:1;height:8px;border-radius:4px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.3);overflow:hidden}#veh-condfill{height:100%;width:100%;background:#58d06a}#veh-cond{font-size:12.5px;color:#f4f1e8}#veh-radio{font-size:12.5px;font-weight:bold;color:#2ee6c8;margin-top:6px}#policepanel{position:absolute;right:16px;top:158px;width:214px;display:none;background:rgba(8,24,34,.85);border:1px solid rgba(255,90,77,.65);border-radius:10px;padding:8px 12px;text-align:right}#pol-state{font-size:16.5px;font-weight:bold;letter-spacing:.07em}#pol-info{font-size:12.5px;color:#dfe9f2;margin-top:1px}#rankchip{position:absolute;left:14px;bottom:148px;width:198px;background:rgba(8,24,34,.82);border:1px solid rgba(255,217,77,.55);border-radius:10px;padding:8px 11px}#rank-name{font-size:15px;font-weight:bold;color:#ffd94d;letter-spacing:.03em}#rank-bar{height:7px;border-radius:4px;background:rgba(0,0,0,.55);border:1px solid rgba(255,255,255,.3);overflow:hidden;margin:5px 0 3px}#rank-fill{height:100%;width:0%;background:linear-gradient(90deg,#f2a93d,#ffd94d)}#rank-sub{font-size:11.5px;color:#b9cdd4}#rtoast{position:absolute;left:50%;bottom:172px;transform:translateX(-50%);font-size:21px;font-weight:bold;color:#ffe9a3;background:rgba(8,24,34,.9);border:1px solid rgba(255,217,77,.75);border-radius:11px;padding:10px 22px;opacity:0;transition:opacity .25s;white-space:nowrap;text-shadow:0 1px 3px #000}#objective{position:absolute;top:14px;left:50%;transform:translateX(-50%);max-width:560px;background:rgba(8,24,34,.82);border:1px solid rgba(46,230,200,.55);border-radius:10px;padding:8px 16px;text-align:center;display:none}#obj-text{font-size:15.5px;font-weight:bold}#obj-dist{color:#2ee6c8;font-weight:bold;margin-left:9px}#obj-timer{color:#ffd94d;font-weight:bold;margin-left:9px}#banner{position:absolute;top:86px;left:50%;transform:translate(-50%,-12px);width:min(620px,86vw);background:linear-gradient(135deg,rgba(64,28,64,.92),rgba(10,30,44,.92));border:1px solid rgba(255,217,77,.7);border-radius:12px;padding:13px 20px;text-align:center;opacity:0;transition:opacity .4s,transform .4s}#banner-title{font-size:21px;font-weight:bold;color:#ffd94d;letter-spacing:.06em}#banner-text{font-size:14.5px;margin-top:3px;line-height:1.35}#interact{position:absolute;left:50%;bottom:118px;transform:translateX(-50%);display:none;background:rgba(8,24,34,.88);border:1px solid rgba(255,217,77,.8);color:#ffe9a3;font-weight:bold;font-size:15.5px;border-radius:9px;padding:8px 16px}#toast{position:absolute;left:50%;bottom:66px;transform:translateX(-50%);max-width:84vw;text-align:center;background:rgba(8,24,34,.85);border-radius:9px;padding:8px 18px;font-size:15px;opacity:0;transition:opacity .3s}#bust-wrap{position:absolute;left:50%;top:34%;transform:translateX(-50%);width:300px;display:none;text-align:center}#bust-label{font-size:24px;font-weight:bold;color:#ff5a4d;letter-spacing:.3em;text-shadow:0 2px 6px #000}#bust-bar{height:13px;border-radius:7px;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.4);overflow:hidden}#bust-fill{height:100%;width:0%;background:#ff5a4d}#btn-mute{position:absolute;left:16px;bottom:16px;pointer-events:auto;background:rgba(8,24,34,.8);border:1px solid rgba(255,255,255,.35);border-radius:9px;font-size:17px;padding:5px 9px;cursor:pointer}#hurt{position:fixed;inset:0;pointer-events:none;z-index:6;opacity:0;background:radial-gradient(ellipse at center,transparent 42%,rgba(200,20,10,.55) 100%)}.overlay{position:fixed;inset:0;z-index:10;display:none;align-items:center;justify-content:center;flex-direction:column;text-align:center;background:linear-gradient(180deg,rgba(30,10,40,.55),rgba(5,15,25,.78))}.panel{background:rgba(8,22,32,.92);border:1px solid rgba(255,217,77,.55);border-radius:16px;padding:28px 36px;max-width:min(620px,92vw);box-shadow:0 12px 44px rgba(0,0,0,.6)}h1.game-title{font-size:clamp(38px,7vw,88px);line-height:.98;letter-spacing:.02em;background:linear-gradient(180deg,#ffe9a3 15%,#ff9a5c 55%,#ff4fa3 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 3px 10px rgba(0,0,0,.65))}.tagline{margin:10px 0 20px;font-size:16.5px;color:#dfe9f2;text-shadow:0 1px 4px #000}.menu-btn{pointer-events:auto;display:block;width:280px;margin:8px auto;padding:12px 18px;cursor:pointer;font-family:inherit;font-size:17px;font-weight:bold;color:#12222e;border:none;border-radius:10px;background:linear-gradient(180deg,#ffd94d,#f2a93d);box-shadow:0 4px 14px rgba(0,0,0,.45)}.menu-btn:hover{filter:brightness(1.09)}.menu-btn.secondary{background:linear-gradient(180deg,#e8f2f2,#b9cdd4)}#continue-note{font-size:13.5px;color:#ffe9a3;margin-top:2px}.controls-note{margin-top:18px;font-size:13.5px;color:rgba(240,244,248,.85);line-height:1.5;text-shadow:0 1px 3px #000}#card-title{font-size:30px;color:#ffd94d;letter-spacing:.04em}#card-text{font-size:16px;line-height:1.5;margin:12px 0 18px}#story-line{font-size:15px;color:#2ee6c8;margin-bottom:14px}.help-grid{text-align:left;font-size:15px;line-height:1.65;margin:8px 0 16px}.help-grid b{color:#ffd94d;display:inline-block;min-width:128px}h2.menu-head{font-size:32px;color:#ffd94d;letter-spacing:.08em;margin-bottom:8px}</style>
 </head>
 <body>
 <div id="app"></div>
-
 <div id="hud" style="display:none">
-	<div id="topleft">
-		<canvas id="minimap" width="204" height="204"></canvas>
-		<div id="district">Coral Bay</div>
-		<div id="district-sub"></div>
-	</div>
-	<div id="topright">
-		<div id="stars"></div>
-		<div id="cash">$250</div>
-		<div id="healthbar"><div id="healthfill"></div></div>
-	</div>
-	<div id="objective"><span id="obj-text"></span><span id="obj-dist"></span><span id="obj-timer"></span></div>
-	<div id="banner"><div id="banner-title"></div><div id="banner-text"></div></div>
-	<div id="vehpanel"><div id="veh-name"></div><div><span id="veh-speed">0</span><small>km/h</small></div><div id="veh-condrow"><span>CONDITION</span><div id="veh-condbar"><div id="veh-condfill"></div></div><span id="veh-cond">100%</span></div><div id="veh-radio"></div><div id="veh-tag"></div></div>
-	<div id="weaponbar">
-		<div class="wslot eq" id="ws-fists"><svg viewBox="0 0 36 24"><path d="M17 21.5c-4 0-6.5-2.8-6.5-6.8V11c0-1 .8-1.8 1.8-1.8.6 0 1.2.3 1.5.8V6.2c0-1.6 1.2-2.7 2.8-2.7 1.5 0 2.7 1 2.9 2.4V5c.2-1.3 1.3-2.3 2.6-2.3 1.4 0 2.6 1.1 2.6 2.6v.7c.4-.3.9-.5 1.4-.5 1.2 0 2.1.9 2.1 2.1v6.9c0 4-2.5 6.8-6.5 6.8z"/></svg><span class="wlab">FISTS</span><span class="wammo">—</span></div>
-		<div class="wslot dim" id="ws-pistol"><svg viewBox="0 0 36 24"><path d="M3 6h28v4H20l-1 3h-4l-1.5 8H8L10 12H3z"/></svg><span class="wlab">PISTOL</span><span class="wammo" id="wa-pistol">0</span></div>
-		<div class="wslot dim" id="ws-smg"><svg viewBox="0 0 36 24"><path d="M2 8h11l1-3h4l1 3h11v3h-6l-1 8h-4l1-8h-6l-1 6H9.5L10.5 11H2z"/></svg><span class="wlab">SMG</span><span class="wammo" id="wa-smg">0</span></div>
-	</div>
-	<div id="policepanel"><span id="pol-dot">●</span> <span id="pol-state">SEARCHING</span><div id="pol-info"></div></div>
-	<div id="rankchip"><div id="rank-name">Outsider</div><div id="rank-bar"><div id="rank-fill"></div></div><div id="rank-sub">Syndicate rank · 0/6 jobs done</div></div>
-	<div id="rtoast"></div>
-	<div id="interact"></div>
-	<div id="toast"></div>
-	<div id="bust-wrap"><div id="bust-label">BUSTED</div><div id="bust-bar"><div id="bust-fill"></div></div></div>
-	<div id="tracker"><div id="trk-chapter"></div><div id="trk-obj"></div><div id="trk-dist"></div><div id="trk-step"></div></div>
-	<div id="navarrow">▲</div>
-	<div id="crosshair">+</div>
-	<div id="subtitle"><canvas id="sub-face" width="96" height="96"></canvas><div><div id="sub-name"></div><div id="sub-text"></div></div><div id="sub-skip">Skip ▸▸ (Enter)</div></div>
-	<button id="btn-mute" class="hud-btn" style="bottom:16px" title="Mute">🔊</button>
-	<button id="btn-map" class="hud-btn" title="Full map (M)">🗺️</button>
-	<button id="btn-missions" class="hud-btn" title="Mission menu (Tab)">📋</button>
+<div id="topleft">
+<canvas id="minimap" width="204" height="204"></canvas>
+<div id="district">Coral Bay</div>
+<div id="district-sub"></div>
+</div>
+<div id="topright">
+<div id="stars"></div>
+<div id="cash">$250</div>
+<div id="healthbar"><div id="healthfill"></div></div><div id="armorbar"><div id="armorfill"></div></div>
+</div>
+<div id="objective"><span id="obj-text"></span><span id="obj-dist"></span><span id="obj-timer"></span></div>
+<div id="banner"><div id="banner-title"></div><div id="banner-text"></div></div>
+<div id="vehpanel"><div id="veh-name"></div><div><span id="veh-speed">0</span><small>km/h</small></div><div id="veh-condrow"><span>CONDITION</span><div id="veh-condbar"><div id="veh-condfill"></div></div><span id="veh-cond">100%</span></div><div id="veh-radio"></div><div id="veh-tag"></div></div>
+<div id="weaponbar">
+<div class="wslot eq" id="ws-fists"><svg viewBox="0 0 36 24"><path d="M17 21.5c-4 0-6.5-2.8-6.5-6.8V11c0-1 .8-1.8 1.8-1.8.6 0 1.2.3 1.5.8V6.2c0-1.6 1.2-2.7 2.8-2.7 1.5 0 2.7 1 2.9 2.4V5c.2-1.3 1.3-2.3 2.6-2.3 1.4 0 2.6 1.1 2.6 2.6v.7c.4-.3.9-.5 1.4-.5 1.2 0 2.1.9 2.1 2.1v6.9c0 4-2.5 6.8-6.5 6.8z"/></svg><span class="wlab">FISTS</span><span class="wammo">—</span></div>
+<div class="wslot dim" id="ws-pistol"><svg viewBox="0 0 36 24"><path d="M3 6h28v4H20l-1 3h-4l-1.5 8H8L10 12H3z"/></svg><span class="wlab">PISTOL</span><span class="wammo" id="wa-pistol">0</span></div>
+<div class="wslot dim" id="ws-smg"><svg viewBox="0 0 36 24"><path d="M2 8h11l1-3h4l1 3h11v3h-6l-1 8h-4l1-8h-6l-1 6H9.5L10.5 11H2z"/></svg><span class="wlab">SMG</span><span class="wammo" id="wa-smg">0</span></div>
+</div>
+<div id="policepanel"><span id="pol-dot">●</span> <span id="pol-state">SEARCHING</span><div id="pol-info"></div></div>
+<div id="rankchip"><div id="rank-name">Outsider</div><div id="rank-bar"><div id="rank-fill"></div></div><div id="rank-sub">Syndicate rank · 0/6 jobs done</div></div>
+<div id="rtoast"></div>
+<div id="interact"></div>
+<div id="toast"></div>
+<div id="bust-wrap"><div id="bust-label">BUSTED</div><div id="bust-bar"><div id="bust-fill"></div></div></div>
+<div id="tracker"><div id="trk-chapter"></div><div id="trk-obj"></div><div id="trk-dist"></div><div id="trk-step"></div></div>
+<div id="navarrow">▲</div>
+<div id="crosshair">+</div>
+<div id="subtitle"><canvas id="sub-face" width="96" height="96"></canvas><div><div id="sub-name"></div><div id="sub-text"></div></div><div id="sub-skip">Skip ▸▸ (Enter)</div></div>
+<button id="btn-mute" class="hud-btn" style="bottom:16px" title="Mute">🔊</button>
+<button id="btn-map" class="hud-btn" title="Full map (M)">🗺️</button>
+<button id="btn-missions" class="hud-btn" title="Mission menu (Tab)">📋</button>
 </div>
 <div id="hurt"></div>
-
 <div id="bigmap">
-	<div id="bigmap-title">CORAL BAY</div>
-	<canvas id="bigmap-canvas" width="920" height="920"></canvas>
-	<div id="bigmap-legend">
-		<span><span class="lg-dot" style="background:#ffd94d"></span>Job givers (number = chapter)</span>
-		<span><span class="lg-dot" style="background:#2ee6c8"></span>Objective</span>
-		<span><span class="lg-dot" style="background:#ff3b30"></span>Police</span>
-		<span><span class="lg-dot" style="background:#ffffff"></span>Rico</span>
-	</div>
-	<button id="btn-follow">Follow Mission — back to the main objective</button>
-	<div id="bigmap-hint">Click a job giver's marker to track them · M / Esc to close</div>
+<div id="bigmap-title">CORAL BAY</div>
+<canvas id="bigmap-canvas" width="920" height="920"></canvas>
+<div id="bigmap-legend">
+<span><span class="lg-dot" style="background:#ffd94d"></span>Job givers (number = chapter)</span>
+<span><span class="lg-dot" style="background:#2ee6c8"></span>Objective</span>
+<span><span class="lg-dot" style="background:#ff3b30"></span>Police</span>
+<span><span class="lg-dot" style="background:#ffffff"></span>Rico</span>
 </div>
-
+<button id="btn-follow">Follow Mission — back to the main objective</button>
+<div id="bigmap-hint">Click a job giver's marker to track them · M / Esc to close</div>
+</div>
 <div id="menu-missions" class="overlay">
-	<div class="panel">
-		<h2 class="menu-head">MISSIONS — THE SYNDICATE</h2>
-		<div id="mission-list"></div>
-		<button id="btn-missions-close" class="menu-btn">Close</button>
-	</div>
+<div class="panel">
+<h2 class="menu-head">MISSIONS — THE SYNDICATE</h2>
+<div id="mission-list"></div>
+<button id="btn-missions-close" class="menu-btn">Close</button>
 </div>
-
+</div>
 <div id="menu-title" class="overlay">
-	<h1 class="game-title">CORAL BAY<br>SYNDICATE</h1>
-	<p class="tagline">One fixer. One island city. Six jobs between Rico Solano and the whole bay.</p>
-	<button id="btn-continue" class="menu-btn" style="display:none">Continue</button>
-	<div id="continue-note"></div>
-	<button id="btn-new" class="menu-btn">New Game</button>
-	<button id="btn-help1" class="menu-btn secondary">How to Play</button>
-	<p class="controls-note">WASD drive &amp; walk · E enter cars &amp; talk · Space handbrake / jump · F or click fight &amp; shoot<br>
-	M full map · Tab mission menu · Q holster / radio · 1/2 draw guns (stations in cars) · R/F helicopter up &amp; down · P pause · drag mouse to look</p>
+<h1 class="game-title">CORAL BAY<br>SYNDICATE</h1>
+<p class="tagline">One fixer. One island city. Six jobs between Rico Solano and the whole bay.</p>
+<button id="btn-continue" class="menu-btn" style="display:none">Continue</button>
+<div id="continue-note"></div>
+<button id="btn-new" class="menu-btn">New Game</button>
+<button id="btn-help1" class="menu-btn secondary">How to Play</button>
+<p class="controls-note">WASD drive &amp; walk · E enter cars &amp; talk · Space handbrake / jump · F or click fight &amp; shoot<br>
+M full map · Tab mission menu · Q holster / radio · 1/2 draw guns (stations in cars) · R/F helicopter up &amp; down · P pause · drag mouse to look</p>
 </div>
-
 <div id="menu-pause" class="overlay">
-	<div class="panel">
-		<h2 class="menu-head">PAUSED</h2>
-		<div id="story-line"></div>
-		<button id="btn-resume" class="menu-btn">Resume</button>
-		<button id="btn-restart" class="menu-btn secondary">Back to Safehouse</button>
-		<button id="btn-help2" class="menu-btn secondary">How to Play</button>
-		<button id="btn-quit" class="menu-btn secondary">Quit to Title</button>
-		<div id="pause-keys"><b>WASD</b> move · <b>E</b> enter &amp; talk · <b>F / click</b> fight &amp; fire · <b>1 / 2</b> draw guns · <b>Q</b> holster · <b>Space</b> jump / handbrake · <b>M</b> map · <b>Tab</b> missions</div>
-		<div id="tokoh"><h3>CHARACTERS</h3><div id="tokoh-list"></div></div>
-	</div>
+<div class="panel">
+<h2 class="menu-head">PAUSED</h2>
+<div id="story-line"></div>
+<button id="btn-resume" class="menu-btn">Resume</button>
+<button id="btn-restart" class="menu-btn secondary">Back to Safehouse</button>
+<button id="btn-help2" class="menu-btn secondary">How to Play</button>
+<button id="btn-quit" class="menu-btn secondary">Quit to Title</button>
+<div id="pause-keys"><b>WASD</b> move · <b>E</b> enter &amp; talk · <b>F / click</b> fight &amp; fire · <b>1 / 2</b> draw guns · <b>Q</b> holster · <b>Space</b> jump / handbrake · <b>M</b> map · <b>Tab</b> missions</div>
+<div id="tokoh"><h3>CHARACTERS</h3><div id="tokoh-list"></div></div>
 </div>
-
+</div>
 <div id="menu-help" class="overlay">
-	<div class="panel">
-		<h2 class="menu-head">HOW TO PLAY</h2>
-		<div class="help-grid">
-			<div><b>WASD / arrows</b> walk and drive</div>
-			<div><b>Shift</b> sprint on foot</div>
-			<div><b>Space</b> jump on foot, handbrake in a car</div>
-			<div><b>E</b> steal / enter / exit vehicles, talk to contacts</div>
-			<div><b>F or click</b> punch, swing a weapon, fire a gun (hold click = SMG auto-fire)</div>
-			<div><b>1 / 2 · Q</b> on foot: draw pistol / SMG, holster · in a car: radio on/off and stations</div>
-			<div><b>R / F</b> helicopter climb / sink (WASD steer and move)</div>
-			<div><b>Mouse drag</b> orbit the camera · <b>wheel</b> zoom</div>
-			<div><b>M</b> full-screen map (or click the minimap)</div>
-			<div><b>Tab / J</b> mission menu — every chapter, its giver and payout</div>
-			<div><b>Enter</b> skip a cutscene · <b>P / Esc</b> pause</div>
-		</div>
-		<p style="font-size:14.5px;line-height:1.5">Follow the gold beacons to Celia, Marco and Don Falso and work the six-job
-		Syndicate chain. Stars bring Interceptors, roadblocks at three stars and a spotlight helicopter at four.
-		Get caught standing still and you are BUSTED; get flattened and you are WASTED. Progress saves automatically.</p>
-		<button id="btn-help-close" class="menu-btn">Back</button>
-	</div>
+<div class="panel">
+<h2 class="menu-head">HOW TO PLAY</h2>
+<div class="help-grid">
+<div><b>WASD / arrows</b> walk and drive</div>
+<div><b>Shift</b> sprint on foot</div>
+<div><b>Space</b> jump on foot, handbrake in a car</div>
+<div><b>E</b> steal / enter / exit vehicles, talk to contacts</div>
+<div><b>F or click</b> punch, swing a weapon, fire a gun (hold click = SMG auto-fire)</div>
+<div><b>1 / 2 · Q</b> on foot: draw pistol / SMG, holster · in a car: radio on/off and stations</div>
+<div><b>R / F</b> helicopter climb / sink (WASD steer and move)</div>
+<div><b>Mouse drag</b> orbit the camera · <b>wheel</b> zoom</div>
+<div><b>M</b> full-screen map (or click the minimap)</div>
+<div><b>Tab / J</b> mission menu — every chapter, its giver and payout</div>
+<div><b>Enter</b> skip a cutscene · <b>P / Esc</b> pause</div>
 </div>
-
+<p style="font-size:14.5px;line-height:1.5">Follow the gold beacons to Celia, Marco and Don Falso and work the six-job
+Syndicate chain. Stars bring Interceptors, roadblocks at three stars and a spotlight helicopter at four.
+Get caught standing still and you are BUSTED; get flattened and you are WASTED. Progress saves automatically.</p>
+<button id="btn-help-close" class="menu-btn">Back</button>
+</div>
+</div>
 <div id="card" class="overlay">
-	<div class="panel">
-		<h2 id="card-title"></h2>
-		<p id="card-text"></p>
-		<button id="btn-card" class="menu-btn">Continue</button>
-	</div>
+<div class="panel">
+<h2 id="card-title"></h2>
+<p id="card-text"></p>
+<button id="btn-card" class="menu-btn">Continue</button>
 </div>
-
+</div>
 <script src="vendor/three.min.js"></script>
 <script src="src/util.js"></script>
 <script src="src/audio.js"></script>
