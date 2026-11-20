@@ -365,7 +365,7 @@ function uPF(dt) {
 	if (isLand(nx, nz) || isLand(m.position.x, m.position.z) === false) { m.position.x = nx; m.position.z = nz; }
 	aPrs(p, sp, dt);
 	p.speed = sp;
-	} else { p.speed = 0; aPrs(p, 0, dt); }
+	} else { p.speed = 0; aPrs(p, 0, dt); if (isGun(G.wp)) m.rotation.y = aLp(m.rotation.y, camA, dt * 11); }
 	if (key("Space") && p.y <= 0) { p.vy = 7.4; }
 	if (p.y > 0 || p.vy > 0) {
 	p.vy -= 22 * dt; p.y += p.vy * dt;
@@ -477,5 +477,5 @@ function uCFx(dt) {
 	if (tracerT > 0) { tracerT -= dt; if (tracerT <= 0 && trcM) trcM.visible = false; }
 	if (flashT > 0) { flashT -= dt; if (flashT <= 0 && flashMesh) flashMesh.visible = false; }
 	if (gunCd > 0) gunCd -= dt;
-	if (mouseDown && G.wp === "smg" && G.md === "play" && G.oF && !G.cs) fGun();
+	if (mouseDown && mouseMoved < 6 && G.wp === "smg" && G.md === "play" && G.oF && !G.cs) fGun();
 }
