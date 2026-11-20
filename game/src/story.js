@@ -9,7 +9,7 @@ const portraitCache = {};
 function portraitCanvas(key) {
 	if (portraitCache[key]) return portraitCache[key];
 	const s = CHARACTERS[key];
-	const cv = DC.createElement("canvas"); cv.width = 96; cv.height = 96;
+	const cv = CE("canvas"); cv.width = 96; cv.height = 96;
 	const c = cv.getContext("2d");
 	const sky = c.createLinearGradient(0, 0, 0, 96);
 	sky.addColorStop(0, "#ffb37a"); sky.addColorStop(1, "#7a4a6e");
@@ -93,25 +93,25 @@ const CUTSCENES = [
 	],
 ];
 const CUT_LINE_SECONDS = 2.9;
-function csGiverPerson(cs) { return G.contacts[cs.giverKey].person; }
+function csGiverPerson(cs) { return G.ct[cs.giverKey].person; }
 function startCutscene(idx, onDone) {
 	const giverKey = idx < JOBS.length ? JOBS[idx].giver : "don";
-	const gp = G.contacts[giverKey].person.mesh.position;
-	const pp = G.player.mesh.position;
+	const gp = G.ct[giverKey].person.mesh.position;
+	const pp = G.pl.mesh.position;
 	let dx = pp.x - gp.x, dz = pp.z - gp.z;
 	const dl = M.sqrt(dx * dx + dz * dz) || 1; dx /= dl; dz /= dl;
-	G.player.mesh.position.set(gp.x + dx * 2.6, 0, gp.z + dz * 2.6);
-	G.player.mesh.rotation.y = M.atan2(-dx, -dz);
-	G.contacts[giverKey].person.mesh.rotation.y = M.atan2(dx, dz);
-	G.cutscene = { idx, lines: CUTSCENES[idx], line: 0, t: 0, giverKey, onDone: onDone || null };
-	G.giverPrompt = null;
-	if (G.player.namePlate) G.player.namePlate.visible = false;
+	G.pl.mesh.position.set(gp.x + dx * 2.6, 0, gp.z + dz * 2.6);
+	G.pl.mesh.rotation.y = M.atan2(-dx, -dz);
+	G.ct[giverKey].person.mesh.rotation.y = M.atan2(dx, dz);
+	G.cs = { idx, lines: CUTSCENES[idx], line: 0, t: 0, giverKey, onDone: onDone || null };
+	G.gP = null;
+	if (G.pl.nP) G.pl.nP.visible = false;
 	sInt(null);
 	csShowLine();
 	sfxSting("start");
 }
 function csShowLine() {
-	const cs = G.cutscene; if (!cs) return;
+	const cs = G.cs; if (!cs) return;
 	const line = cs.lines[cs.line];
 	drawPortrait(el("sub-face"), line.who);
 	el("sub-name").textContent = CHARACTERS[line.who].name;
@@ -119,7 +119,7 @@ function csShowLine() {
 	el("subtitle").style.display = "flex";
 }
 function csCameraPose(cs) {
-	const a = G.player.mesh.position, b = csGiverPerson(cs).mesh.position;
+	const a = G.pl.mesh.position, b = csGiverPerson(cs).mesh.position;
 	const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
 	let fx = b.x - a.x, fz = b.z - a.z;
 	const fl = M.sqrt(fx * fx + fz * fz) || 1; fx /= fl; fz /= fl;
@@ -130,16 +130,16 @@ function csCameraPose(cs) {
 }
 function csApplyCamera(cs, dt) {
 	const pose = csCameraPose(cs);
-	const k = dt ? clamp(dt * 2.4, 0, 1) : 1;
-	G.camera.position.x += (pose.pos[0] - G.camera.position.x) * k;
-	G.camera.position.y += (pose.pos[1] - G.camera.position.y) * k;
-	G.camera.position.z += (pose.pos[2] - G.camera.position.z) * k;
-	G.camera.lookAt(pose.look[0], pose.look[1], pose.look[2]);
+	const k = dt ? zm(dt * 2.4, 0, 1) : 1;
+	G.cm.position.x += (pose.pos[0] - G.cm.position.x) * k;
+	G.cm.position.y += (pose.pos[1] - G.cm.position.y) * k;
+	G.cm.position.z += (pose.pos[2] - G.cm.position.z) * k;
+	G.cm.lookAt(pose.look[0], pose.look[1], pose.look[2]);
 }
 function updateCutscene(dt) {
-	const cs = G.cutscene; if (!cs) return;
+	const cs = G.cs; if (!cs) return;
 	cs.t += dt;
-	aPrs(G.player, 0, dt);
+	aPrs(G.pl, 0, dt);
 	if (cs.t >= CUT_LINE_SECONDS) {
 		cs.t = 0; cs.line++;
 		if (cs.line >= cs.lines.length) { finishCutscene(); return; }
@@ -148,11 +148,11 @@ function updateCutscene(dt) {
 	csApplyCamera(cs, dt);
 }
 function finishCutscene() {
-	if (!G.cutscene) return;
-	const cb = G.cutscene.onDone;
-	G.cutscene = null;
+	if (!G.cs) return;
+	const cb = G.cs.onDone;
+	G.cs = null;
 	el("subtitle").style.display = "none";
-	if (G.player.namePlate && G.onFoot) G.player.namePlate.visible = true;
+	if (G.pl.nP && G.oF) G.pl.nP.visible = true;
 	if (cb) cb();
 }
 function skipCutscene() { finishCutscene(); }

@@ -12,15 +12,15 @@ function hudInit() {
 	for (const id of ["btn-help1", "btn-help2"]) clk(id, () => { el("menu-help").style.display = "flex"; });
 	clk("btn-help-close", () => { el("menu-help").style.display = "none"; });
 	el("btn-mute").addEventListener("click", () => {
-		G.muted = !G.muted;
-		if (Sfx.master) Sfx.master.gain.value = G.muted ? 0 : 0.55;
-		el("btn-mute").textContent = G.muted ? "🔇" : "🔊";
+		G.mu = !G.mu;
+		if (Sfx.master) Sfx.master.gain.value = G.mu ? 0 : 0.55;
+		el("btn-mute").textContent = G.mu ? "🔇" : "🔊";
 	});
-	el("minimap").addEventListener("click", () => { if (G.mode === "play") tMap(true); });
-	clk("btn-map", () => { if (G.mode === "play" || G.mode === "map") tMap(); });
-	clk("btn-missions", () => { if (G.mode === "play" || G.mode === "missions") tMis(); });
+	el("minimap").addEventListener("click", () => { if (G.md === "play") tMap(true); });
+	clk("btn-map", () => { if (G.md === "play" || G.md === "map") tMap(); });
+	clk("btn-missions", () => { if (G.md === "play" || G.md === "missions") tMis(); });
 	el("bigmap-canvas").addEventListener("click", bigMapClick);
-	el("bigmap").addEventListener("click", (e) => { if (e.target === el("bigmap") && G.mode === "map") tMap(false); });
+	el("bigmap").addEventListener("click", (e) => { if (e.target === el("bigmap") && G.md === "map") tMap(false); });
 	clk("btn-follow", () => { setTrack(null); forceRoute(); drawBigMap(); });
 	clk("btn-missions-close", () => tMis(false));
 	buildTokoh();
@@ -30,13 +30,13 @@ function buildTokoh() {
 	if (!wrap || wrap.children.length) return;
 	for (const key of ["rico", "celia", "marco", "don"]) {
 		const ch = CHARACTERS[key];
-		const fig = DC.createElement("div");
+		const fig = CE("div");
 		fig.className = "tokoh-item";
-		const cv = DC.createElement("canvas");
+		const cv = CE("canvas");
 		cv.width = 96; cv.height = 96; cv.className = "tokoh-face";
 		fig.appendChild(cv);
-		const nm = DC.createElement("div"); nm.className = "tokoh-name"; nm.textContent = ch.name; fig.appendChild(nm);
-		const rl = DC.createElement("div"); rl.className = "tokoh-role"; rl.textContent = ch.role; fig.appendChild(rl);
+		const nm = CE("div"); nm.className = "tokoh-name"; nm.textContent = ch.name; fig.appendChild(nm);
+		const rl = CE("div"); rl.className = "tokoh-role"; rl.textContent = ch.role; fig.appendChild(rl);
 		wrap.appendChild(fig);
 		drawPortrait(cv, key);
 	}
@@ -55,11 +55,11 @@ function showBanner(title, text, dur) {
 }
 function sObj(text, x, z, timer) {
 	const box = el("objective");
-	if (!text) { box.style.display = "none"; G.objTimer = null; return; }
+	if (!text) { box.style.display = "none"; G.oT = null; return; }
 	box.style.display = "block";
 	el("obj-text").textContent = text;
-	if (x !== undefined && x !== null) G.objectivePos = { x, z };
-	G.objTimer = (timer === undefined ? null : timer);
+	if (x !== undefined && x !== null) G.oP = { x, z };
+	G.oT = (timer === undefined ? null : timer);
 }
 function sInt(text) {
 	const i = el("interact");
@@ -74,31 +74,31 @@ function setBustUI(v) {
 }
 function showHurt() { hurtT = 0.55; }
 function uHud() {
-	el("cash").textContent = fmtCash(G.cash);
+	el("cash").textContent = fmtCash(G.ca);
 	let stars = "";
-	for (let i = 0; i < 5; i++) stars += i < G.wanted ? "★" : "☆";
+	for (let i = 0; i < 5; i++) stars += i < G.wn ? "★" : "☆";
 	const st = el("stars");
 	st.textContent = stars;
-	st.style.color = G.wanted > 0 ? "#ffcf3f" : "rgba(255,255,255,0.35)";
-	el("healthfill").style.width = clamp(G.health, 0, 100) + "%";
-	el("healthfill").style.background = G.health > 35 ? "#58d06a" : "#e84a3c";
-	const wname = { fists: "Fists", bat: "Baseball bat", pipe: "Lead pipe", pistol: "Pistol", smg: "SMG" }[G.weapon];
-	el("weapon").textContent = G.weapon === "pistol" ? wname + " · " + G.ammoP : G.weapon === "smg" ? wname + " · " + G.ammoS : wname;
-	el("crosshair").style.display = isGun(G.weapon) && G.onFoot && G.mode === "play" ? "block" : "none";
-	if (G.gunMesh) { G.gunMesh.visible = isGun(G.weapon) && G.onFoot; G.gunMesh.scale.z = G.weapon === "smg" ? 1.45 : 1; }
-	const driving = !G.onFoot && G.vehicle;
+	st.style.color = G.wn > 0 ? "#ffcf3f" : "rgba(255,255,255,0.35)";
+	el("healthfill").style.width = zm(G.hp, 0, 100) + "%";
+	el("healthfill").style.background = G.hp > 35 ? "#58d06a" : "#e84a3c";
+	const wname = { fists: "Fists", bat: "Baseball bat", pipe: "Lead pipe", pistol: "Pistol", smg: "SMG" }[G.wp];
+	el("weapon").textContent = G.wp === "pistol" ? wname + " · " + G.ammoP : G.wp === "smg" ? wname + " · " + G.ammoS : wname;
+	el("crosshair").style.display = isGun(G.wp) && G.oF && G.md === "play" ? "block" : "none";
+	if (G.gU) { G.gU.visible = isGun(G.wp) && G.oF; G.gU.scale.z = G.wp === "smg" ? 1.45 : 1; }
+	const driving = !G.oF && G.vh;
 	el("speedo").style.display = driving ? "block" : "none";
 	if (driving) {
-		el("speed-val").textContent = M.round(M.abs(G.vehicle.speed) * 3.1);
-		el("speed-name").textContent = G.vehicle.name + (G.vehicle.kind === "heli" ? " · alt " + M.round(G.vehicle.alt) + "m" : "");
+		el("speed-val").textContent = M.round(M.abs(G.vh.speed) * 3.1);
+		el("speed-name").textContent = G.vh.name + (G.vh.kind === "heli" ? " · alt " + M.round(G.vh.alt) + "m" : "");
 	}
-	const tp = G.track || G.objectivePos;
+	const tp = G.tk || G.oP;
 	if (tp) {
 		const f = fPt();
-		el("obj-dist").textContent = M.round(dist2d(f.x, f.z, tp.x, tp.z)) + "m";
+		el("obj-dist").textContent = M.round(d3(f.x, f.z, tp.x, tp.z)) + "m";
 	} else el("obj-dist").textContent = "";
-	if (G.objTimer !== null && G.objTimer !== undefined) {
-		const t = M.max(0, M.ceil(G.objTimer));
+	if (G.oT !== null && G.oT !== undefined) {
+		const t = M.max(0, M.ceil(G.oT));
 		el("obj-timer").textContent = "⏱ " + M.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
 	} else el("obj-timer").textContent = "";
 	const f = fPt();
@@ -109,32 +109,32 @@ function uHud() {
 let trkCache = "";
 function cgK() {
 	if (G.job) return JOBS[G.job.i].giver;
-	if (G.jobIndex < JOBS.length) return JOBS[G.jobIndex].giver;
+	if (G.ji < JOBS.length) return JOBS[G.ji].giver;
 	return null;
 }
 function refreshTracker(f) {
-	if (G.stage) { el("tracker").style.display = "none"; return; }
+	if (G.sg) { el("tracker").style.display = "none"; return; }
 	el("tracker").style.display = "block";
 	let head, obj, tx = null, tz = null;
 	if (G.job) {
 		head = "CHAPTER " + (G.job.i + 1) + " — " + JOBS[G.job.i].title;
 		obj = el("obj-text").textContent;
-		if (G.objectivePos) { tx = G.objectivePos.x; tz = G.objectivePos.z; }
-	} else if (G.hustle) {
-		head = "SIDE HUSTLE — " + (G.hustle.type === "race" ? "Bay Runner Rematch" : "Special Delivery");
+		if (G.oP) { tx = G.oP.x; tz = G.oP.z; }
+	} else if (G.hu) {
+		head = "SIDE HUSTLE — " + (G.hu.type === "race" ? "Bay Runner Rematch" : "Special Delivery");
 		obj = el("obj-text").textContent;
-		if (G.objectivePos) { tx = G.objectivePos.x; tz = G.objectivePos.z; }
-	} else if (G.jobIndex < JOBS.length) {
-		const def = JOBS[G.jobIndex], key = def.giver, spot = G.contacts[key].spot;
-		head = "CHAPTER " + (G.jobIndex + 1) + " — " + def.title;
+		if (G.oP) { tx = G.oP.x; tz = G.oP.z; }
+	} else if (G.ji < JOBS.length) {
+		const def = JOBS[G.ji], key = def.giver, spot = G.ct[key].spot;
+		head = "CHAPTER " + (G.ji + 1) + " — " + def.title;
 		obj = "Meet " + gNam(key) + " — " + dAt(spot.x, spot.z);
 		tx = spot.x; tz = spot.z;
 	} else {
 		head = "STORY COMPLETE — Coral Bay is yours";
 		obj = "Free roam: Celia's deliveries & the Bay Runner rematch keep paying";
 	}
-	let dist = tx !== null ? M.round(dist2d(f.x, f.z, tx, tz)) + "m" : "";
-	if (G.track) { obj = "Melacak: " + G.track.name; dist = M.round(dist2d(f.x, f.z, G.track.x, G.track.z)) + "m"; }
+	let dist = tx !== null ? M.round(d3(f.x, f.z, tx, tz)) + "m" : "";
+	if (G.tk) { obj = "Melacak: " + G.tk.name; dist = M.round(d3(f.x, f.z, G.tk.x, G.tk.z)) + "m"; }
 	const sig = head + "|" + obj + "|" + dist;
 	if (sig === trkCache) return;
 	trkCache = sig;
@@ -143,16 +143,16 @@ function refreshTracker(f) {
 	el("trk-dist").textContent = dist;
 }
 function drawMinimap() {
-	if (!mmCtx || !G.groundCanvas) return;
+	if (!mmCtx || !G.gC) return;
 	const S = 204, ctx = mmCtx, R = 215;
 	const f = fPt();
 	const px = f.x, pz = f.z, scale = (S / 2) / R;
-	const src = G.groundCanvas, w2c = src.width / G.citySize, sw = 2 * R * w2c;
+	const src = G.gC, w2c = src.width / G.cS, sw = 2 * R * w2c;
 	ctx.clearRect(0, 0, S, S);
 	ctx.save();
 	ctx.beginPath(); ctx.arc(S / 2, S / 2, S / 2 - 2, 0, 7); ctx.clip();
 	ctx.fillStyle = "#1b6a8c"; ctx.fillRect(0, 0, S, S);
-	ctx.drawImage(src, (px + G.citySize / 2) * w2c - sw / 2, (pz + G.citySize / 2) * w2c - sw / 2, sw, sw, 0, 0, S, S);
+	ctx.drawImage(src, (px + G.cS / 2) * w2c - sw / 2, (pz + G.cS / 2) * w2c - sw / 2, sw, sw, 0, 0, S, S);
 	if (rPts && rPts.length > 1) {
 		ctx.lineJoin = "round";
 		for (const pass of [[5.5, "rgba(8,24,34,.6)"], [3, "#ffd94d"]]) {
@@ -171,29 +171,29 @@ function drawMinimap() {
 		if (dx * dx + dz * dz > (S / 2 - 5) * (S / 2 - 5)) return;
 		ctx.fillStyle = color; ctx.beginPath(); ctx.arc(S / 2 + dx, S / 2 + dz, r, 0, 7); ctx.fill();
 	}
-	const flashBlue = M.floor(G.time * 2.4) % 2 === 0;
-	for (const c of G.police) dot(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", 4);
+	const flashBlue = M.floor(G.tm * 2.4) % 2 === 0;
+	for (const c of G.po) dot(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", 4);
 	if (typeof pHeli !== "undefined" && pHeli) dot(pHeli.mesh.position.x, pHeli.mesh.position.z, "#ff3b30", 4);
 	const cgKey = cgK();
 	for (const key of ["celia", "marco", "don"]) {
 		if (contactHasJob(key)) {
-			const ct = G.contacts[key];
+			const ct = G.ct[key];
 			dot(ct.spot.x, ct.spot.z, "#ffd94d", 5.5);
 			if (key === cgKey && !G.job) {
 				const dx = (ct.spot.x - px) * scale, dz = (ct.spot.z - pz) * scale;
 				if (dx * dx + dz * dz < (S / 2 - 8) * (S / 2 - 8)) {
 					ctx.fillStyle = "#ffd94d"; ctx.beginPath(); ctx.arc(S / 2 + dx, S / 2 + dz, 8, 0, 7); ctx.fill();
 					ctx.fillStyle = "#12222e"; ctx.font = "bold 10px Trebuchet MS, sans-serif"; ctx.textAlign = "center";
-					ctx.fillText(String(G.jobIndex + 1), S / 2 + dx, S / 2 + dz + 3.5);
+					ctx.fillText(String(G.ji + 1), S / 2 + dx, S / 2 + dz + 3.5);
 				}
 			}
 		}
 	}
-	if (G.objectivePos) {
-		const pulse = 5 + M.sin(G.time * 5) * 1.6;
-		dot(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
+	if (G.oP) {
+		const pulse = 5 + M.sin(G.tm * 5) * 1.6;
+		dot(G.oP.x, G.oP.z, "#2ee6c8", pulse);
 	}
-	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
+	const heading = !G.oF && G.vh ? G.vh.mesh.rotation.y : G.pl.mesh.rotation.y;
 	ctx.translate(S / 2, S / 2); ctx.rotate(M.PI - heading);
 	ctx.fillStyle = "#ffffff";
 	ctx.strokeStyle = "#12303f"; ctx.lineWidth = 1.6;
@@ -210,16 +210,16 @@ function hudTick(dt) {
 		bannerTimer -= dt;
 		if (bannerTimer <= 0) { el("banner").style.opacity = "0"; el("banner").style.transform = "translate(-50%, -12px)"; }
 	}
-	if (hurtT > 0) { hurtT -= dt; el("hurt").style.opacity = String(clamp(hurtT, 0, 0.55)); }
+	if (hurtT > 0) { hurtT -= dt; el("hurt").style.opacity = String(zm(hurtT, 0, 0.55)); }
 	else el("hurt").style.opacity = "0";
 	if (jMrk && jMrk.visible) {
-		const s = 1 + M.sin(G.time * 4) * 0.08;
+		const s = 1 + M.sin(G.tm * 4) * 0.08;
 		jMrk.scale.set(s, 1, s);
 	}
 	routeTick(dt);
 }
 function showTitle() {
-	G.mode = "title";
+	G.md = "title";
 	el("menu-title").style.display = "flex";
 	el("menu-pause").style.display = "none";
 	el("card").style.display = "none";
@@ -230,44 +230,44 @@ function showTitle() {
 }
 function startNewGame() {
 	clearSave();
-	G.cash = 250; G.jobIndex = 0; G.jobsDone = 0; G.raceBest = 0;
-	G.guns = { pistol: false, smg: false }; G.ammoP = 0; G.ammoS = 0; G.weapon = "fists";
+	G.ca = 250; G.ji = 0; G.jD = 0; G.rB = 0;
+	G.gn = { pistol: false, smg: false }; G.ammoP = 0; G.ammoS = 0; G.wp = "fists";
 	beginPlay();
 	showBanner("Coral Bay Syndicate", "Rico Solano, fixer. Celia is waiting at the marina — follow the gold marker. Build the syndicate, job by job.", 7);
 }
 function continueGame() {
 	const save = loadSave();
 	if (save) {
-		G.cash = save.cash; G.jobIndex = save.jobIndex; G.jobsDone = save.jobsDone;
-		G.raceBest = save.raceBest || 0; G.radioStation = save.radioStation || 0;
-		if (save.guns) { G.guns = save.guns; G.ammoP = save.ammoP || 0; G.ammoS = save.ammoS || 0; }
+		G.ca = save.cash; G.ji = save.jobIndex; G.jD = save.jobsDone;
+		G.rB = save.raceBest || 0; G.rS = save.radioStation || 0;
+		if (save.guns) { G.gn = save.guns; G.ammoP = save.ammoP || 0; G.ammoS = save.ammoS || 0; }
 	}
 	beginPlay();
-	sToa(G.jobIndex < JOBS.length ? "Welcome back. Next job: " + JOBS[G.jobIndex].title : "Welcome back, boss. The bay is yours.");
+	sToa(G.ji < JOBS.length ? "Welcome back. Next job: " + JOBS[G.ji].title : "Welcome back, boss. The bay is yours.");
 }
 function beginPlay() {
 	el("menu-title").style.display = "none";
 	el("hud").style.display = "block";
-	G.mode = "play";
+	G.md = "play";
 	rspH();
-	G.cash = M.max(G.cash, 0);
+	G.ca = M.max(G.ca, 0);
 	uHud();
 }
 function tPau(force) {
-	if (G.cutscene) return;
-	const show = force !== undefined ? force : G.mode === "play";
-	if (show && G.mode === "play") {
-		G.mode = "pause";
+	if (G.cs) return;
+	const show = force !== undefined ? force : G.md === "play";
+	if (show && G.md === "play") {
+		G.md = "pause";
 		el("story-line").textContent = storyLine();
 		el("menu-pause").style.display = "flex";
-	} else if (!show && G.mode === "pause") {
-		G.mode = "play";
+	} else if (!show && G.md === "pause") {
+		G.md = "play";
 		el("menu-pause").style.display = "none";
 	}
 }
 function storyLine() {
-	if (G.jobIndex >= JOBS.length) return "Story: complete — CORAL BAY IS YOURS · free-roam hustles stay open";
-	return "Story: jobs done " + G.jobsDone + "/6 · next: " + JOBS[G.jobIndex].title + " (" + gNam(JOBS[G.jobIndex].giver) + ")";
+	if (G.ji >= JOBS.length) return "Story: complete — CORAL BAY IS YOURS · free-roam hustles stay open";
+	return "Story: jobs done " + G.jD + "/6 · next: " + JOBS[G.ji].title + " (" + gNam(JOBS[G.ji].giver) + ")";
 }
 function restartAtSafehouse() {
 	tPau(false);
@@ -275,7 +275,7 @@ function restartAtSafehouse() {
 	rspH();
 	sToa("Back at the safehouse");
 }
-function failJobSilent() { G.job = null; G.hustle = null; hMrk(); sObj(null); }
+function failJobSilent() { G.job = null; G.hu = null; hMrk(); sObj(null); }
 function quitToTitle() {
 	tPau(false);
 	failJobSilent();
@@ -283,7 +283,7 @@ function quitToTitle() {
 	showTitle();
 }
 function showCard(title, text, btnText) {
-	G.mode = "card";
+	G.md = "card";
 	el("card-title").textContent = title;
 	el("card-text").textContent = text;
 	el("btn-card").textContent = btnText || "Continue";
@@ -291,26 +291,26 @@ function showCard(title, text, btnText) {
 }
 function hideCard() {
 	el("card").style.display = "none";
-	if (G.mode === "card") G.mode = "play";
+	if (G.md === "card") G.md = "play";
 }
 function tMap(force) {
-	const show = force !== undefined ? force : G.mode !== "map";
-	if (show && G.mode === "play") {
-		G.mode = "map";
+	const show = force !== undefined ? force : G.md !== "map";
+	if (show && G.md === "play") {
+		G.md = "map";
 		el("bigmap").style.display = "flex";
 		drawBigMap();
-	} else if (!show && G.mode === "map") {
-		G.mode = "play";
+	} else if (!show && G.md === "map") {
+		G.md = "play";
 		el("bigmap").style.display = "none";
 	}
 }
 function drawBigMap() {
 	const cv = el("bigmap-canvas");
-	if (!cv || !G.groundCanvas) return;
-	const ctx = cv.getContext("2d"), S = cv.width, W = G.citySize;
+	if (!cv || !G.gC) return;
+	const ctx = cv.getContext("2d"), S = cv.width, W = G.cS;
 	const w2m = (x) => (x + W / 2) / W * S;
 	ctx.clearRect(0, 0, S, S);
-	ctx.drawImage(G.groundCanvas, 0, 0, S, S);
+	ctx.drawImage(G.gC, 0, 0, S, S);
 	if (rPts && rPts.length > 1) {
 		ctx.lineJoin = "round";
 		for (const pass of [[11, "rgba(255,217,77,.3)"], [5, "#ffd94d"]]) {
@@ -329,49 +329,49 @@ function drawBigMap() {
 		ctx.fillStyle = "#ffe9a3"; ctx.fillText(name, w2m(x), w2m(z));
 	}
 	function blip(x, z, color, r) {
-		const bx = clamp(w2m(x), r + 2, S - r - 2), bz = clamp(w2m(z), r + 2, S - r - 2);
+		const bx = zm(w2m(x), r + 2, S - r - 2), bz = zm(w2m(z), r + 2, S - r - 2);
 		ctx.fillStyle = color; ctx.beginPath(); ctx.arc(bx, bz, r, 0, 7); ctx.fill();
 		ctx.lineWidth = 2; ctx.strokeStyle = "rgba(10,25,35,0.8)"; ctx.stroke();
 		return [bx, bz];
 	}
-	const flashBlue = M.floor(G.time * 2.4) % 2 === 0;
-	for (const c of G.police) blip(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", S * 0.008);
+	const flashBlue = M.floor(G.tm * 2.4) % 2 === 0;
+	for (const c of G.po) blip(c.mesh.position.x, c.mesh.position.z, flashBlue ? "#3f8cff" : "#ff3b30", S * 0.008);
 	if (typeof pHeli !== "undefined" && pHeli) blip(pHeli.mesh.position.x, pHeli.mesh.position.z, "#ff3b30", S * 0.008);
 	const cgKey = cgK();
 	ctx.font = "bold " + M.round(S * 0.016) + "px Trebuchet MS, sans-serif";
 	for (const key of ["celia", "marco", "don"]) {
-		const ct = G.contacts[key];
+		const ct = G.ct[key];
 		const isNext = key === cgKey && !G.job;
 		const [bx, bz] = blip(ct.spot.x, ct.spot.z, "#ffd94d", isNext ? S * 0.017 : S * 0.011);
 		if (isNext) {
 			ctx.fillStyle = "#12222e"; ctx.font = "bold " + M.round(S * 0.02) + "px Trebuchet MS, sans-serif";
-			ctx.fillText(String(G.jobIndex + 1), bx, bz + S * 0.007);
+			ctx.fillText(String(G.ji + 1), bx, bz + S * 0.007);
 			ctx.font = "bold " + M.round(S * 0.016) + "px Trebuchet MS, sans-serif";
 		}
-		if (G.track && G.track.key === key) {
+		if (G.tk && G.tk.key === key) {
 			ctx.lineWidth = 3; ctx.strokeStyle = "#2ee6c8";
 			ctx.beginPath(); ctx.arc(bx, bz, S * 0.024, 0, 7); ctx.stroke();
 		}
-		const nx = clamp(bx, 48, S - 48);
+		const nx = zm(bx, 48, S - 48);
 		ctx.lineWidth = 3.5; ctx.strokeStyle = "rgba(10,25,35,0.8)";
 		ctx.strokeText(gNam(key), nx, bz - S * 0.02);
 		ctx.fillStyle = "#ffffff"; ctx.fillText(gNam(key), nx, bz - S * 0.02);
 	}
-	el("btn-follow").style.display = G.track ? "inline-block" : "none";
-	if (G.track) {
+	el("btn-follow").style.display = G.tk ? "inline-block" : "none";
+	if (G.tk) {
 		ctx.font = "bold " + M.round(S * 0.019) + "px Trebuchet MS, sans-serif"; ctx.textAlign = "left";
-		const label = "Melacak: " + G.track.name;
+		const label = "Melacak: " + G.tk.name;
 		ctx.lineWidth = 4; ctx.strokeStyle = "rgba(10,25,35,0.85)";
 		ctx.strokeText(label, 14, 28); ctx.fillStyle = "#2ee6c8"; ctx.fillText(label, 14, 28);
 	}
-	if (G.objectivePos) {
-		const pulse = S * 0.013 + M.sin(G.time * 5) * S * 0.003;
-		blip(G.objectivePos.x, G.objectivePos.z, "#2ee6c8", pulse);
+	if (G.oP) {
+		const pulse = S * 0.013 + M.sin(G.tm * 5) * S * 0.003;
+		blip(G.oP.x, G.oP.z, "#2ee6c8", pulse);
 	}
 	const f = fPt();
-	const heading = !G.onFoot && G.vehicle ? G.vehicle.mesh.rotation.y : G.player.mesh.rotation.y;
+	const heading = !G.oF && G.vh ? G.vh.mesh.rotation.y : G.pl.mesh.rotation.y;
 	ctx.save();
-	ctx.translate(clamp(w2m(f.x), 16, S - 16), clamp(w2m(f.z), 16, S - 16)); ctx.rotate(M.PI - heading);
+	ctx.translate(zm(w2m(f.x), 16, S - 16), zm(w2m(f.z), 16, S - 16)); ctx.rotate(M.PI - heading);
 	const as = S * 0.016;
 	ctx.fillStyle = "#ffffff"; ctx.strokeStyle = "#12303f"; ctx.lineWidth = 2;
 	ctx.beginPath(); ctx.moveTo(0, -as); ctx.lineTo(as * 0.68, as * 0.8); ctx.lineTo(0, as * 0.42); ctx.lineTo(-as * 0.68, as * 0.8); ctx.closePath();
@@ -379,13 +379,13 @@ function drawBigMap() {
 	ctx.restore();
 }
 function tMis(force) {
-	const show = force !== undefined ? force : G.mode !== "missions";
-	if (show && G.mode === "play") {
+	const show = force !== undefined ? force : G.md !== "missions";
+	if (show && G.md === "play") {
 		buildMissionList();
-		G.mode = "missions";
+		G.md = "missions";
 		el("menu-missions").style.display = "flex";
-	} else if (!show && G.mode === "missions") {
-		G.mode = "play";
+	} else if (!show && G.md === "missions") {
+		G.md = "play";
 		el("menu-missions").style.display = "none";
 	}
 }
@@ -393,13 +393,13 @@ function buildMissionList() {
 	const wrap = el("mission-list");
 	wrap.innerHTML = "";
 	JOBS.forEach((def, i) => {
-		const spot = G.contacts[def.giver].spot;
+		const spot = G.ct[def.giver].spot;
 		let status, cls;
-		if (i < G.jobIndex) { status = "Selesai ✓"; cls = "done"; }
+		if (i < G.ji) { status = "Selesai ✓"; cls = "done"; }
 		else if (G.job && G.job.i === i) { status = "Aktif"; cls = "active"; }
-		else if (i === G.jobIndex) { status = "Berikutnya"; cls = "next"; }
+		else if (i === G.ji) { status = "Berikutnya"; cls = "next"; }
 		else { status = "Terkunci"; cls = "locked"; }
-		const row = DC.createElement("div");
+		const row = CE("div");
 		row.className = "mission-row " + cls;
 		let html = "<div class='mission-head'><span class='mission-chip'>CHAPTER " + (i + 1) + "</span>" +
 			"<span class='mission-title'>" + def.title + "</span>" +
@@ -409,32 +409,32 @@ function buildMissionList() {
 		else if (cls === "next") html += "<div class='mission-obj'>" + def.brief + "</div>";
 		row.innerHTML = html;
 		if (cls === "active" || cls === "next") {
-			const btn = DC.createElement("button");
+			const btn = CE("button");
 			btn.className = "mission-track"; btn.textContent = "🧭 Lacak";
 			btn.addEventListener("click", () => {
-				if (cls === "active" && G.objectivePos) setTrack({ x: G.objectivePos.x, z: G.objectivePos.z, name: "Tujuan — " + def.title });
+				if (cls === "active" && G.oP) setTrack({ x: G.oP.x, z: G.oP.z, name: "Tujuan — " + def.title });
 				else setTrack({ x: spot.x, z: spot.z, name: gNam(def.giver) + " — " + dAt(spot.x, spot.z), key: def.giver });
 				forceRoute();
 				tMis(false);
-				if (G.track) sToa("Melacak: " + G.track.name);
+				if (G.tk) sToa("Melacak: " + G.tk.name);
 			});
 			row.appendChild(btn);
 		}
 		wrap.appendChild(row);
 	});
-	if (G.jobIndex >= JOBS.length) {
-		const note = DC.createElement("div");
+	if (G.ji >= JOBS.length) {
+		const note = CE("div");
 		note.className = "mission-note";
 		note.textContent = "Cerita selesai — Coral Bay milikmu. Pekerjaan sampingan tetap buka: antar paket untuk Celia, atau Bay Runner rematch di garis start pantai ($400).";
 		wrap.appendChild(note);
 	}
 }
 let rPts = null, routeSig = "", routeClock = 0, routeWp = 1, rMsh = null, routeMat = null, navEl = null;
-function setTrack(t) { G.track = t; routeSig = ""; }
+function setTrack(t) { G.tk = t; routeSig = ""; }
 function trackTarget() {
-	if (G.track) return G.track;
-	if ((G.job || G.hustle) && G.objectivePos) return G.objectivePos;
-	if (G.jobIndex < JOBS.length) return G.contacts[JOBS[G.jobIndex].giver].spot;
+	if (G.tk) return G.tk;
+	if ((G.job || G.hu) && G.oP) return G.oP;
+	if (G.ji < JOBS.length) return G.ct[JOBS[G.ji].giver].spot;
 	return null;
 }
 function computeRoute(sx, sz, tx, tz) {
@@ -453,7 +453,7 @@ function computeRoute(sx, sz, tx, tz) {
 		link(self, v, M.abs(px - L[fi]));
 		let j = 0; while (j < n - 2 && L[j + 1] < pz) j++;
 		link(v, fi * n + j, M.abs(pz - L[j])); link(v, fi * n + j + 1, M.abs(pz - L[j + 1]));
-		const hx = clamp(px, -840, 840), h = P.length; P.push([hx, L[fj]]);
+		const hx = zm(px, -840, 840), h = P.length; P.push([hx, L[fj]]);
 		link(self, h, M.hypot(px - hx, pz - L[fj]));
 		let k = 0; while (k < n - 2 && L[k + 1] < hx) k++;
 		link(h, k * n + fj, M.abs(hx - L[k])); link(h, (k + 1) * n + fj, M.abs(hx - L[k + 1]));
@@ -482,7 +482,7 @@ function computeRoute(sx, sz, tx, tz) {
 	const out = [];
 	for (let i = 0; i < path.length; i++) {
 		if (i) {
-			const a = path[i - 1], b = path[i], d = dist2d(a[0], a[1], b[0], b[1]), steps = M.floor(d / 40);
+			const a = path[i - 1], b = path[i], d = d3(a[0], a[1], b[0], b[1]), steps = M.floor(d / 40);
 			for (let s = 1; s <= steps; s++) out.push([a[0] + (b[0] - a[0]) * s / (steps + 1), a[1] + (b[1] - a[1]) * s / (steps + 1)]);
 		}
 		out.push(path[i]);
@@ -490,7 +490,7 @@ function computeRoute(sx, sz, tx, tz) {
 	return out;
 }
 function buildRibbon() {
-	if (rMsh) { G.scene.remove(rMsh); rMsh.geometry.dispose(); rMsh = null; }
+	if (rMsh) { G.sc.remove(rMsh); rMsh.geometry.dispose(); rMsh = null; }
 	if (!rPts || rPts.length < 2) return;
 	if (!routeMat) routeMat = BM(0xffd94d, { transparent: true, opacity: 0.5, depthWrite: false });
 	const pos = [];
@@ -502,32 +502,32 @@ function buildRibbon() {
 		pos.push(a[0] + px, y, a[1] + pz, a[0] - px, y, a[1] - pz, b[0] + px, y, b[1] + pz,
 			a[0] - px, y, a[1] - pz, b[0] - px, y, b[1] - pz, b[0] + px, y, b[1] + pz);
 	}
-	const geo = new T3.BufferGeometry();
+	const geo = new BF();
 	geo.setAttribute("position", new T3.Float32BufferAttribute(pos, 3));
-	rMsh = new T3.Mesh(geo, routeMat);
+	rMsh = new MS(geo, routeMat);
 	rMsh.renderOrder = 2;
 	rMsh.visible = false;
-	G.scene.add(rMsh);
+	G.sc.add(rMsh);
 }
 function routeTick(dt) {
 	if (!navEl) navEl = el("navarrow");
-	const active = !G.stage && rPts && rPts.length > 1 && G.mode === "play" && !G.cutscene;
+	const active = !G.sg && rPts && rPts.length > 1 && G.md === "play" && !G.cs;
 	if (rMsh) {
 		rMsh.visible = !!active;
-		if (active) routeMat.opacity = 0.42 + M.sin(G.time * 4) * 0.13;
+		if (active) routeMat.opacity = 0.42 + M.sin(G.tm * 4) * 0.13;
 	}
 	if (active) {
 		const f = fPt();
-		while (routeWp < rPts.length - 1 && dist2d(f.x, f.z, rPts[routeWp][0], rPts[routeWp][1]) < 16) routeWp++;
+		while (routeWp < rPts.length - 1 && d3(f.x, f.z, rPts[routeWp][0], rPts[routeWp][1]) < 16) routeWp++;
 		const wp = rPts[routeWp];
 		const a = M.atan2(wp[0] - f.x, wp[1] - f.z);
 		navEl.style.display = "block";
-		navEl.style.transform = "rotate(" + M.round((G.camYaw - a) * 57.2958) + "deg)";
+		navEl.style.transform = "rotate(" + M.round((G.yW - a) * 57.2958) + "deg)";
 	} else navEl.style.display = "none";
-	if (G.mode !== "play" || G.cutscene || G.stage) return;
+	if (G.md !== "play" || G.cs || G.sg) return;
 	const f = fPt();
-	if (G.track && dist2d(f.x, f.z, G.track.x, G.track.z) < 15) {
-		sToa("Sampai: " + G.track.name);
+	if (G.tk && d3(f.x, f.z, G.tk.x, G.tk.z) < 15) {
+		sToa("Sampai: " + G.tk.name);
 		setTrack(null);
 	}
 	routeClock += dt;
@@ -538,10 +538,10 @@ function routeTick(dt) {
 	const sig = t.x + "," + t.z;
 	let redo = sig !== routeSig;
 	if (!redo && rPts) {
-		if (dist2d(f.x, f.z, rPts[0][0], rPts[0][1]) > 30) redo = true;
+		if (d3(f.x, f.z, rPts[0][0], rPts[0][1]) > 30) redo = true;
 		else {
 			let md = 1e9;
-			for (const p of rPts) md = M.min(md, dist2d(f.x, f.z, p[0], p[1]));
+			for (const p of rPts) md = M.min(md, d3(f.x, f.z, p[0], p[1]));
 			if (md > 40) redo = true;
 		}
 	}
@@ -555,22 +555,22 @@ function forceRoute() {
 	buildRibbon();
 }
 function bigMapClick(e) {
-	if (G.mode !== "map") return;
+	if (G.md !== "map") return;
 	const cv = el("bigmap-canvas"), r = cv.getBoundingClientRect(), S = cv.width;
 	const cx = e.offsetX / r.width * S, cy = e.offsetY / r.height * S;
-	const w2m = (v) => (v + G.citySize / 2) / G.citySize * S;
-	const hit = (x, z, rad) => M.hypot(cx - clamp(w2m(x), rad + 2, S - rad - 2), cy - clamp(w2m(z), rad + 2, S - rad - 2)) < 30;
+	const w2m = (v) => (v + G.cS / 2) / G.cS * S;
+	const hit = (x, z, rad) => M.hypot(cx - zm(w2m(x), rad + 2, S - rad - 2), cy - zm(w2m(z), rad + 2, S - rad - 2)) < 30;
 	const cg = cgK();
 	for (const key of ["celia", "marco", "don"]) {
-		const ct = G.contacts[key];
+		const ct = G.ct[key];
 		if (hit(ct.spot.x, ct.spot.z, key === cg && !G.job ? S * 0.017 : S * 0.011)) {
-			if (G.track && G.track.key === key) setTrack(null);
+			if (G.tk && G.tk.key === key) setTrack(null);
 			else setTrack({ x: ct.spot.x, z: ct.spot.z, name: gNam(key) + " — " + dAt(ct.spot.x, ct.spot.z), key });
 			sfxClick(); forceRoute(); drawBigMap();
 			return;
 		}
 	}
-	if (G.objectivePos && hit(G.objectivePos.x, G.objectivePos.z, S * 0.013)) {
+	if (G.oP && hit(G.oP.x, G.oP.z, S * 0.013)) {
 		setTrack(null); sfxClick(); forceRoute(); drawBigMap();
 		return;
 	}

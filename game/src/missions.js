@@ -1,7 +1,7 @@
 "use strict";
 let jMrk = null;
 function buildMissionMarker(scene) {
-	jMrk = new T3.Group();
+	jMrk = new GR();
 	const pillar = beam(1.6, 42, 0xffd94d, 0.32); jMrk.add(pillar);
 	const ring = ringM(2.6, 3.4, 0xffd94d, 0.85);
 	ring.position.y = 0.18; jMrk.add(ring);
@@ -13,17 +13,17 @@ function sMrk(x, z, color) {
 	jMrk.visible = true;
 	jMrk.position.set(x, 0, z);
 	if (color) jMrk.children.forEach((ch) => ch.material.color.setHex(color));
-	G.objectivePos = { x, z };
+	G.oP = { x, z };
 }
-function hMrk() { if (jMrk) jMrk.visible = false; G.objectivePos = null; }
-function fVeh(kind) { return G.vehicles.find((v) => v.kind === kind); }
+function hMrk() { if (jMrk) jMrk.visible = false; G.oP = null; }
+function fVeh(kind) { return G.vs.find((v) => v.kind === kind); }
 function revV(v, x, z, heading) {
 	if (!v) return;
 	v.alive = true; v.health = 100; v.speed = 0; v.driver = null;
 	v.mesh.position.set(x, 0, z); v.mesh.rotation.set(0, heading || 0, 0);
 	v.mesh.traverse((o) => { if (o.material && o.material.color && o.userData.c) o.material.color.copy(o.userData.c); });
 }
-function fDst(x, z) { const f = fPt(); return dist2d(f.x, f.z, x, z); }
+function fDst(x, z) { const f = fPt(); return d3(f.x, f.z, x, z); }
 const JOBS = [
 	{ title: "Opening Night", giver: "celia", payout: 300,
 		brief: "Celia needs a driver. Take her Comet GT and get her to the Starfish Club downtown before the doors open." },
@@ -41,8 +41,8 @@ const JOBS = [
 const CASE_SPOTS = [{ x: -139, z: -139 }, { x: 92, z: -252 }, { x: 139, z: 139 }];
 const TRIBUTE_SPOTS = [{ x: -34, z: -18 }, { x: -820, z: 160 }, { x: 436, z: 330 }];
 function contactHasJob(key) {
-	if (G.job || G.hustle) return false;
-	if (G.jobIndex < JOBS.length) return JOBS[G.jobIndex].giver === key;
+	if (G.job || G.hu) return false;
+	if (G.ji < JOBS.length) return JOBS[G.ji].giver === key;
 	return key === "celia";
 }
 function gNam(key) { return { celia: "Celia", marco: "Marco", don: "Don Falso" }[key]; }
@@ -52,39 +52,39 @@ function startJob(i) {
 	showBanner(def.title, def.brief + "  Payout: " + fmtCash(def.payout), 6);
 	sfxSting("start");
 	if (i === 0) { const c = fVeh("comet"); if (c && !c.alive) revV(c, -664, 96, M.PI / 2); }
-	if (i === 2) { const c = fVeh("crusher"); if (c && !c.alive) revV(c, SPOTS.crusherYard.x, SPOTS.crusherYard.z, 0.4); }
-	if (i === 3) { const f = fVeh("falco"); if (f && !f.alive) revV(f, SPOTS.beachFalco.x, SPOTS.beachFalco.z, M.PI); }
-	if (i === 4) { const h = fVeh("heli"); if (h && !h.alive) revV(h, SPOTS.airportHeli.x, SPOTS.airportHeli.z, 0); }
+	if (i === 2) { const c = fVeh("crusher"); if (c && !c.alive) revV(c, SP.cY.x, SP.cY.z, 0.4); }
+	if (i === 3) { const f = fVeh("falco"); if (f && !f.alive) revV(f, SP.bF.x, SP.bF.z, M.PI); }
+	if (i === 4) { const h = fVeh("heli"); if (h && !h.alive) revV(h, SP.aH.x, SP.aH.z, 0); }
 }
 function cJob() {
 	const def = JOBS[G.job.i];
 	const doneIdx = G.job.i;
-	G.cash += def.payout;
-	G.jobIndex++; G.jobsDone = G.jobIndex;
+	G.ca += def.payout;
+	G.ji++; G.jD = G.ji;
 	const wasFinale = doneIdx === JOBS.length - 1;
 	G.job = null; hMrk(); sObj(null);
 	sfxCash(); sfxSting("good");
-	saveGame(); uHud();
+	sV(); uHud();
 	if (wasFinale) {
-		const don = G.contacts.don.person;
-		don.mesh.position.set(G.player.mesh.position.x + 3, 0, G.player.mesh.position.z + 1);
+		const don = G.ct.don.person;
+		don.mesh.position.set(G.pl.mesh.position.x + 3, 0, G.pl.mesh.position.z + 1);
 		startCutscene(6, () => {
-			don.mesh.position.set(SPOTS.don.x, 0, SPOTS.don.z);
+			don.mesh.position.set(SP.dn.x, 0, SP.dn.z);
 			showCard("CORAL BAY IS YOURS",
 				"Every crew pays, every cop knows the name. Rico Solano runs Coral Bay now. Final payout: " + fmtCash(def.payout) +
 				". The city stays open — deliveries and the Bay Runner rematch keep paying.", "Long live the Syndicate");
 		});
 	} else {
 		showBanner("CHAPTER " + (doneIdx + 1) + " COMPLETE · +" + fmtCash(def.payout),
-			"Next: Chapter " + (G.jobIndex + 1) + " — " + JOBS[G.jobIndex].title + ", from " + gNam(JOBS[G.jobIndex].giver) + ".", 5.5);
+			"Next: Chapter " + (G.ji + 1) + " — " + JOBS[G.ji].title + ", from " + gNam(JOBS[G.ji].giver) + ".", 5.5);
 	}
 }
 function failJob(reason) {
 	if (!G.job) return;
 	const def = JOBS[G.job.i];
 	if (G.job.i === 0 && G.job.step === 1) {
-		const celia = G.contacts.celia.person;
-		celia.mesh.visible = true; celia.mesh.position.set(SPOTS.celia.x, 0, SPOTS.celia.z);
+		const celia = G.ct.celia.person;
+		celia.mesh.visible = true; celia.mesh.position.set(SP.ce.x, 0, SP.ce.z);
 	}
 	G.job = null; hMrk(); sObj(null);
 	sfxSting("bad");
@@ -109,17 +109,17 @@ function jobUpdate(dt) {
 		if (job.step === 0) {
 			sObj("Get into Celia's Comet GT at the marina", comet.mesh.position.x, comet.mesh.position.z);
 			sMrk(comet.mesh.position.x, comet.mesh.position.z, 0xffd94d);
-			if (G.vehicle === comet) {
+			if (G.vh === comet) {
 				job.step = 1; d.timer = 150;
-				G.contacts.celia.person.mesh.visible = false;
+				G.ct.celia.person.mesh.visible = false;
 				sToa("Celia's in. The Starfish Club, downtown — go!");
 			}
 		} else {
 			d.timer -= dt;
-			sObj("Drive Celia to the Starfish Club", SPOTS.club.x, SPOTS.club.z, d.timer);
-			sMrk(SPOTS.club.x, SPOTS.club.z, 0xffd94d);
-			if (G.vehicle === comet && fDst(SPOTS.club.x, SPOTS.club.z) < 10) {
-				const celia = G.contacts.celia.person;
+			sObj("Drive Celia to the Starfish Club", SP.cb.x, SP.cb.z, d.timer);
+			sMrk(SP.cb.x, SP.cb.z, 0xffd94d);
+			if (G.vh === comet && fDst(SP.cb.x, SP.cb.z) < 10) {
+				const celia = G.ct.celia.person;
 				celia.mesh.visible = true; celia.mesh.position.set(-24, 0, -24);
 				cJob(); return;
 			}
@@ -138,42 +138,42 @@ function jobUpdate(dt) {
 				if (fDst(next.x, next.z) < 3.4) {
 					next.taken = true; next.grp.visible = false; d.got++;
 					sfxPickup();
-					if (d.got === 3) { setWanted(M.max(G.wanted, 1)); sToa("Last case taken — someone called it in. Back to Marco!"); job.step = 2; }
+					if (d.got === 3) { sW(M.max(G.wn, 1)); sToa("Last case taken — someone called it in. Back to Marco!"); job.step = 2; }
 					else sToa("Case " + d.got + " of 3 secured");
 				}
 			}
 		} else if (job.step === 2) {
-			sObj("Return the ledgers to Marco", SPOTS.marco.x, SPOTS.marco.z);
-			sMrk(SPOTS.marco.x, SPOTS.marco.z, 0xffd94d);
-			if (fDst(SPOTS.marco.x, SPOTS.marco.z) < 4.5) { cJob(); return; }
+			sObj("Return the ledgers to Marco", SP.ma.x, SP.ma.z);
+			sMrk(SP.ma.x, SP.ma.z, 0xffd94d);
+			if (fDst(SP.ma.x, SP.ma.z) < 4.5) { cJob(); return; }
 		}
 	} else if (job.i === 2) {
 		const crusher = fVeh("crusher");
 		if (job.step === 0) {
-			sObj("Steal the Dune Crusher from the industrial yard", SPOTS.crusherYard.x, SPOTS.crusherYard.z);
-			sMrk(SPOTS.crusherYard.x, SPOTS.crusherYard.z, 0xffd94d);
-			if (G.vehicle === crusher) { job.step = 1; setWanted(M.max(G.wanted, 2)); sToa("That's the one — the yard crew called the cops!"); }
+			sObj("Steal the Dune Crusher from the industrial yard", SP.cY.x, SP.cY.z);
+			sMrk(SP.cY.x, SP.cY.z, 0xffd94d);
+			if (G.vh === crusher) { job.step = 1; sW(M.max(G.wn, 2)); sToa("That's the one — the yard crew called the cops!"); }
 		} else {
-			sObj("Deliver the Dune Crusher to Marco's lockup", SPOTS.lockup.x, SPOTS.lockup.z);
-			sMrk(SPOTS.lockup.x, SPOTS.lockup.z, 0xffd94d);
-			if (G.vehicle === crusher && fDst(SPOTS.lockup.x, SPOTS.lockup.z) < 9) { cJob(); return; }
+			sObj("Deliver the Dune Crusher to Marco's lockup", SP.lk.x, SP.lk.z);
+			sMrk(SP.lk.x, SP.lk.z, 0xffd94d);
+			if (G.vh === crusher && fDst(SP.lk.x, SP.lk.z) < 9) { cJob(); return; }
 		}
 	} else if (job.i === 3) {
 		const falco = fVeh("falco");
 		if (job.step === 0) {
-			sObj("Get on Celia's Falco RR at the beachfront", SPOTS.beachFalco.x, SPOTS.beachFalco.z);
-			sMrk(SPOTS.beachFalco.x, SPOTS.beachFalco.z, 0xffd94d);
-			if (G.vehicle === falco) { job.step = 1; d.cp = 0; d.timer = 95; sToa("Six checkpoints down the coast. GO!"); }
+			sObj("Get on Celia's Falco RR at the beachfront", SP.bF.x, SP.bF.z);
+			sMrk(SP.bF.x, SP.bF.z, 0xffd94d);
+			if (G.vh === falco) { job.step = 1; d.cp = 0; d.timer = 95; sToa("Six checkpoints down the coast. GO!"); }
 		} else {
 			d.timer -= dt;
 			const cp = RCP[d.cp];
 			sObj("Checkpoint " + (d.cp + 1) + " of 6 — beat the clock", cp.x, cp.z, d.timer);
 			sMrk(cp.x, cp.z, 0x2ee6c8);
-			if (G.vehicle === falco && fDst(cp.x, cp.z) < 12) {
+			if (G.vh === falco && fDst(cp.x, cp.z) < 12) {
 				d.cp++; sfxPickup();
 				if (d.cp >= RCP.length) {
 					const used = 95 - M.max(0, d.timer);
-					if (!G.raceBest || used < G.raceBest) G.raceBest = used;
+					if (!G.rB || used < G.rB) G.rB = used;
 					cJob(); return;
 				}
 			}
@@ -182,14 +182,14 @@ function jobUpdate(dt) {
 	} else if (job.i === 4) {
 		const heli = fVeh("heli");
 		if (job.step === 0) {
-			sObj("Steal the helicopter at the airport", SPOTS.airportHeli.x, SPOTS.airportHeli.z);
-			sMrk(SPOTS.airportHeli.x, SPOTS.airportHeli.z, 0xffd94d);
-			if (G.vehicle === heli) { job.step = 1; setWanted(M.max(G.wanted, 3)); sToa("Up, up — set her down on the marina helipad."); }
+			sObj("Steal the helicopter at the airport", SP.aH.x, SP.aH.z);
+			sMrk(SP.aH.x, SP.aH.z, 0xffd94d);
+			if (G.vh === heli) { job.step = 1; sW(M.max(G.wn, 3)); sToa("Up, up — set her down on the marina helipad."); }
 		} else {
-			sObj("Land the helicopter on the marina helipad (H)", SPOTS.helipad.x, SPOTS.helipad.z);
-			sMrk(SPOTS.helipad.x, SPOTS.helipad.z, 0xffd94d);
-			if (G.vehicle === heli && heli.alt < 1.4 && M.abs(heli.vy) < 2.5 && fDst(SPOTS.helipad.x, SPOTS.helipad.z) < 15) {
-				setWanted(M.max(0, G.wanted - 1));
+			sObj("Land the helicopter on the marina helipad (H)", SP.hP.x, SP.hP.z);
+			sMrk(SP.hP.x, SP.hP.z, 0xffd94d);
+			if (G.vh === heli && heli.alt < 1.4 && M.abs(heli.vy) < 2.5 && fDst(SP.hP.x, SP.hP.z) < 15) {
+				sW(M.max(0, G.wn - 1));
 				cJob(); return;
 			}
 		}
@@ -205,27 +205,27 @@ function jobUpdate(dt) {
 				sMrk(next.x, next.z, 0xffd94d);
 				if (fDst(next.x, next.z) < 4) {
 					next.taken = true; d.got++; sfxCash();
-					if (d.got === 3) { job.step = 2; setWanted(4); sToa("Tribute's in — and the whole CBPD knows. SAFEHOUSE. NOW."); }
+					if (d.got === 3) { job.step = 2; sW(4); sToa("Tribute's in — and the whole CBPD knows. SAFEHOUSE. NOW."); }
 					else sToa("Tribute " + d.got + " of 3 collected");
 				}
 			}
 		} else if (job.step === 2) {
-			sObj("Reach the safehouse — wanted level 4", SPOTS.safehouse.x, SPOTS.safehouse.z);
-			sMrk(SPOTS.safehouse.x, SPOTS.safehouse.z, 0x2ee6c8);
-			if (fDst(SPOTS.safehouse.x, SPOTS.safehouse.z) < 8) { cJob(); return; }
+			sObj("Reach the safehouse — wanted level 4", SP.sH.x, SP.sH.z);
+			sMrk(SP.sH.x, SP.sH.z, 0x2ee6c8);
+			if (fDst(SP.sH.x, SP.sH.z) < 8) { cJob(); return; }
 		}
 	}
 }
 const casePickups = [];
 function spawnCasePickup(x, z) {
-	const grp = new T3.Group();
-	const boxMesh = new T3.Mesh(new T3.BoxGeometry(0.9, 0.6, 0.35),
-		new T3.MeshLambertMaterial({ color: 0x8a5a34 }));
+	const grp = new GR();
+	const boxMesh = new MS(new BG(0.9, 0.6, 0.35),
+		new ML({ color: 0x8a5a34 }));
 	boxMesh.position.y = 1; grp.add(boxMesh);
 	const glow = glowDisc(0x2ee6c8, 1, 0.6);
 	glow.position.y = 0.1; grp.add(glow);
 	grp.position.set(x, 0, z);
-	G.scene.add(grp);
+	G.sc.add(grp);
 	const rec = { x, z, grp, taken: false };
 	casePickups.push(rec);
 	return rec;
@@ -237,64 +237,64 @@ const DROPOFFS = [
 ];
 function startDelivery() {
 	const drop = pick(DROPOFFS);
-	G.hustle = { type: "delivery", x: drop.x, z: drop.z, name: drop.name, timer: 150 };
+	G.hu = { type: "delivery", x: drop.x, z: drop.z, name: drop.name, timer: 150 };
 	showBanner("Side Hustle — Special Delivery", "Celia's package goes to " + drop.name + ". Quick and quiet. Pays $150.", 5);
 	sfxSting("start");
 }
 function startRaceRematch() {
-	G.hustle = { type: "race", cp: 0, timer: 95 };
+	G.hu = { type: "race", cp: 0, timer: 95 };
 	showBanner("Bay Runner — Rematch", "Six checkpoints, 95 seconds. Beat it for $400.", 4);
 	sfxSting("start");
 }
 function hustleUpdate(dt) {
-	const h = G.hustle; if (!h) return;
+	const h = G.hu; if (!h) return;
 	if (h.type === "delivery") {
 		h.timer -= dt;
 		sObj("Deliver Celia's package to " + h.name, h.x, h.z, h.timer);
 		sMrk(h.x, h.z, 0x2ee6c8);
 		if (fDst(h.x, h.z) < 8) {
-			G.cash += 150; G.hustle = null; hMrk(); sObj(null);
+			G.ca += 150; G.hu = null; hMrk(); sObj(null);
 			sfxCash(); showCard("DELIVERED", "Package dropped, no questions asked. Paid $150. Celia always has another.", "Nice");
-			saveGame(); uHud(); return;
+			sV(); uHud(); return;
 		}
-		if (h.timer <= 0) { G.hustle = null; hMrk(); sObj(null); sToa("Delivery window missed"); }
+		if (h.timer <= 0) { G.hu = null; hMrk(); sObj(null); sToa("Delivery window missed"); }
 	} else if (h.type === "race") {
 		h.timer -= dt;
 		const cp = RCP[h.cp];
 		sObj("Rematch checkpoint " + (h.cp + 1) + " of 6", cp.x, cp.z, h.timer);
 		sMrk(cp.x, cp.z, 0x2ee6c8);
-		if (G.vehicle && G.vehicle.kind === "falco" && fDst(cp.x, cp.z) < 12) {
+		if (G.vh && G.vh.kind === "falco" && fDst(cp.x, cp.z) < 12) {
 			h.cp++; sfxPickup();
 			if (h.cp >= RCP.length) {
-				G.cash += 400; G.hustle = null; hMrk(); sObj(null);
+				G.ca += 400; G.hu = null; hMrk(); sObj(null);
 				sfxCash(); showCard("COAST KING", "The bay road bows again. Paid $400.", "Nice");
-				saveGame(); uHud(); return;
+				sV(); uHud(); return;
 			}
 		}
-		if (h.timer <= 0) { G.hustle = null; hMrk(); sObj(null); sToa("The clock wins this one"); }
+		if (h.timer <= 0) { G.hu = null; hMrk(); sObj(null); sToa("The clock wins this one"); }
 	}
 }
 function updateMissions(dt) {
-	G.giverPrompt = null;
-	if (!G.job && !G.hustle && G.mode === "play") {
+	G.gP = null;
+	if (!G.job && !G.hu && G.md === "play") {
 		for (const gk of ["celia", "marco", "don"]) {
 			if (!contactHasJob(gk)) continue;
-			const ct = G.contacts[gk];
-			if (dist2d(G.player.mesh.position.x, G.player.mesh.position.z, ct.spot.x, ct.spot.z) < 4.2 && G.onFoot) {
-				if (G.jobIndex < JOBS.length) G.giverPrompt = "E — Talk to " + gNam(gk) + ": " + JOBS[G.jobIndex].title;
-				else G.giverPrompt = "E — Ask Celia for a delivery run";
+			const ct = G.ct[gk];
+			if (d3(G.pl.mesh.position.x, G.pl.mesh.position.z, ct.spot.x, ct.spot.z) < 4.2 && G.oF) {
+				if (G.ji < JOBS.length) G.gP = "E — Talk to " + gNam(gk) + ": " + JOBS[G.ji].title;
+				else G.gP = "E — Ask Celia for a delivery run";
 				if (key("KeyE")) {
-					G.keys["KeyE"] = false; sfxInit(); sfxClick();
-					if (G.jobIndex < JOBS.length) { const i = G.jobIndex; startCutscene(i, () => startJob(i)); }
+					G.ky["KeyE"] = false; sfxInit(); sfxClick();
+					if (G.ji < JOBS.length) { const i = G.ji; startCutscene(i, () => startJob(i)); }
 					else startDelivery();
 				}
 				break;
 			}
 		}
-		if (!G.giverPrompt && G.jobIndex > 3 && G.onFoot &&
-				dist2d(G.player.mesh.position.x, G.player.mesh.position.z, SPOTS.raceStart.x, SPOTS.raceStart.z) < 4.5) {
-			G.giverPrompt = "E — Bay Runner rematch ($400)";
-			if (key("KeyE")) { G.keys["KeyE"] = false; startRaceRematch(); }
+		if (!G.gP && G.ji > 3 && G.oF &&
+				d3(G.pl.mesh.position.x, G.pl.mesh.position.z, SP.rT.x, SP.rT.z) < 4.5) {
+			G.gP = "E — Bay Runner rematch ($400)";
+			if (key("KeyE")) { G.ky["KeyE"] = false; startRaceRematch(); }
 		}
 	}
 	if (jMrk && jMrk.visible) jMrk.children[1].rotation.z += dt * 1.4;
