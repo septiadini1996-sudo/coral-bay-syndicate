@@ -1,120 +1,105 @@
 # Coral Bay Syndicate
 
-[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![rank](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![reward](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+An original open-world crime game that runs entirely in the browser.
+You are **Rico**, a driver-for-hire in the sun-soaked coastal city of
+Coral Bay. Take six jobs from Celia, Marco and Vera — deliveries,
+a stolen prize coupe, a convoy ambush and a bank score — work your way
+up the Syndicate Rank from *Nobody* to *Kingpin*, and finish with the
+finale card: **CORAL BAY IS YOURS**. The full chain pays **$6,150**.
 
-An original 3D open-world crime game that runs entirely from static files in
-the browser — no build step, no network, no downloaded assets. You are
-**Rico Solano**, a fixer with a fedora, a gold chain and big plans, loose in
-the sun-soaked island city of Coral Bay: downtown towers, a working marina,
-a beachfront coast road, the villas of Palmera Heights, an airport with a
-runway and a parked jet, and the yards and lockups of the industrial quarter.
+Everything is hand-built for this entry: the city, the characters,
+the vehicles, the story and even the radio music (synthesized live
+with WebAudio — there are no audio files). The only library is
+three.js, vendored under `game/vendor/`.
 
-## The Syndicate — a six-job story chain
+## How to run
 
-Work for three contacts, each with a beacon on the map and a pulsing marker
-on the minimap. Briefings, objectives with live distance readouts, timers,
-payouts — and progress (cash, completed jobs, your best race time) saved in
-the browser between visits.
+Serve the `game/` folder with any static file server and open
+`index.html` in a desktop browser, e.g. from this repository root:
 
-1. **Opening Night** (Celia, the marina) — take her pink Comet GT and drive
-   her to the Starfish Club downtown against the clock. *Pays $300.*
-2. **Paper Trail** (Marco, downtown) — recover three ledger cases hidden in
-   downtown alleys and bring them back. The last pickup brings the heat.
-   *Pays $450.*
-3. **Hot Metal** (Marco) — steal the Dune Crusher monster truck from the
-   industrial yard and deliver it to the lockup while wanted level 2 hunts
-   you. *Pays $650.*
-4. **Bay Runner** (Celia) — a Falco RR sport bike, six checkpoints down the
-   beachfront coast road, one 95-second clock. *Pays $800.*
-5. **Sky High** (Don Falso, Palmera Heights) — steal the airport helicopter
-   at wanted level 3 and set it down on the marina helipad. *Pays $1,200.*
-6. **The Syndicate** (Don Falso, finale) — collect tribute at three spots
-   across the city, then outrun a wanted-level-4 manhunt to the safehouse.
-   *Pays $2,500 — and Coral Bay is yours.*
+```
+node serve.ts          # then open http://localhost:8080
+```
 
-After the chain, the city keeps paying: Celia always has a **delivery run**
-($150), and the **Bay Runner rematch** board at the beachfront start line
-pays $400 for beating the clock again.
+or `npx serve game`, `python3 -m http.server -d game`, etc.
+No build step, no network requests: the game is plain static files.
 
-## The story, told in cutscenes
+To hand the entry in (what the grader runs):
 
-- Every chapter opens with a short **in-engine cutscene**: the camera glides
-  around Rico and his contact while their dialogue plays as **Indonesian
-  subtitles** with a hand-drawn-in-code **face portrait** and name for every
-  speaker — Rico, Celia, Marco and Don Falso. Enter or a click skips.
-- A persistent **mission tracker** under the minimap always shows the current
-  chapter ("CHAPTER 2 — Paper Trail"), its objective and the live distance.
-- The **mission menu** (Tab / J, or the 📋 button) lists all six chapters with
-  their status — Selesai ✓ / Aktif / Berikutnya / Terkunci — giver, district
-  and payout; finishing a chapter flashes a **CHAPTER COMPLETE +$450** card.
-- Press **M** (or click the minimap) for the **full-screen map**: the whole
-  island from the same painted ground canvas, district names, a legend,
-  police blips, the objective, and the next chapter's giver wearing its
-  **chapter number** — the minimap badges the number too.
-- The pause menu's **TOKOH** panel introduces the four faces of the Syndicate
-  with portraits, names and roles; in the world, every named character wears
-  a floating name plate when you come within talking distance.
-- And a fix the bay demanded: Rico now truly **sits in the driver's seat** of
-  everything he steals — fedora, shades and all, visible through the glass —
-  and steps out at the door when he leaves. No more kerbside ghosts.
+```
+mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
+```
 
-## The law
-
-- Wanted level 1–5, shown as stars. Interceptors pursue with real steering
-  AI and flashing light bars, and will run Rico down if he is on foot.
-- At **3 stars** the CBPD sets **roadblocks** — two Interceptors parked
-  across the road ahead of you.
-- At **4 stars** a **police helicopter** tracks you with a real spotlight
-  cone and searchlight.
-- Stand still near a unit and the bust meter fills: **BUSTED** means a fine
-  and a dawn release at the safehouse. Health at zero means **WASTED** and a
-  hospital bill. Keep your nose clean at low heat and the stars cool off.
-
-## The machines
-
-Everything with wheels (or rotors) can be stolen and driven, each with its
-own handling: the **Comet GT** sports coupe, the vintage **Heritage
-Roadster**, the **Dune Crusher** monster truck on huge wheels, the **Marlin
-250** cruiser motorcycle, the **Falco RR** sport bike that leans into
-corners, a **Beach Cruiser** bicycle, and a fully flyable **helicopter**
-(R/F to climb and sink). Ambient traffic — sedans, pickups and vans — works
-the grid, brakes for obstacles and gets out of the way (or doesn't).
-Vehicles dent, smoke, and wreck.
-
-## The living city
-
-- A full day cycle: dawn, blue midday, golden hour, purple dusk, and nights
-  with stars, a moon, lit windows and waking street lamps.
-- Weather that rolls in off the bay: clear spells, hot haze, and **rain**
-  with pooled streak particles, wet glossy roads and synthesized rain audio.
-- Pedestrians in gangster styling — fedoras and panama hats, sunglasses,
-  gold chains, tropical prints — walking the sidewalks and fleeing trouble;
-  dogs trotting the beach and marina; seagulls circling the piers; moored
-  boats bobbing under a striped lighthouse.
-- The circular **minimap is the real map**: it is drawn from the same
-  painted ground texture as the city itself, with police blips, giver
-  markers, a pulsing objective marker and your heading arrow.
-- Fists, a baseball bat, a lead pipe and a pistol, all found in the world.
-- Fully synthesized WebAudio sound: engines, sirens that swell as units
-  close in, rain, mission stingers — and a four-station car radio (Q, 1, 2).
+`main.ts` copies `game/` and `screenshots/` into the output directory,
+verifies the staged tree against the competition caps, and writes
+`dossier.json` using the vendored make.fun library in
+`vendor/makefun-game.ts`. Running it twice produces identical bytes.
 
 ## Controls
 
-WASD/arrows to walk and drive · Shift sprint · Space jump / handbrake ·
-E steal, enter, exit, talk · F or click to fight and shoot · Q and 1/2 for
-the radio · R/F helicopter climb and sink · M full-screen map · Tab/J mission
-menu · Enter skip cutscene · mouse drag to orbit the camera, wheel to zoom ·
-P pause.
+| Input | Action |
+| --- | --- |
+| WASD | Move / drive |
+| Mouse | Look (pointer lock); drag rotates aim |
+| Shift | Sprint |
+| E | Enter / exit the nearest car |
+| 1 / 2 / 3 | Fists / pistol / SMG |
+| Click | Fire pistol (a clean click — dragging only aims) |
+| Hold click | SMG automatic fire |
+| M | Full-screen GPS map |
+| Tab | Mission menu |
+| , / . | Previous / next radio station |
 
-## Tech
+## The world
 
-Vanilla JavaScript over a vendored three.js build. The world, its ground
-texture and its minimap all come from one seeded procedural paint of the
-city, so Coral Bay is identical on every visit. `game/` is plain static
-files; `main.ts` is the hand-in program that copies the game and its
-screenshots to the output directory and writes the entry dossier.
+- A procedural coastal city on a 160-unit road grid (about ±1,300
+  units), with named buildings and big readable sign boards, parks,
+  palm trees and **270+ street lamps** — 800+ collision circles in all.
+- Working **traffic lights at 10 intersections**; AI traffic
+  (22 cars: sedans, taxis, pickups) drives the road graph, keeps its
+  lane and stops at red.
+- The **marina** on the south shore: a walkable pier, docked boats,
+  beach palms — and Celia, your first contact, waiting at the pier end.
+- **32 pedestrians** plus story characters. Story characters are part
+  of the plot: shot at, they duck and flee — they can never die.
 
-Screenshots in `screenshots/` are posed with the game's own staging scenes
-(`game/index.html?scene=chase` and friends) and captured unedited.
+## Systems
+
+- **Combat & vehicles:** three weapon slots with ammo and a weapon
+  bar. Cars have real health — the vehicle panel shows CONDITION %.
+  Below 45 health a car smokes; a car destroyed by gunfire or an
+  explosion **blows up** (fire, area damage, chain reactions). Cars
+  wrecked by crashes alone never explode. Vehicle impacts knock
+  pedestrians down; survivors get up and run.
+- **Aiming:** drawing a weapon shifts the camera over Rico's shoulder
+  so his head clears the crosshair; the crosshair turns red
+  (#ff5a4d) when a target is inside the aim cone. Armed, Rico carries
+  a visible multi-part 3D gun.
+- **Police:** a five-star wanted system. The police panel shows the
+  state (SEARCHING / PURSUIT), active units and the nearest unit's
+  distance. Lose them and the heat cools; get pinned and you are
+  busted — death and arrest both respawn you with armor reset to 0.
+- **Armor:** three vest pickups in the world grant +50 armor; armor
+  absorbs damage before health.
+- **GPS:** Dijkstra routing over the road graph, drawn as a gold
+  ribbon in the world, a line on the minimap and the full map, plus a
+  HUD direction arrow.
+- **Radio:** five synthesized stations; switching updates the radio
+  bar and pops a toast.
+- **Progress:** cash, lifetime earnings (Syndicate Rank), armor, ammo
+  and story progress persist in `localStorage`.
+
+## Layout
+
+- `game/index.html` — page, HUD markup and styles
+- `game/src/util.js` — state hub, RNG, collision grid, save/load
+- `game/src/world.js` — city, marina, lamps, traffic lights, road graph
+- `game/src/people.js` — person builder, pedestrians, story cast, player
+- `game/src/vehicles.js` — cars, traffic AI, damage and explosions
+- `game/src/police.js` — wanted system and pursuing cruisers
+- `game/src/story.js` — subtitled cutscene dialogue
+- `game/src/missions.js` — the six-job chain and the GPS marker
+- `game/src/hud.js` — HUD, minimap, full map, menus, route ribbon
+- `game/src/audio.js` — WebAudio radio stations and sound effects
+- `game/src/main.js` — boot, input, cameras, shooting, frame loop
+- `screenshots/` — four screenshots of the running game
