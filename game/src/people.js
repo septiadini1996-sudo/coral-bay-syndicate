@@ -27,19 +27,26 @@ function makePerson(shirt, pants, skin, hairColor) {
     headGeo = new THREE.BoxGeometry(0.42, 0.44, 0.42);
   }
   var g = new THREE.Group();
-  var legL = part(legGeo, lam(pants), -0.2, 0.39, 0, g);
-  var legR = part(legGeo, lam(pants), 0.2, 0.39, 0, g);
+  // Limbs hang from pivot groups at the hip/shoulder joints, so a
+  // rotation swings them like real steps and raises them onto a gun.
+  function limb(geo, mat, jx, jy) {
+    var pivot = new THREE.Group();
+    pivot.position.set(jx, jy, 0);
+    var m = new THREE.Mesh(geo, mat);
+    m.position.y = -geo.parameters.height / 2 + 0.04;
+    pivot.add(m); g.add(pivot);
+    return pivot;
+  }
+  var legL = limb(legGeo, lam(pants), -0.2, 0.8);
+  var legR = limb(legGeo, lam(pants), 0.2, 0.8);
   var torso = part(torsoGeo, lam(shirt), 0, 1.14, 0, g);
-  var armL = part(armGeo, lam(shirt), -0.52, 1.14, 0, g);
-  var armR = part(armGeo, lam(shirt), 0.52, 1.14, 0, g);
+  var armL = limb(armGeo, lam(shirt), -0.52, 1.46);
+  var armR = limb(armGeo, lam(shirt), 0.52, 1.46);
   var head = part(headGeo, lam(skin), 0, 1.74, 0, g);
   var hair = part(new THREE.BoxGeometry(0.46, 0.16, 0.46), lam(hairColor), 0, 1.98, 0, g);
-  legL.geometry.translate(0, 0, 0);
-  // Pivot limbs at the top so swings look like steps: wrap each limb
-  // in a pivot group positioned at the joint.
   g.userData = { legL: legL, legR: legR, armL: armL, armR: armR, torso: torso, head: head };
   g.userData.gun = buildGun();
-  g.userData.gun.position.set(0.52, 0.86, 0.28);
+  g.userData.gun.position.set(0.55, 0.82, 0.14);
   g.userData.gun.visible = false;
   g.add(g.userData.gun);
   return g;
@@ -80,8 +87,8 @@ function buildPeople() {
   // Rico, the player character: teal shirt, dark jeans.
   var mesh = makePerson(0x0e7c86, 0x22303c, 0xd9a066, 0x14100c);
   G.player = {
-    mesh: mesh, x: 26, z: 1150, angle: Math.PI, speed: 0,
-    stepT: 0, name: 'Rico',
+    mesh: mesh, x: 8, z: 1150, angle: Math.PI, speed: 0,
+    stepT: 0, name: 'Rico', phase: 0,
   };
   mesh.position.set(G.player.x, 0, G.player.z);
   G.scene.add(mesh);
@@ -106,8 +113,10 @@ function animatePerson(p, speed, dt) {
   u.legL.rotation.x = sw; u.legR.rotation.x = -sw;
   if (G.player && p === G.player && G.weapon > 0 && G.aimT > 0) {
     u.armR.rotation.x = -1.35; u.armL.rotation.x = -1.1;      // both hands on the gun
+    u.gun.position.set(0.5, 1.3, 0.62); u.gun.rotation.set(0, 0, 0);
   } else {
     u.armL.rotation.x = -sw * 0.8; u.armR.rotation.x = sw * 0.8;
+    if (G.player && p === G.player) { u.gun.position.set(0.55, 0.82, 0.14); u.gun.rotation.set(0.35, 0, 0); }
   }
   p.mesh.position.y = speed > 0.2 ? Math.abs(Math.sin(p.phase)) * 0.07 : 0;
 }

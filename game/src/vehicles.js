@@ -12,7 +12,10 @@ var CAR_COLORS = [0xd84f4f, 0x3f7fbf, 0xf2f2f2, 0x2fbf9f, 0xf7d774, 0x8e6cc8, 0x
 var wheelGeo = null, smokeTex = null, fireTex = null;
 
 function carName(type, colorName) { return colorName + ' ' + type; }
-var COLOR_NAMES = { '14267319': 'Red', '4166079': 'Blue', '15921906': 'White', '3138719': 'Teal', '16246516': 'Yellow', '9328072': 'Purple', '4474706': 'Grey', '16750530': 'Orange' };
+var COLOR_NAMES = {};
+[[0xd84f4f, 'Red'], [0x3f7fbf, 'Blue'], [0xf2f2f2, 'White'], [0x2fbf9f, 'Teal'],
+ [0xf7d774, 'Yellow'], [0x8e6cc8, 'Purple'], [0x444a52, 'Grey'], [0xff8c42, 'Orange'],
+].forEach(function (p) { COLOR_NAMES[String(p[0])] = p[1]; });
 
 function makeCarMesh(color, type) {
   if (!wheelGeo) wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10);
@@ -66,10 +69,10 @@ function spawnTraffic() {
     var car = createCar(node.x + rr(-3, 3), node.z + rr(-3, 3), ri(0, 3) * Math.PI / 2, type, type === 'Taxi' ? 0xf7d774 : pick(CAR_COLORS));
     planRoute(car, null);
   }
-  // A few parked cars to steal near the marina and the mall.
-  createCar(24, 1216, Math.PI / 2, 'Sedan', 0xd84f4f).driver = 'parked';
-  createCar(-24, 1216, -Math.PI / 2, 'Pickup', 0x3f7fbf).driver = 'parked';
-  createCar(176, 176, 0, 'Sedan', 0x2fbf9f).driver = 'parked';
+  // A few parked cars to steal, on the promenade and a corner.
+  createCar(10, 1270, Math.PI / 2, 'Sedan', 0xd84f4f).driver = 'parked';
+  createCar(-10, 1270, -Math.PI / 2, 'Pickup', 0x3f7fbf).driver = 'parked';
+  createCar(166, 166, 0, 'Sedan', 0x2fbf9f).driver = 'parked';
 }
 
 // Give an AI car a fresh set of waypoints: a chain of road nodes that

@@ -1,292 +1,292 @@
-"use strict";
-function bGam() {
-const params = new URLSearchParams(location.search);
-const seedParam = parseInt(params.get("seed") || "", 10);
-if (!Number.isNaN(seedParam)) rng = m3(seedParam);
-G.sc = new T3.Scene();
-G.cm = new T3.PerspectiveCamera(62, innerWidth / innerHeight, 0.1, 6000);
-G.rd = new T3.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-G.rd.setSize(innerWidth, innerHeight);
-G.rd.setPixelRatio(M.min(devicePixelRatio || 1, 2));
-G.rd.shadowMap.enabled = true;
-G.rd.shadowMap.type = T3.PCFShadowMap;
-G.rd.toneMapping = T3.ACESFilmicToneMapping;
-G.rd.toneMappingExposure = 1.12;
-el("app").appendChild(G.rd.domElement);
-bWld();
-bCst(G.sc);
-bVeh(G.sc);
-bMM(G.sc);
-hInit();
-bInp();
-const sceneName = params.get("scene");
-if (sceneName) sStg(sceneName);
-else sTit();
-requestAnimationFrame(fLoop);
+// Coral Bay Syndicate - main.js
+// Boot, input, the third-person and over-shoulder cameras, shooting,
+// entering cars, armor pickups and the frame loop that ticks every
+// system. Loaded last; everything else registers into G before this
+// file starts the world.
+
+'use strict';
+
+var VEST_SPOTS = [[196, 316], [-486, -470], [64, 1372]];
+var vestMeshes = [];
+
+function buildPickups() {
+  for (var i = 0; i < VEST_SPOTS.length; i++) {
+    var g = new THREE.Group();
+    part(new THREE.BoxGeometry(0.8, 0.9, 0.4), lam(0x3d5a73), 0, 0, 0, g);
+    part(new THREE.BoxGeometry(0.84, 0.2, 0.44), lam(0x9fc6e8), 0, 0.2, 0, g);
+    g.position.set(VEST_SPOTS[i][0], 1.1, VEST_SPOTS[i][1]);
+    G.scene.add(g);
+    vestMeshes.push({ mesh: g, x: VEST_SPOTS[i][0], z: VEST_SPOTS[i][1], t: 0, taken: false });
+  }
 }
-let mouseDown = false, mouseMoved = 0, mouseDownAt = 0, lastDragT = -9;
-function bInp() {
-addEventListener("keydown", (e) => {
-G.ky[e.code] = true;
-if (["Space", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Tab"].includes(e.code)) e.preventDefault();
-if (G.cs) {
-if (e.code === "Enter" || e.code === "Escape") skCs();
-sfxInit();
-return;
+function tickPickups(dt) {
+  for (var i = 0; i < vestMeshes.length; i++) {
+    var v = vestMeshes[i];
+    if (v.taken) {
+      v.t -= dt;
+      if (v.t <= 0) { v.taken = false; v.mesh.visible = true; }
+      continue;
+    }
+    v.mesh.rotation.y = G.t * 1.6;
+    v.mesh.position.y = 1.1 + Math.sin(G.t * 2 + i) * 0.15;
+    if (!G.inCar && G.armor < 100 && dist2(G.player.x, G.player.z, v.x, v.z) < 2.2) {
+      G.armor = Math.min(100, G.armor + 50);
+      v.taken = true; v.t = 90; v.mesh.visible = false;
+      sfx('pickup');
+      showToast('Body armor +50 (now ' + G.armor + ')');
+      saveGame();
+    }
+  }
 }
-if (e.code === "Escape") {
-if (G.md === "map") tMap(false);
-else if (G.md === "missions") tMis(false);
-else if (el("menu-help").style.display === "flex") el("menu-help").style.display = "none";
-else if (G.md === "play" || G.md === "pause") tPau();
-} else if (e.code === "KeyP") {
-if (el("menu-help").style.display === "flex") el("menu-help").style.display = "none";
-else if (G.md === "play" || G.md === "pause") tPau();
+
+// Input ------------------------------------------------------------
+function bindInput() {
+  window.addEventListener('keydown', function (e) {
+    G.keys[e.code] = true;
+    if (e.code === 'Tab') { e.preventDefault(); toggleMenu(); }
+    if (e.code === 'KeyM') toggleMap();
+    if (e.code === 'KeyE') toggleCar();
+    if (e.code === 'Digit1') setWeapon(0);
+    if (e.code === 'Digit2') setWeapon(1);
+    if (e.code === 'Digit3') setWeapon(2);
+    if (e.code === 'Comma') changeStation(-1);
+    if (e.code === 'Period') changeStation(1);
+    if (e.code === 'Enter' && G.finale) G.finale = false;
+  });
+  window.addEventListener('keyup', function (e) { G.keys[e.code] = false; });
+  var cv = G.renderer.domElement;
+  cv.addEventListener('mousedown', function (e) {
+    if (!G.started) return;
+    if (cutsceneActive()) { advanceCutscene(); return; }
+    if (document.pointerLockElement !== cv) { cv.requestPointerLock(); return; }
+    if (e.button === 0) {
+      G.mouseDown = true; G.mouseDownT = performance.now(); G.mouseMoved = 0;
+      if (G.weapon === 2 && !G.inCar) G.smgHeld = true;
+    }
+  });
+  window.addEventListener('mouseup', function (e) {
+    if (e.button !== 0) return;
+    var wasDown = G.mouseDown;
+    G.mouseDown = false; G.smgHeld = false;
+    if (!wasDown || !G.started || cutsceneActive() || G.inCar) return;
+    // A clean click fires the pistol; a drag only rotates the aim.
+    var dt = performance.now() - G.mouseDownT;
+    if (G.weapon === 1 && dt < 400 && G.mouseMoved < 10) fireWeapon();
+  });
+  window.addEventListener('mousemove', function (e) {
+    if (document.pointerLockElement !== G.renderer.domElement) return;
+    G.camYaw -= e.movementX * 0.0026;
+    G.camPitch = clamp(G.camPitch - e.movementY * 0.0022, -0.18, 1.05);
+    if (G.mouseDown) G.mouseMoved += Math.abs(e.movementX) + Math.abs(e.movementY);
+  });
+  el('start-btn').addEventListener('click', startGame);
+  el('finale-close').addEventListener('click', function () { G.finale = false; });
+  window.addEventListener('resize', onResize);
 }
-if (e.code === "KeyM" && (G.md === "play" || G.md === "map")) tMap();
-if ((e.code === "Tab" || e.code === "KeyJ") && (G.md === "play" || G.md === "missions")) tMis();
-sfxInit();
-});
-addEventListener("keyup", (e) => { G.ky[e.code] = false; });
-addEventListener("blur", () => { G.ky = {}; });
-const dom = G.rd.domElement;
-dom.addEventListener("mousedown", (e) => {
-if (G.cs) { skCs(); return; }
-mouseDown = true; mouseMoved = 0; mouseDownAt = performance.now(); sfxInit();
-});
-addEventListener("mousemove", (e) => {
-if (!mouseDown) return;
-mouseMoved += M.abs(e.movementX) + M.abs(e.movementY);
-G.yW -= e.movementX * 0.0052;
-G.cP = zm(G.cP + e.movementY * 0.004, 0.06, 1.15);
-lastDragT = G.tm;
-});
-addEventListener("mouseup", () => {
-if (mouseDown && mouseMoved < 6 && performance.now() - mouseDownAt < 350 && G.md === "play" && G.oF) pAtk();
-mouseDown = false;
-});
-dom.addEventListener("wheel", (e) => { G.cD = zm(G.cD + M.sign(e.deltaY) * 1.4, 5.5, 22); }, { passive: true });
-addEventListener("resize", () => {
-G.cm.aspect = innerWidth / innerHeight;
-G.cm.updateProjectionMatrix();
-G.rd.setSize(innerWidth, innerHeight);
-});
+function onResize() {
+  G.camera.aspect = window.innerWidth / window.innerHeight;
+  G.camera.updateProjectionMatrix();
+  G.renderer.setSize(window.innerWidth, window.innerHeight);
 }
-const cTgP = new T3.Vector3(); let shK = 0;
-function uCam(dt) {
-const cam = G.cm;
-if (G.md === "title") {
-const a = G.tm * 0.05;
-cam.position.set(-260 + M.cos(a) * 210, 52 + M.sin(G.tm * 0.11) * 8, -60 + M.sin(a) * 210);
-cam.lookAt(60, 8, -40);
-return;
+var menuOpen = false, mapOpen = false;
+function toggleMenu() {
+  menuOpen = !menuOpen;
+  el('menu').style.display = menuOpen ? 'flex' : 'none';
+  if (menuOpen) renderMenu();
 }
-const f = fPt();
-const heading = !G.oF && G.vh ? G.vh.mesh.rotation.y : G.pl.mesh.rotation.y;
-const moving = G.oF ? (G.pl.speed || 0) > 0.5 : M.abs(G.vh.speed) > 1;
-if (moving && G.tm - lastDragT > 2.2) {
-const rate = G.oF ? 3.2 : zm(M.abs(G.vh.speed) * 0.14, 1.2, 4.2);
-G.yW = aLp(G.yW, heading, zm(dt * rate, 0, 1));
+function toggleMap() {
+  mapOpen = !mapOpen;
+  el('mapwrap').style.display = mapOpen ? 'flex' : 'none';
+  if (mapOpen) drawBigMap();
 }
-const dist = G.cD, pitch = G.cP;
-const bx = M.sin(G.yW), bz = M.cos(G.yW);
-shK += ((G.oF && isGun(G.wp) ? 1 : 0) - shK) * zm(dt * 6, 0, 1);
-const sx = -bz * shK * 2, sz = bx * shK * 2;
-cTgP.set(
-f.x - bx * M.cos(pitch) * dist + sx,
-(f.y || 0) + 1.7 + M.sin(pitch) * dist,
-f.z - bz * M.cos(pitch) * dist + sz
-);
-const fixed = colC(cTgP.x, cTgP.z, 1.2);
-cTgP.x = fixed.x; cTgP.z = fixed.z;
-cTgP.y = M.max(cTgP.y, 1.1);
-cam.position.lerp(cTgP, zm(dt * 7, 0, 1));
-const lead = !G.oF && G.vh ? zm(M.abs(G.vh.speed) * 0.14, 0, 5) : 0;
-cam.lookAt(f.x + bx * lead + sx, (f.y || 0) + 2.1 - shK * .45, f.z + bz * lead + sz);
+function changeStation(d) {
+  var st = radioStation(d);
+  setText('radio-name', st.name);
+  setText('radio-tag', st.tag);
+  showToast('RADIO: ' + st.name + ' - ' + st.tag);
 }
-let lastNow = performance.now(), fpsAccum = 0, fpsCount = 0, fpsStage = 0, hudAccum = 0;
-function fLoop(now) {
-requestAnimationFrame(fLoop);
-const rawDt = (now - lastNow) / 1000;
-let dt = M.min(0.05, rawDt);
-lastNow = now;
-if (dt <= 0) dt = 0.016;
-G.tm += dt;
-if (fpsStage < 3 && rawDt < 1) {
-fpsAccum += rawDt; fpsCount++;
-if (fpsAccum > 4) {
-if (fpsAccum / fpsCount > 0.034 && G.sun && G.sun.castShadow) {
-G.sun.castShadow = false;
-G.rd.setPixelRatio(1);
+function setWeapon(w) {
+  if (w > 0 && G.ammo[w] <= 0 && G.weapon !== w) { /* still selectable; firing will warn */ }
+  G.weapon = w;
+  if (w > 0) G.aimT = Math.max(G.aimT, 1.2);
+  saveGame();
 }
-fpsAccum = 0; fpsCount = 0; fpsStage++;
+function toggleCar() {
+  if (cutsceneActive() || G.dead) return;
+  if (G.inCar) { exitCar(); return; }
+  var best = null, bd = 4.4;
+  for (var i = 0; i < G.cars.length; i++) {
+    var c = G.cars[i];
+    if (c.dead) continue;
+    var d = dist2(G.player.x, G.player.z, c.x, c.z);
+    if (d < bd && Math.abs(c.speed) < 7) { bd = d; best = c; }
+  }
+  if (best) {
+    if (best.driver === 'ai') addCrime(1, best.x, best.z);   // yanking a driver out is a crime
+    enterCar(best);
+  }
 }
+
+// Shooting ----------------------------------------------------------
+var smgT = 0, crimeT = 0;
+function aimDirection() {
+  var cp = Math.cos(G.camPitch);
+  return { x: Math.sin(G.camYaw) * cp, y: Math.sin(G.camPitch), z: Math.cos(G.camYaw) * cp };
 }
-if (G.sg) { sTk(dt); }
-else if (G.cs) {
-uCs(dt);
-uPds(dt);
-uTraf(dt);
+function findAimTarget(maxAngle) {
+  var dir = aimDirection();
+  var ox = G.player.x, oy = 1.55, oz = G.player.z;
+  var best = null, bestA = maxAngle;
+  function test(x, y, z, obj, kind) {
+    var dx = x - ox, dy = y - oy, dz = z - oz;
+    var d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    if (d > 110 || d < 0.5) return;
+    var dot = (dx * dir.x + dy * dir.y + dz * dir.z) / d;
+    var ang = Math.acos(clamp(dot, -1, 1));
+    if (ang < bestA) { bestA = ang; best = { obj: obj, kind: kind, dist: d }; }
+  }
+  for (var i = 0; i < G.peds.length; i++) { var p = G.peds[i]; if (!p.dead) test(p.x, 1.1, p.z, p, 'ped'); }
+  for (var j = 0; j < G.cars.length; j++) { var c = G.cars[j]; if (!c.dead) test(c.x, 0.9, c.z, c, 'car'); }
+  for (var k = 0; k < G.cops.length; k++) { var cp2 = G.cops[k]; if (!cp2.dead) test(cp2.x, 0.9, cp2.z, cp2, 'car'); }
+  return best;
 }
-else if (G.md === "play") {
-uMis(dt);
-if (G.oF) uPF(dt); else uPV(dt);
-uTraf(dt);
-cVeh(dt);
-uPol(dt);
-uPds(dt);
-uCFx(dt);
-cHl(dt);
-} else if (G.md === "title") {
-uPds(dt);
-uTraf(dt);
+function fireWeapon() {
+  if (G.weapon === 0 || G.inCar || G.dead) return;
+  if (G.ammo[G.weapon] <= 0) { showToast('Out of ammo for this weapon'); return; }
+  G.ammo[G.weapon]--;
+  G.aimT = 2.6;
+  sfx(G.weapon === 1 ? 'shot' : 'smg');
+  G.camPitch += 0.006;
+  var hit = findAimTarget(0.05);
+  // Public gunfire draws the law, throttled to one star per 2 s.
+  if (crimeT <= 0) { addCrime(1, G.player.x, G.player.z); crimeT = 2; }
+  if (!hit) return;
+  if (hit.kind === 'ped') {
+    var wasAlive = !hit.obj.dead && !hit.obj.story;
+    hurtPed(hit.obj, G.weapon === 1 ? 40 : 18, G.player.x, G.player.z);
+    if (wasAlive && hit.obj.dead) addCrime(1, hit.obj.x, hit.obj.z);
+  } else {
+    damageCar(hit.obj, G.weapon === 1 ? 12 : 7, 'shot');
+    if (hit.obj.police) addCrime(1, hit.obj.x, hit.obj.z);
+  }
 }
-uSmk(dt);
-uSky(dt);
-if (G.md !== "stage" && !G.cs) uCam(dt);
-hTk(dt);
-if (G.md === "play" || G.md === "pause" || G.md === "map" || G.md === "missions") {
-hudAccum += dt;
-if (hudAccum > 0.08) { hudAccum = 0; uHud(); dMM(); if (G.md === "map") dBM(); }
+function tickShooting(dt) {
+  crimeT -= dt;
+  G.aimT = Math.max(0, G.aimT - dt);
+  var cone = findAimTarget(0.10);
+  G.aimHot = !!cone && G.weapon > 0 && !G.inCar;
+  if (G.smgHeld && G.weapon === 2 && !G.inCar && !cutsceneActive()) {
+    smgT -= dt;
+    if (smgT <= 0) { smgT = 0.095; fireWeapon(); }
+  }
 }
-sfxUpdate(dt);
-G.rd.render(G.sc, G.cm);
-if (G.sg) {
-stageFrames++;
-if (stageFrames === 100) window.__shotReady = true;
+
+// Camera -------------------------------------------------------------
+var muzzle = null;
+function updateCamera(dt) {
+  var target, dist, height;
+  if (G.inCar) {
+    target = { x: G.inCar.x, z: G.inCar.z };
+    G.camYaw = angLerp(G.camYaw, G.inCar.angle, clamp(dt * 3.2, 0, 1));
+    G.camPitch = lerp(G.camPitch, 0.17, clamp(dt * 3, 0, 1));
+    dist = 9.6; height = 2.7;
+  } else {
+    target = { x: G.player.x, z: G.player.z };
+    var aiming = G.weapon > 0 && G.aimT > 0;
+    dist = aiming ? 3.4 : 6.9;
+    height = 1.7;
+  }
+  var dir = aimDirection();
+  var cx = target.x - dir.x * dist;
+  var cz = target.z - dir.z * dist;
+  var cy = height + Math.sin(G.camPitch) * dist + 0.6;
+  if (!G.inCar && G.weapon > 0 && G.aimT > 0) {
+    // Over the shoulder: the camera shifts so Rico sits left of
+    // centre, his head at roughly 40% of the screen width, clear of
+    // the crosshair. (With this game's yaw convention, screen-right
+    // is world -X, so the offset subtracts the perpendicular.)
+    var rx = dir.z, rz = -dir.x;
+    cx -= rx * 1.15; cz -= rz * 1.15;
+  }
+  G.camera.position.set(cx, Math.max(cy, 0.7), cz);
+  G.camera.lookAt(target.x + dir.x * 8, 1.5 + Math.sin(G.camPitch) * 4, target.z + dir.z * 8);
 }
+
+// Boot + loop ---------------------------------------------------------
+function startGame() {
+  if (G.started) return;
+  G.started = true;
+  el('start-screen').style.display = 'none';
+  radioPlay();
+  G.renderer.domElement.requestPointerLock();
 }
-let stageFrames = 0, stageRig = null;
-function sStg(name) {
-G.sg = name; G.md = "stage"; G.sN = true;
-el("menu-title").style.display = "none";
-el("hud").style.display = "block";
-const cam = G.cm;
-if (name === "chase") {
-G.hr = 17.7; G.we = "clear";
-const comet = fVeh("comet");
-comet.mesh.position.set(0, 0, 215); comet.mesh.rotation.set(0, M.PI, 0);
-eVeh(comet); comet.speed = 15;
-sW(4);
-const i1 = spV("interceptor", -2.85, 217.2, M.PI, 0x30343a, "police");
-const i2 = spV("interceptor", 5, 217.6, M.PI, 0x30343a, "police");
-i1.speed = 15; i2.speed = 15;
-G.po.push(i1, i2);
-for (const t of G.tf) {
-if (M.abs(t.mesh.position.x) < 60 && t.mesh.position.z > -460 && t.mesh.position.z < 300) {
-t.mesh.position.x = 320; t.aiTarget = null;
+function init() {
+  G.scene = new THREE.Scene();
+  G.camera = new THREE.PerspectiveCamera(66, window.innerWidth / window.innerHeight, 0.1, 4000);
+  G.renderer = new THREE.WebGLRenderer({ antialias: true });
+  G.renderer.setSize(window.innerWidth, window.innerHeight);
+  G.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.6));
+  el('game').appendChild(G.renderer.domElement);
+  loadGame();
+  buildWorld();
+  buildPeople();
+  spawnTraffic();
+  buildMarker();
+  buildPickups();
+  hudInit();
+  if (G.storyDone) { G.targetPos = null; G.route = []; }
+  else startJob(G.job);
+  bindInput();
+  G.rankName = rankFor(G.earned);
+  requestAnimationFrame(frame);
 }
+var lastT = 0;
+function frame(now) {
+  requestAnimationFrame(frame);
+  var dt = Math.min(0.05, (now - lastT) / 1000 || 0.016);
+  lastT = now;
+  G.t += dt;
+  var frozen = cutsceneActive();
+  if (G.started && !G.dead) {
+    if (!frozen) tickPlayer(dt);
+    tickCars(dt);
+    tickPolice(dt);
+    tickPeds(dt);
+    tickMissions(dt);
+    tickPickups(dt);
+    tickShooting(dt);
+  }
+  if (frozen) tickCutscene(dt);
+  tickLights();
+  updateCamera(dt);
+  hudTick(dt);
+  if (mapOpen) drawBigMap();
+  G.renderer.render(G.scene, G.camera);
 }
-stageRig = { cars: [comet, i1, i2], speed: 15 };
-sObj("Outrun the Interceptors — reach the safehouse", SP.sH.x, SP.sH.z);
-sMrk(SP.sH.x, SP.sH.z, 0x2ee6c8);
-cam.position.set(4.8, 1.5, 223.6);
-} else if (name === "drive") {
-G.hr = 17.9; G.we = "clear";
-const falco = fVeh("falco");
-falco.mesh.position.set(640, 0, 300); falco.mesh.rotation.set(0, M.PI, 0);
-eVeh(falco); falco.speed = 17;
-stageRig = { cars: [falco], speed: 17 };
-sObj("Bay Runner — checkpoint run down the coast", 640, -420);
-sMrk(640, -100, 0x2ee6c8);
-cam.position.set(632, 2.5, 312);
-} else if (name === "marina") {
-G.hr = 21.5; G.we = "rain";
-const moonBoost = new T3.DirectionalLight(0xbdd2ff, 1.15);
-moonBoost.position.set(-780, 160, 20);
-moonBoost.target.position.set(-920, 0, 78);
-G.sc.add(moonBoost); G.sc.add(moonBoost.target);
-G.sc.add(new T3.AmbientLight(0x5a6f96, 0.8));
-G.pl.mesh.position.set(-876, 0, 86);
-G.pl.mesh.rotation.y = 0.35;
-G.yW = 0.35;
-sObj("Meet Celia at the marina", SP.ce.x, SP.ce.z);
-cam.position.set(-868, 2.8, 108);
-} else if (name === "cutscene") {
-G.hr = 17.8; G.we = "clear";
-G.pl.mesh.position.set(-879, 0, 70);
-sCs(0, null);
-G.cs.line = 2; csShowLine();
-csApplyCamera(G.cs, 0);
-sObj("Meet Celia at the marina", SP.ce.x, SP.ce.z);
-} else if (name === "rico") {
-G.hr = 17.6; G.we = "clear";
-G.pl.mesh.position.set(-352, 0, -300);
-G.pl.mesh.rotation.y = -1.02;
-const comet = fVeh("comet");
-comet.mesh.position.set(-346, 0, -312); comet.mesh.rotation.set(0, -0.5, 0);
-const crusher = fVeh("crusher");
-crusher.mesh.position.set(-326, 0, -304); crusher.mesh.rotation.set(0, -0.5, 0);
-cam.position.set(-358.5, 1.8, -296);
-}
-uHud(); dMM();
-}
-function sTk(dt) {
-const cam = G.cm;
-if (stageRig) {
-for (const v of stageRig.cars) {
-v.mesh.position.z -= stageRig.speed * dt;
-const wr = stageRig.speed * dt / 0.42;
-for (const w of v.wheels) w.rotation.x -= wr;
-if (v.mesh.position.z < -430) v.mesh.position.z += 620;
-}
-const lead = stageRig.cars[0];
-if (G.sg === "chase") {
-cam.position.set(lead.mesh.position.x + 4.8, 1.5, lead.mesh.position.z + 8.6);
-cam.lookAt(lead.mesh.position.x - 2.2, 1, lead.mesh.position.z - 10);
-const flash = M.floor(G.tm * 2.4) % 2 === 0;
-for (const c of stageRig.cars.slice(1)) {
-const bar = c.mesh.userData.lightBar;
-if (bar) { bar.children[0].visible = flash; bar.children[1].visible = !flash; }
-}
-if (G.vh) seatSyncStage();
-} else if (G.sg === "drive") {
-lead.mesh.rotation.z = -0.34;
-seatB(lead);
-cam.position.set(lead.mesh.position.x - 7.5, 2.5, lead.mesh.position.z + 12.5);
-cam.lookAt(lead.mesh.position.x + 7, 1, lead.mesh.position.z - 18);
-}
-} else if (G.sg === "cutscene") {
-if (G.cs) csApplyCamera(G.cs, dt);
-aPrs(G.pl, 0, dt);
-} else if (G.sg === "marina") {
-cam.lookAt(-905, 1.5, 70);
-aPrs(G.pl, 0, dt);
-} else if (G.sg === "rico") {
-cam.lookAt(-352, 1.3, -300);
-aPrs(G.pl, 0, dt);
-}
-uPds(dt);
-if (G.sg === "marina" || G.sg === "rico") uTraf(dt);
-hudAccum += dt;
-if (hudAccum > 0.12) { hudAccum = 0; uHud(); dMM(); }
-}
-function seatSyncStage() { if (G.vh) seatV(G.vh); }
-window.CBS = {
-G,
-warp(x, z) {
-if (!G.oF && G.vh) { G.vh.mesh.position.set(x, 0, z); G.vh.speed = 0; }
-else G.pl.mesh.position.set(x, 0, z);
-},
-sW, setHour(h) { G.hr = h; },
-setWeather(w) { G.we = w; G.wT = 9999; },
-startJob(i) { if (!G.job) startJob(i); },
-talk() { const k = G.ji < JOBS.length ? JOBS[G.ji].giver : "celia"; const ct = G.ct[k]; G.pl.mesh.position.set(ct.spot.x + 2, 0, ct.spot.z + 2); },
-enterKind(kind) { const v = fVeh(kind); if (v) { if (!G.oF) xVeh(); G.pl.mesh.position.set(v.mesh.position.x + 2, 0, v.mesh.position.z); eVeh(v); } return !!v; },
-cash(n) { G.ca = n; uHud(); },
-state() {
-const f = fPt();
-return {
-mode: G.md, cash: G.ca, wanted: G.wn, health: M.round(G.hp),
-jobIndex: G.ji, job: G.job ? G.job.i : -1, step: G.job ? G.job.step : -1,
-hustle: G.hu ? G.hu.type : null,
-onFoot: G.oF, vehicle: G.vh ? G.vh.kind : null,
-weapon: G.wp, x: M.round(f.x), z: M.round(f.z),
-hour: G.hr, weather: G.we,
-cutscene: G.cs ? G.cs.idx + ":" + G.cs.line : null,
-playerVisible: G.pl.mesh.visible,
-playerPos: [M.round(G.pl.mesh.position.x * 10) / 10, M.round(G.pl.mesh.position.y * 10) / 10, M.round(G.pl.mesh.position.z * 10) / 10],
+
+// Hooks for the screenshot / playability harness: real game state
+// only, the same functions a player's input would reach.
+G.debug = {
+  start: function () { if (!G.started) { G.started = true; el('start-screen').style.display = 'none'; } },
+  teleport: function (x, z) {
+    if (G.inCar) { G.inCar.x = x; G.inCar.z = z; }
+    G.player.x = x; G.player.z = z;
+    G.player.mesh.position.set(x, 0, z);
+  },
+  face: function (yaw, pitch) { G.camYaw = yaw; if (pitch !== undefined) G.camPitch = pitch; },
+  wanted: function (n) { G.wanted = n; G.seenT = 0; },
+  weapon: function (w) { setWeapon(w); G.aimT = 3; },
+  enterNearest: function () { toggleCar(); },
+  job: function () { return { job: G.job, step: G.jobStep, label: stepLabel() }; },
+  state: function () {
+    return {
+      hp: G.hp, armor: G.armor, cash: G.cash, wanted: G.wanted,
+      peds: G.peds.length, cars: G.cars.length, cops: G.cops.length,
+      colliders: G.colliders.length, lamps: G.lampCount,
+      player: { x: Math.round(G.player.x), z: Math.round(G.player.z) },
+      inCar: !!G.inCar, policeState: G.policeState,
+    };
+  },
 };
-},
-};
-DC.addEventListener("DOMContentLoaded", bGam);
+
+window.addEventListener('load', init);

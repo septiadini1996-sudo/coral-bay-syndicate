@@ -1,304 +1,180 @@
-"use strict";
-let jMrk = null;
-function bMM(scene) {
-jMrk = new GR();
-const pillar = beam(1.6, 42, 0xffd94d, 0.32); jMrk.add(pillar);
-const ring = ringM(2.6, 3.4, 0xffd94d, 0.85);
-ring.position.y = 0.18; jMrk.add(ring);
-jMrk.visible = false;
-scene.add(jMrk);
-}
-function sMrk(x, z, color) {
-if (!jMrk) return;
-jMrk.visible = true;
-jMrk.position.set(x, 0, z);
-if (color) jMrk.children.forEach((ch) => ch.material.color.setHex(color));
-G.oP = { x, z };
-}
-function hMrk() { if (jMrk) jMrk.visible = false; G.oP = null; }
-function fVeh(kind) { return G.vs.find((v) => v.kind === kind); }
-function revV(v, x, z, heading) {
-if (!v) return;
-v.alive = true; v.health = 100; v.speed = 0; v.driver = null;
-v.mesh.position.set(x, 0, z); v.mesh.rotation.set(0, heading || 0, 0);
-v.mesh.traverse((o) => { if (o.material && o.material.color && o.userData.c) o.material.color.copy(o.userData.c); });
-}
-function fDst(x, z) { const f = fPt(); return d3(f.x, f.z, x, z); }
-const JOBS = [
-{ title: "Opening Night", giver: "celia", payout: 300,
-brief: "Celia needs a driver. Take her Comet GT and get her to the Starfish Club downtown before the doors open." },
-{ title: "Paper Trail", giver: "marco", payout: 450,
-brief: "Marco's ledgers are scattered in three downtown alleys. Pick up every case and bring them back to him." },
-{ title: "Hot Metal", giver: "marco", payout: 650,
-brief: "A Dune Crusher sits unguarded in the industrial yard. Steal it and deliver it to Marco's lockup. Expect company." },
-{ title: "Bay Runner", giver: "celia", payout: 800,
-brief: "Celia's Falco RR against the coast road: six checkpoints, one clock. Show the bay what fast looks like." },
-{ title: "Sky High", giver: "don", payout: 1200,
-brief: "Don Falso wants the airport helicopter delivered to the marina helipad. The CBPD will object. Fly anyway." },
-{ title: "The Syndicate", giver: "don", payout: 2500,
-brief: "Collect the tribute at three spots across Coral Bay, then reach the safehouse while the whole force hunts you. Finish it, Rico." },
+// Coral Bay Syndicate - missions.js
+// The six-job story chain. Each job is a list of steps (talk, go to,
+// drive to, hold position, steal a marked car, destroy a target car,
+// lose the police). The engine watches the current step, drives the
+// GPS target and the gold marker, pays out at the end of each job and
+// rolls the next one. Finishing job 6 pays out $6,150 in total across
+// the chain and shows the finale card.
+
+'use strict';
+
+var JOBS = [
+  { title: 'Meet Celia', pay: 400, giver: 'Celia', steps: [
+    { k: 'talk', x: 0, z: 1490, label: 'Meet Celia at the end of the marina pier', scene: 'celia' },
+    { k: 'goto', x: -30, z: 1346, label: 'Pick up the ledger by the dock crates' },
+    { k: 'goto', x: 172, z: -148, label: 'Deliver the ledger to Marco at the Syndicate Garage', scene: 'marco' },
+  ] },
+  { title: 'First Run', pay: 750, giver: 'Marco', steps: [
+    { k: 'drive', x: -648, z: 472, label: 'Drive the package to the west warehouse', scene: 'warehouse' },
+  ] },
+  { title: 'Dockside Pickup', pay: 900, giver: 'Celia', intro: 'docks', steps: [
+    { k: 'goto', x: 56, z: 1352, label: 'Meet the dock crew by the pier office' },
+    { k: 'hold', x: 56, z: 1352, secs: 3, label: 'Stay in the marker while they load the cargo' },
+    { k: 'drive', x: 168, z: -160, label: 'Deliver the cargo to the Syndicate Garage' },
+  ] },
+  { title: 'Hot Wheels', pay: 1200, giver: 'Vera', intro: 'hotwheels', steps: [
+    { k: 'goto', x: 472, z: -472, label: 'Scope out the east lookout' },
+    { k: 'steal', x: 488, z: -448, label: 'Steal the marked prize coupe' },
+    { k: 'drive', x: -800, z: 168, label: 'Deliver the coupe to the chop shop', inMarked: true },
+  ] },
+  { title: 'Convoy Ambush', pay: 1400, giver: 'Marco', intro: 'ambush', steps: [
+    { k: 'goto', x: 160, z: 632, label: 'Get to the ambush point on the north road' },
+    { k: 'destroy', x: 168, z: 800, label: 'Destroy the rival crew car' },
+    { k: 'escape', label: 'Lose the police' },
+  ] },
+  { title: 'The Big Score', pay: 1500, giver: 'Celia', intro: 'bigscore', steps: [
+    { k: 'goto', x: 168, z: 88, label: 'Go to the Coral Bank corner' },
+    { k: 'hold', x: 168, z: 88, secs: 4, label: 'Rob the bank: stay in the marker', crime: 4 },
+    { k: 'drive', x: 0, z: 1440, label: 'Escape to Celia and the marina hideout', scene: 'finale' },
+  ] },
 ];
-const CASE_SPOTS = [{ x: -139, z: -139 }, { x: 92, z: -252 }, { x: 139, z: 139 }];
-const TRIBUTE_SPOTS = [{ x: -34, z: -18 }, { x: -820, z: 160 }, { x: 436, z: 330 }];
-function cHJ(key) {
-if (G.job || G.hu) return false;
-if (G.ji < JOBS.length) return JOBS[G.ji].giver === key;
-return key === "celia";
+
+var markerMesh = null, markerRing = null;
+function buildMarker() {
+  var geo = new THREE.CylinderGeometry(1.6, 1.6, 34, 12, 1, true);
+  var mat = new THREE.MeshBasicMaterial({ color: 0xffd75e, transparent: true, opacity: 0.4, side: THREE.DoubleSide, depthWrite: false });
+  markerMesh = new THREE.Mesh(geo, mat);
+  markerMesh.position.y = 17;
+  var ring = new THREE.Mesh(new THREE.TorusGeometry(3.2, 0.22, 8, 24),
+    new THREE.MeshBasicMaterial({ color: 0xffd75e }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.4;
+  markerRing = ring;
+  G.scene.add(markerMesh); G.scene.add(markerRing);
 }
-function gNam(key) { return { celia: "Celia", marco: "Marco", don: "Don Falso" }[key]; }
+
+function currentStep() {
+  if (G.job >= JOBS.length) return null;
+  return JOBS[G.job].steps[G.jobStep] || null;
+}
+function stepLabel() {
+  var st = currentStep();
+  if (!st) return G.storyDone ? 'The Bay is yours. Free roam.' : '';
+  return st.label;
+}
+
 function startJob(i) {
-const def = JOBS[i];
-G.job = { i, step: 0, t: 0, data: {} };
-sBan(def.title, def.brief + "  Payout: " + fCsh(def.payout), 6);
-sfxSting("start");
-if (i === 0) { const c = fVeh("comet"); if (c && !c.alive) revV(c, -664, 96, M.PI / 2); }
-if (i === 2) { const c = fVeh("crusher"); if (c && !c.alive) revV(c, SP.cY.x, SP.cY.z, 0.4); }
-if (i === 3) { const f = fVeh("falco"); if (f && !f.alive) revV(f, SP.bF.x, SP.bF.z, M.PI); }
-if (i === 4) { const h = fVeh("heli"); if (h && !h.alive) revV(h, SP.aH.x, SP.aH.z, 0); }
+  G.job = i; G.jobStep = 0; G.markedCar = null;
+  var job = JOBS[i];
+  if (!job) { finishStory(); return; }
+  showToast('JOB ' + (i + 1) + ': ' + job.title + ' - ' + fmt$(job.pay));
+  applyStep();
+  if (job.intro) playCutscene(job.intro, null);
+  saveGame();
 }
-function cJob() {
-const def = JOBS[G.job.i];
-const doneIdx = G.job.i;
-G.ca += def.payout;
-G.ji++; G.jD = G.ji;
-const wasFinale = doneIdx === JOBS.length - 1;
-G.job = null; hMrk(); sObj(null);
-sfxCash(); sfxSting("good");
-sV(); uHud();
-if (wasFinale) {
-const don = G.ct.don.person;
-don.mesh.position.set(G.pl.mesh.position.x + 3, 0, G.pl.mesh.position.z + 1);
-sCs(6, () => {
-don.mesh.position.set(SP.dn.x, 0, SP.dn.z);
-sCrd("CORAL BAY IS YOURS",
-"Every crew pays, every cop knows the name. Rico Solano runs Coral Bay now. Final payout: " + fCsh(def.payout) +
-". The city stays open — deliveries and the Bay Runner rematch keep paying.", "Long live the Syndicate");
-});
-} else {
-sBan("CHAPTER " + (doneIdx + 1) + " COMPLETE · +" + fCsh(def.payout),
-"Next: Chapter " + (G.ji + 1) + " — " + JOBS[G.ji].title + ", from " + gNam(JOBS[G.ji].giver) + ".", 5.5);
+
+function applyStep() {
+  var st = currentStep();
+  G.targetCar = null;
+  if (!st) { G.targetPos = null; G.route = []; return; }
+  if (st.k === 'escape') { G.targetPos = null; G.route = []; return; }
+  G.targetPos = { x: st.x, z: st.z, label: st.label };
+  computeRoute(st.x, st.z);
+  if (st.k === 'steal') {
+    var car = createCar(st.x, st.z, Math.PI / 4, 'Sedan', 0xb02020);
+    car.driver = 'parked'; car.name = 'Prize Coupe'; car.marked = true;
+    G.markedCar = car;
+  }
+  if (st.k === 'destroy') {
+    var tc = createCar(st.x, st.z, 0, 'Sedan', 0x37474f);
+    tc.hp = 55; tc.name = 'Rival Crew Car';
+    planRoute(tc, null);
+    G.targetCar = tc;
+  }
+  if (st.crime) { /* crime applies when the hold completes */ }
 }
+
+function completeJob() {
+  var job = JOBS[G.job];
+  G.cash += job.pay; G.earned += job.pay;
+  G.rankName = rankFor(G.earned);
+  sfx('cash');
+  showToast('JOB COMPLETE: ' + job.title + '  +' + fmt$(job.pay));
+  G.jobStep = 0;
+  startJob(G.job + 1);
 }
-function failJob(reason) {
-if (!G.job) return;
-const def = JOBS[G.job.i];
-if (G.job.i === 0 && G.job.step === 1) {
-const celia = G.ct.celia.person;
-celia.mesh.visible = true; celia.mesh.position.set(SP.ce.x, 0, SP.ce.z);
+
+function finishStory() {
+  G.storyDone = true; G.job = JOBS.length;
+  G.targetPos = null; G.route = [];
+  G.finale = true;
+  saveGame();
 }
-G.job = null; hMrk(); sObj(null);
-sfxSting("bad");
-sCrd("JOB FAILED — " + def.title, reason + " Talk to " + gNam(def.giver) + " to run it again.", "Try again");
-}
-function onPlayerEnterVehicle(v) {
-if (G.job && G.job.i === 4 && v.kind === "heli" && G.job.step === 0) {  }
-}
-function onVehicleWrecked(v) {
-if (!G.job) return;
-if (G.job.i === 0 && v.kind === "comet") failJob("The Comet GT is wrecked.");
-else if (G.job.i === 2 && v.kind === "crusher") failJob("The Dune Crusher is wrecked — Marco needed it whole.");
-else if (G.job.i === 3 && v.kind === "falco") failJob("The Falco RR is wrecked.");
-else if (G.job.i === 4 && v.kind === "heli") failJob("The helicopter is down. The Don is not pleased.");
-}
-function jobUpdate(dt) {
-const job = G.job; if (!job) return;
-const d = job.data;
-job.t += dt;
-if (job.i === 0) {
-const comet = fVeh("comet");
-if (job.step === 0) {
-sObj("Get into Celia's Comet GT at the marina", comet.mesh.position.x, comet.mesh.position.z);
-sMrk(comet.mesh.position.x, comet.mesh.position.z, 0xffd94d);
-if (G.vh === comet) {
-job.step = 1; d.timer = 150;
-G.ct.celia.person.mesh.visible = false;
-sToa("Celia's in. The Starfish Club, downtown — go!");
-}
-} else {
-d.timer -= dt;
-sObj("Drive Celia to the Starfish Club", SP.cb.x, SP.cb.z, d.timer);
-sMrk(SP.cb.x, SP.cb.z, 0xffd94d);
-if (G.vh === comet && fDst(SP.cb.x, SP.cb.z) < 10) {
-const celia = G.ct.celia.person;
-celia.mesh.visible = true; celia.mesh.position.set(-24, 0, -24);
-cJob(); return;
-}
-if (d.timer <= 0) { failJob("The club doors closed without Celia."); return; }
-}
-} else if (job.i === 1) {
-if (job.step === 0) {
-d.cases = CASE_SPOTS.map((s) => spawnCasePickup(s.x, s.z));
-job.step = 1; d.got = 0;
-}
-if (job.step === 1) {
-const next = d.cases.find((cs) => !cs.taken);
-if (next) {
-sObj("Collect the ledger cases (" + d.got + "/3) in the downtown alleys", next.x, next.z);
-sMrk(next.x, next.z, 0x2ee6c8);
-if (fDst(next.x, next.z) < 3.4) {
-next.taken = true; next.grp.visible = false; d.got++;
-sfxPickup();
-if (d.got === 3) { sW(M.max(G.wn, 1)); sToa("Last case taken — someone called it in. Back to Marco!"); job.step = 2; }
-else sToa("Case " + d.got + " of 3 secured");
-}
-}
-} else if (job.step === 2) {
-sObj("Return the ledgers to Marco", SP.ma.x, SP.ma.z);
-sMrk(SP.ma.x, SP.ma.z, 0xffd94d);
-if (fDst(SP.ma.x, SP.ma.z) < 4.5) { cJob(); return; }
-}
-} else if (job.i === 2) {
-const crusher = fVeh("crusher");
-if (job.step === 0) {
-sObj("Steal the Dune Crusher from the industrial yard", SP.cY.x, SP.cY.z);
-sMrk(SP.cY.x, SP.cY.z, 0xffd94d);
-if (G.vh === crusher) { job.step = 1; sW(M.max(G.wn, 2)); sToa("That's the one — the yard crew called the cops!"); }
-} else {
-sObj("Deliver the Dune Crusher to Marco's lockup", SP.lk.x, SP.lk.z);
-sMrk(SP.lk.x, SP.lk.z, 0xffd94d);
-if (G.vh === crusher && fDst(SP.lk.x, SP.lk.z) < 9) { cJob(); return; }
-}
-} else if (job.i === 3) {
-const falco = fVeh("falco");
-if (job.step === 0) {
-sObj("Get on Celia's Falco RR at the beachfront", SP.bF.x, SP.bF.z);
-sMrk(SP.bF.x, SP.bF.z, 0xffd94d);
-if (G.vh === falco) { job.step = 1; d.cp = 0; d.timer = 95; sToa("Six checkpoints down the coast. GO!"); }
-} else {
-d.timer -= dt;
-const cp = RCP[d.cp];
-sObj("Checkpoint " + (d.cp + 1) + " of 6 — beat the clock", cp.x, cp.z, d.timer);
-sMrk(cp.x, cp.z, 0x2ee6c8);
-if (G.vh === falco && fDst(cp.x, cp.z) < 12) {
-d.cp++; sfxPickup();
-if (d.cp >= RCP.length) {
-const used = 95 - M.max(0, d.timer);
-if (!G.rB || used < G.rB) G.rB = used;
-cJob(); return;
-}
-}
-if (d.timer <= 0) { failJob("The clock beat you. The coast road keeps its crown."); return; }
-}
-} else if (job.i === 4) {
-const heli = fVeh("heli");
-if (job.step === 0) {
-sObj("Steal the helicopter at the airport", SP.aH.x, SP.aH.z);
-sMrk(SP.aH.x, SP.aH.z, 0xffd94d);
-if (G.vh === heli) { job.step = 1; sW(M.max(G.wn, 3)); sToa("Up, up — set her down on the marina helipad."); }
-} else {
-sObj("Land the helicopter on the marina helipad (H)", SP.hP.x, SP.hP.z);
-sMrk(SP.hP.x, SP.hP.z, 0xffd94d);
-if (G.vh === heli && heli.alt < 1.4 && M.abs(heli.vy) < 2.5 && fDst(SP.hP.x, SP.hP.z) < 15) {
-sW(M.max(0, G.wn - 1));
-cJob(); return;
-}
-}
-} else if (job.i === 5) {
-if (job.step === 0) {
-d.spots = TRIBUTE_SPOTS.map((s) => ({ x: s.x, z: s.z, taken: false }));
-job.step = 1; d.got = 0;
-}
-if (job.step === 1) {
-const next = d.spots.find((s) => !s.taken);
-if (next) {
-sObj("Collect the tribute (" + d.got + "/3)", next.x, next.z);
-sMrk(next.x, next.z, 0xffd94d);
-if (fDst(next.x, next.z) < 4) {
-next.taken = true; d.got++; sfxCash();
-if (d.got === 3) { job.step = 2; sW(4); sToa("Tribute's in — and the whole CBPD knows. SAFEHOUSE. NOW."); }
-else sToa("Tribute " + d.got + " of 3 collected");
-}
-}
-} else if (job.step === 2) {
-sObj("Reach the safehouse — wanted level 4", SP.sH.x, SP.sH.z);
-sMrk(SP.sH.x, SP.sH.z, 0x2ee6c8);
-if (fDst(SP.sH.x, SP.sH.z) < 8) { cJob(); return; }
-}
-}
-}
-const casePickups = [];
-function spawnCasePickup(x, z) {
-const grp = new GR();
-const boxMesh = new MS(new BG(0.9, 0.6, 0.35),
-new ML({ color: 0x8a5a34 }));
-boxMesh.position.y = 1; grp.add(boxMesh);
-const glow = gDsc(0x2ee6c8, 1, 0.6);
-glow.position.y = 0.1; grp.add(glow);
-grp.position.set(x, 0, z);
-G.sc.add(grp);
-const rec = { x, z, grp, taken: false };
-casePickups.push(rec);
-return rec;
-}
-const DROPOFFS = [
-{ x: 640, z: -320, name: "the beachfront kiosk" }, { x: -160, z: 480, name: "the south depot" },
-{ x: 330, z: -160, name: "the downtown garage" }, { x: -480, z: -480, name: "the Palmera gate" },
-{ x: 160, z: 160, name: "the midtown corner" },
-];
-function startDelivery() {
-const drop = pick(DROPOFFS);
-G.hu = { type: "delivery", x: drop.x, z: drop.z, name: drop.name, timer: 150 };
-sBan("Side Hustle — Special Delivery", "Celia's package goes to " + drop.name + ". Quick and quiet. Pays $150.", 5);
-sfxSting("start");
-}
-function startRaceRematch() {
-G.hu = { type: "race", cp: 0, timer: 95 };
-sBan("Bay Runner — Rematch", "Six checkpoints, 95 seconds. Beat it for $400.", 4);
-sfxSting("start");
-}
-function hustleUpdate(dt) {
-const h = G.hu; if (!h) return;
-if (h.type === "delivery") {
-h.timer -= dt;
-sObj("Deliver Celia's package to " + h.name, h.x, h.z, h.timer);
-sMrk(h.x, h.z, 0x2ee6c8);
-if (fDst(h.x, h.z) < 8) {
-G.ca += 150; G.hu = null; hMrk(); sObj(null);
-sfxCash(); sCrd("DELIVERED", "Package dropped, no questions asked. Paid $150. Celia always has another.", "Nice");
-sV(); uHud(); return;
-}
-if (h.timer <= 0) { G.hu = null; hMrk(); sObj(null); sToa("Delivery window missed"); }
-} else if (h.type === "race") {
-h.timer -= dt;
-const cp = RCP[h.cp];
-sObj("Rematch checkpoint " + (h.cp + 1) + " of 6", cp.x, cp.z, h.timer);
-sMrk(cp.x, cp.z, 0x2ee6c8);
-if (G.vh && G.vh.kind === "falco" && fDst(cp.x, cp.z) < 12) {
-h.cp++; sfxPickup();
-if (h.cp >= RCP.length) {
-G.ca += 400; G.hu = null; hMrk(); sObj(null);
-sfxCash(); sCrd("COAST KING", "The bay road bows again. Paid $400.", "Nice");
-sV(); uHud(); return;
-}
-}
-if (h.timer <= 0) { G.hu = null; hMrk(); sObj(null); sToa("The clock wins this one"); }
-}
-}
-function uMis(dt) {
-G.gP = null;
-if (!G.job && !G.hu && G.md === "play") {
-for (const gk of ["celia", "marco", "don"]) {
-if (!cHJ(gk)) continue;
-const ct = G.ct[gk];
-if (d3(G.pl.mesh.position.x, G.pl.mesh.position.z, ct.spot.x, ct.spot.z) < 4.2 && G.oF) {
-if (G.ji < JOBS.length) G.gP = "E — Talk to " + gNam(gk) + ": " + JOBS[G.ji].title;
-else G.gP = "E — Ask Celia for a delivery run";
-if (key("KeyE")) {
-G.ky["KeyE"] = false; sfxInit(); sfxClick();
-if (G.ji < JOBS.length) { const i = G.ji; sCs(i, () => startJob(i)); }
-else startDelivery();
-}
-break;
-}
-}
-if (!G.gP && G.ji > 3 && G.oF &&
-d3(G.pl.mesh.position.x, G.pl.mesh.position.z, SP.rT.x, SP.rT.z) < 4.5) {
-G.gP = "E — Bay Runner rematch ($400)";
-if (key("KeyE")) { G.ky["KeyE"] = false; startRaceRematch(); }
-}
-}
-if (jMrk && jMrk.visible) jMrk.children[1].rotation.z += dt * 1.4;
-for (const cs of casePickups) if (!cs.taken) cs.grp.rotation.y += dt * 2;
-jobUpdate(dt);
-hustleUpdate(dt);
+
+var holdT = 0;
+function tickMissions(dt) {
+  var st = currentStep();
+  // Keep the marker on the current target.
+  var show = !!st && !!G.targetPos && !cutsceneActive();
+  if (markerMesh) {
+    markerMesh.visible = markerRing.visible = show;
+    if (show) {
+      markerMesh.position.x = markerRing.position.x = G.targetPos.x;
+      markerMesh.position.z = markerRing.position.z = G.targetPos.z;
+      markerRing.rotation.z = G.t * 1.4;
+    }
+  }
+  if (!st || cutsceneActive() || G.dead) return;
+  var px = G.inCar ? G.inCar.x : G.player.x, pz = G.inCar ? G.inCar.z : G.player.z;
+  var d = G.targetPos ? dist2(px, pz, st.x, st.z) : 9999;
+  var advance = false;
+
+  if (st.k === 'talk') {
+    if (!G.inCar && d < 4.5) {
+      var scene = st.scene;
+      G.jobStep++;
+      var lastStep = G.jobStep >= JOBS[G.job].steps.length;
+      playCutscene(scene, function () { if (lastStep) completeJob(); else applyStep(); });
+      return;
+    }
+  } else if (st.k === 'goto') {
+    if (d < 7) advance = true;
+  } else if (st.k === 'drive') {
+    if (G.inCar && d < 9) advance = true;
+    if (advance && st.inMarked && G.markedCar && G.inCar !== G.markedCar) advance = false;
+  } else if (st.k === 'hold') {
+    if (d < 7) {
+      holdT += dt;
+      G.holdFrac = holdT / st.secs;
+      if (holdT >= st.secs) {
+        holdT = 0; G.holdFrac = 0;
+        if (st.crime) addCrime(st.crime, st.x, st.z);
+        advance = true;
+      }
+    } else { holdT = Math.max(0, holdT - dt); G.holdFrac = holdT / st.secs; }
+  } else if (st.k === 'steal') {
+    if (G.markedCar && G.inCar === G.markedCar) {
+      addCrime(2, st.x, st.z);
+      showToast('Car stolen! The owner called it in.');
+      advance = true;
+    }
+  } else if (st.k === 'destroy') {
+    if (G.targetCar && G.targetCar.dead) advance = true;
+  } else if (st.k === 'escape') {
+    if (G.wanted === 0) advance = true;
+  }
+
+  if (advance) {
+    var sceneId = st.scene;
+    G.jobStep++;
+    if (G.jobStep >= JOBS[G.job].steps.length) {
+      if (sceneId) playCutscene(sceneId, function () { completeJob(); });
+      else completeJob();
+    } else {
+      applyStep();
+      if (sceneId) playCutscene(sceneId, null);
+    }
+  }
+  // Refresh the GPS line every few seconds while travelling.
+  G.routeT = (G.routeT || 0) - dt;
+  if (G.targetPos && G.routeT <= 0) { G.routeT = 2.5; computeRoute(G.targetPos.x, G.targetPos.z); }
 }

@@ -117,8 +117,7 @@ function placeBuilding(x, z, w, d, h) {
   // Window stripes: thin darker bands read as floors from a distance.
   var floors = Math.floor(h / 9);
   for (var f = 1; f <= floors; f++) {
-    var band = box(w + 0.3, 1.1, d + 0.3, MAT.dark, x, f * 9, z);
-    band.material = lam(0x33404d);
+    box(w + 0.3, 0.7, d + 0.3, lam(0x46545f), x, f * 9, z);
   }
   // Big readable name board on the roof edge facing the street.
   if (rnd() < 0.82) {
@@ -132,7 +131,9 @@ function placeBuilding(x, z, w, d, h) {
     var back = box(Math.min(w * 0.94, 46) + 1, 10, 0.8, MAT.dark, x, h + 5.2, z + (south ? d / 2 + 1.2 : -d / 2 - 1.2));
     back.castShadow = false;
   }
-  addCollider(x, z, Math.max(w, d) * 0.60);
+  // Circle sized off the SHORT side: it must never reach the road
+  // lanes around the block, or traffic would snag on thin air.
+  addCollider(x, z, Math.min(w, d) * 0.62);
   return b;
 }
 
@@ -159,7 +160,7 @@ function buildBeachAndMarina() {
   var sand = new THREE.Mesh(new THREE.PlaneGeometry(4200, 260), MAT.sand);
   sand.rotation.x = -Math.PI / 2; sand.position.set(0, 0.02, 1420); s.add(sand);
   var water = new THREE.Mesh(new THREE.PlaneGeometry(4200, 1600), MAT.water);
-  water.rotation.x = -Math.PI / 2; water.position.set(0, -0.35, 2240); s.add(water);
+  water.rotation.x = -Math.PI / 2; water.position.set(0, -0.02, 2240); s.add(water);
   G.waterMesh = water;
   // The pier: a wooden deck running south from the promenade at x=0.
   // No colliders on its walking line: Celia waits at the end and the
@@ -288,7 +289,7 @@ function tickLights() {
       lamps.green.material = st === 'green' ? lightLampMats.green : lightLampMats.off;
     }
   }
-  if (G.waterMesh) G.waterMesh.position.y = -0.35 + Math.sin(G.t * 0.7) * 0.06;
+  if (G.waterMesh) G.waterMesh.position.y = -0.02 + Math.sin(G.t * 0.7) * 0.015;
 }
 
 // Road graph + Dijkstra -------------------------------------------
