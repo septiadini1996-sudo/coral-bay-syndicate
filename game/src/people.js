@@ -1,509 +1,240 @@
-"use strict";
-const SKIN_TONES = [0xf2c09a, 0xd99e63, 0xa96f3f, 0x7a4a28, 0xffd9b3];
-const SHIRT_COLORS = [0xf26d5b, 0x3fbfae, 0xf2b13d, 0x7a5fd0, 0xe8e4da, 0x2e4053, 0xff8fab, 0x58a05c];
-const PANTS_COLORS = [0x2e4053, 0xe8e4da, 0x5a4632, 0x30343a, 0x7a2e35];
-function shTx(base, print) {
-const cv = CE("canvas"); cv.width = 32; cv.height = 32;
-const c = cv.getContext("2d");
-c.fillStyle = base; c.fillRect(0, 0, 32, 32);
-if (print) {
-c.fillStyle = "rgba(255,255,255,0.5)";
-for (let i = 0; i < 9; i++) { c.beginPath(); c.arc(rng() * 32, rng() * 32, 2.2, 0, 7); c.fill(); }
-c.fillStyle = "rgba(20,120,60,0.55)";
-for (let i = 0; i < 6; i++) c.fillRect(rng() * 30, rng() * 30, 4, 2);
+// Coral Bay Syndicate - people.js
+// One shared builder makes every human in the game: Rico, the 32
+// wandering pedestrians and the story characters. Story characters
+// are flagged in their data: gunfire makes them duck or flee and they
+// can never die. This file also owns the player's on-foot movement,
+// damage (armor absorbs before health) and respawn rules.
+
+'use strict';
+
+var legGeo = null, torsoGeo = null, armGeo = null, headGeo = null;
+var SKIN = [0xf2c79b, 0xd9a066, 0xa0663a, 0x7a4a26, 0xffe0bd];
+var SHIRTS = [0xe74c3c, 0x3498db, 0x2ecc71, 0xf39c12, 0x9b59b6, 0xecf0f1, 0xe67e22, 0x1abc9c, 0xfd79a8, 0x00b8d4];
+var PANTS = [0x2c3e50, 0x34495e, 0x6d4c41, 0x546e7a, 0x212f3c, 0x7f5539];
+
+function part(geo, mat, x, y, z, parent) {
+  var m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); parent.add(m); return m;
 }
-const t = new CT(cv);
-t.colorSpace = SC;
-return t;
+
+// Builds a person as a group of boxes. The returned group's userData
+// carries the limb references the animator swings, plus the gun group
+// (hidden until a weapon is drawn).
+function makePerson(shirt, pants, skin, hairColor) {
+  if (!legGeo) {
+    legGeo = new THREE.BoxGeometry(0.34, 0.78, 0.34);
+    torsoGeo = new THREE.BoxGeometry(0.78, 0.74, 0.42);
+    armGeo = new THREE.BoxGeometry(0.24, 0.72, 0.24);
+    headGeo = new THREE.BoxGeometry(0.42, 0.44, 0.42);
+  }
+  var g = new THREE.Group();
+  var legL = part(legGeo, lam(pants), -0.2, 0.39, 0, g);
+  var legR = part(legGeo, lam(pants), 0.2, 0.39, 0, g);
+  var torso = part(torsoGeo, lam(shirt), 0, 1.14, 0, g);
+  var armL = part(armGeo, lam(shirt), -0.52, 1.14, 0, g);
+  var armR = part(armGeo, lam(shirt), 0.52, 1.14, 0, g);
+  var head = part(headGeo, lam(skin), 0, 1.74, 0, g);
+  var hair = part(new THREE.BoxGeometry(0.46, 0.16, 0.46), lam(hairColor), 0, 1.98, 0, g);
+  legL.geometry.translate(0, 0, 0);
+  // Pivot limbs at the top so swings look like steps: wrap each limb
+  // in a pivot group positioned at the joint.
+  g.userData = { legL: legL, legR: legR, armL: armL, armR: armR, torso: torso, head: head };
+  g.userData.gun = buildGun();
+  g.userData.gun.position.set(0.52, 0.86, 0.28);
+  g.userData.gun.visible = false;
+  g.add(g.userData.gun);
+  return g;
 }
-const SHIRT_TEX = [
-shTx("#f26d5b", true), shTx("#3fbfae", true), shTx("#f2b13d", true),
-shTx("#e8e4da", false), shTx("#2e4053", false), shTx("#ff8fab", true),
-];
-function lam(color) { return new ML({ color }); }
-const P_GEO = {
-leg: new CY(0.19, 0.14, 0.92, 8), arm: new CY(0.15, 0.11, 0.8, 8),
-torso: new CY(0.37, 0.29, 0.74, 10), head: new SG(0.28, 12, 10),
-joint: new SG(0.155, 8, 6), hair: new SG(0.295, 10, 8),
-};
-P_GEO.leg.translate(0, -0.46, 0); P_GEO.arm.translate(0, -0.4, 0);
-function mPer(style) {
-style = style || {};
-const g = new GR();
-const inner = new GR(); g.add(inner);
-const skin = lam(style.skin !== undefined ? style.skin : pick(SKIN_TONES));
-const shirt = style.shirtTex !== undefined
-? new ML({ map: SHIRT_TEX[style.shirtTex % SHIRT_TEX.length] })
-: lam(style.shirt !== undefined ? style.shirt : pick(SHIRT_COLORS));
-const pants = lam(style.pants !== undefined ? style.pants : pick(PANTS_COLORS));
-function limb(geo, mat, x, y, z) {
-const m = new MS(geo, mat); m.position.set(x, y, z); m.castShadow = true;
-inner.add(m); return m;
+
+// A visible multi-part 3D gun: receiver, barrel, muzzle, grip,
+// magazine and a rear sight, held in the right hand.
+function buildGun() {
+  var g = new THREE.Group();
+  var dark = lam(0x1d2126), steel = lam(0x565e66);
+  part(new THREE.BoxGeometry(0.09, 0.16, 0.52), dark, 0, 0, 0.1, g);          // receiver
+  part(new THREE.CylinderGeometry(0.035, 0.035, 0.34, 6), steel, 0, 0.03, 0.5, g)
+    .rotation.x = Math.PI / 2;                                                // barrel
+  part(new THREE.BoxGeometry(0.07, 0.2, 0.1), dark, 0, -0.16, -0.05, g);      // grip
+  part(new THREE.BoxGeometry(0.06, 0.24, 0.12), steel, 0, -0.17, 0.16, g);    // magazine
+  part(new THREE.BoxGeometry(0.04, 0.09, 0.04), dark, 0, 0.13, -0.12, g);     // sight
+  return g;
 }
-function joint(mat, x, y, z) {
-const m = new MS(P_GEO.joint, mat); m.position.set(x, y, z); inner.add(m);
+
+function spawnPed(x, z, opts) {
+  opts = opts || {};
+  var mesh = makePerson(opts.shirt || pick(SHIRTS), opts.pants || pick(PANTS),
+    opts.skin || pick(SKIN), opts.hair !== undefined ? opts.hair : ri(0x111111, 0x888888));
+  mesh.position.set(x, 0, z);
+  G.scene.add(mesh);
+  var ped = {
+    mesh: mesh, x: x, z: z, angle: rr(0, Math.PI * 2),
+    hp: 100, story: !!opts.story, name: opts.name || '',
+    state: 'walk', t: rr(0, 3), tx: x, tz: z, speed: rr(1.6, 2.6),
+    threatX: 0, threatZ: 0, dead: false, phase: rr(0, 6),
+  };
+  if (ped.story) { ped.state = 'stand'; }
+  G.peds.push(ped);
+  return ped;
 }
-const ll = limb(P_GEO.leg, pants, -0.15, 0.95, 0);
-const rl = limb(P_GEO.leg, pants, 0.15, 0.95, 0);
-joint(pants, -0.15, 0.95, 0); joint(pants, 0.15, 0.95, 0);
-const torso = new MS(P_GEO.torso, shirt);
-torso.position.y = 1.33; torso.castShadow = true; inner.add(torso);
-if (style.skirt) {
-const skirt = new MS(new CN(0.55, 0.6, 8), lam(style.skirt));
-skirt.position.y = 0.98; inner.add(skirt);
+
+function buildPeople() {
+  // Rico, the player character: teal shirt, dark jeans.
+  var mesh = makePerson(0x0e7c86, 0x22303c, 0xd9a066, 0x14100c);
+  G.player = {
+    mesh: mesh, x: 26, z: 1150, angle: Math.PI, speed: 0,
+    stepT: 0, name: 'Rico',
+  };
+  mesh.position.set(G.player.x, 0, G.player.z);
+  G.scene.add(mesh);
+  // Story cast. Celia waits at the end of the marina pier: job 1.
+  spawnPed(0, 1490, { story: true, name: 'Celia', shirt: 0xd6336c, pants: 0xf5f5f5, skin: 0xf2c79b, hair: 0x3a2314 });
+  spawnPed(172, -148, { story: true, name: 'Marco', shirt: 0x37474f, pants: 0x212f3c, skin: 0xa0663a, hair: 0x0c0c0c });
+  spawnPed(-332, 172, { story: true, name: 'Vera', shirt: 0x6a1b9a, pants: 0x212121, skin: 0xffe0bd, hair: 0xb71c1c });
+  // 32 pedestrians on sidewalks all over the city.
+  for (var i = 0; i < 32; i++) {
+    var onXRoad = rnd() < 0.5;
+    var road = -CITY + ri(0, 16) * ROAD_STEP;
+    var along = rr(-CITY + 30, CITY - 30);
+    var off = (rnd() < 0.5 ? -1 : 1) * rr(16, 20);
+    spawnPed(onXRoad ? road + off : along, onXRoad ? along : road + off, {});
+  }
 }
-const la = limb(P_GEO.arm, shirt, -0.54, 1.66, 0);
-const ra = limb(P_GEO.arm, shirt, 0.54, 1.66, 0);
-joint(shirt, -0.54, 1.66, 0); joint(shirt, 0.54, 1.66, 0);
-const head = new MS(P_GEO.head, skin);
-head.position.y = 2.02; head.scale.y = 1.12; head.castShadow = true; inner.add(head);
-const hair = new MS(P_GEO.hair, lam(style.hair || 0x2a1c10));
-hair.position.y = 2.14; hair.scale.set(1, 0.62, 1); inner.add(hair);
-if (style.hat) {
-const hatMat = lam(style.hat === "panama" ? 0xf2e3c2 : 0x3a2e22);
-const brim = new MS(new CY(style.hat === "panama" ? 0.56 : 0.48, style.hat === "panama" ? 0.56 : 0.48, 0.07, 10), hatMat);
-brim.position.y = 2.3; inner.add(brim);
-const crown = new MS(new CY(0.3, 0.34, 0.3, 10), hatMat);
-crown.position.y = 2.46; inner.add(crown);
+
+function animatePerson(p, speed, dt) {
+  var u = p.mesh.userData;
+  p.phase += dt * (2 + speed * 2.4);
+  var sw = clamp(speed * 0.16, 0, 0.55) * Math.sin(p.phase);
+  u.legL.rotation.x = sw; u.legR.rotation.x = -sw;
+  if (G.player && p === G.player && G.weapon > 0 && G.aimT > 0) {
+    u.armR.rotation.x = -1.35; u.armL.rotation.x = -1.1;      // both hands on the gun
+  } else {
+    u.armL.rotation.x = -sw * 0.8; u.armR.rotation.x = sw * 0.8;
+  }
+  p.mesh.position.y = speed > 0.2 ? Math.abs(Math.sin(p.phase)) * 0.07 : 0;
 }
-if (style.shades) {
-const sh = new MS(new BG(0.52, 0.13, 0.08), BM(0x101418));
-sh.position.set(0, 2.04, 0.26); inner.add(sh);
+
+// Damage to a pedestrian. Story characters never take damage: they
+// duck, then flee, and stay in the story.
+function hurtPed(ped, dmg, fromX, fromZ) {
+  if (ped.dead) return;
+  ped.threatX = fromX; ped.threatZ = fromZ;
+  if (ped.story) {
+    if (ped.state !== 'duck') { ped.state = 'duck'; ped.t = 1.4; }
+    return;
+  }
+  ped.hp -= dmg;
+  if (ped.hp <= 0) {
+    ped.dead = true; ped.state = 'down'; ped.t = 7;
+    ped.mesh.rotation.x = -Math.PI / 2; ped.mesh.position.y = 0.25;
+    return;
+  }
+  ped.state = 'flee'; ped.t = 4;
 }
-if (style.chain) {
-const chain = new MS(new T3.TorusGeometry(0.17, 0.04, 6, 12), BM(0xffd94d));
-chain.position.set(0, 1.6, 0.3); chain.rotation.x = 0.5; inner.add(chain);
+// Knocked down by a vehicle: survivors get up after ~2.4 s and flee.
+function knockPed(ped, fromX, fromZ) {
+  if (ped.dead) return;
+  ped.threatX = fromX; ped.threatZ = fromZ;
+  if (ped.story) { ped.state = 'duck'; ped.t = 1.2; return; }
+  ped.hp -= 18;
+  if (ped.hp <= 0) { hurtPed(ped, 999, fromX, fromZ); return; }
+  ped.state = 'down'; ped.t = 2.4;
+  ped.mesh.rotation.x = -Math.PI / 2; ped.mesh.position.y = 0.25;
 }
-g.scale.setScalar(0.84);
-return { mesh: g, inner, la, ra, ll, rl, head, phase: rand(0, 6), hp: 3, dead: 0, downT: 0, fleeT: 0, target: null, speed: 0 };
+
+function tickPeds(dt) {
+  for (var i = G.peds.length - 1; i >= 0; i--) {
+    var p = G.peds[i];
+    if (p.dead) {
+      p.t -= dt;
+      if (p.t <= 0) { G.scene.remove(p.mesh); G.peds.splice(i, 1); }
+      continue;
+    }
+    var moving = 0;
+    if (p.state === 'stand') {
+      p.mesh.rotation.y = p.angle + Math.sin(G.t * 0.6 + p.phase) * 0.14;
+    } else if (p.state === 'duck') {
+      p.mesh.scale.y = 0.68; p.t -= dt;
+      if (p.t <= 0) { p.mesh.scale.y = 1; p.state = 'flee'; p.t = 3.5; }
+    } else if (p.state === 'down') {
+      p.t -= dt;
+      if (p.t <= 0) { p.mesh.rotation.x = 0; p.mesh.position.y = 0; p.state = 'flee'; p.t = 4; }
+    } else if (p.state === 'flee') {
+      var fa = Math.atan2(p.x - p.threatX, p.z - p.threatZ);
+      p.angle = angLerp(p.angle, fa, dt * 8);
+      p.x += Math.sin(p.angle) * 6 * dt; p.z += Math.cos(p.angle) * 6 * dt;
+      moving = 6; p.t -= dt;
+      if (p.t <= 0) p.state = 'walk';
+    } else { // walk: stroll to a sidewalk waypoint, then pick another
+      var dx = p.tx - p.x, dz = p.tz - p.z, d = Math.sqrt(dx * dx + dz * dz);
+      if (d < 3) {
+        var onX = rnd() < 0.5, road = -CITY + ri(0, 16) * ROAD_STEP;
+        var off = (rnd() < 0.5 ? -1 : 1) * rr(16, 20);
+        if (onX) { p.tx = road + off; p.tz = clamp(p.z + rr(-320, 320), -CITY + 24, CITY - 24); }
+        else { p.tz = road + off; p.tx = clamp(p.x + rr(-320, 320), -CITY + 24, CITY - 24); }
+      } else {
+        p.angle = angLerp(p.angle, Math.atan2(dx, dz), dt * 6);
+        p.x += Math.sin(p.angle) * p.speed * dt; p.z += Math.cos(p.angle) * p.speed * dt;
+        moving = p.speed;
+      }
+    }
+    if (p.state !== 'down' && p.state !== 'duck') {
+      var fixed = collideXZ(p.x, p.z, 0.55);
+      p.x = fixed[0]; p.z = fixed[1];
+      var sh = shoreClamp(p.x, p.z); p.x = sh[0]; p.z = sh[1];
+      p.x = clamp(p.x, -G.bounds, G.bounds); p.z = clamp(p.z, -G.bounds, G.bounds);
+      p.mesh.position.set(p.x, p.mesh.position.y, p.z);
+      if (p.state !== 'stand') p.mesh.rotation.y = p.angle;
+    }
+    animatePerson(p, moving, dt);
+  }
 }
-function aPrs(p, speed, dt) {
-p.phase += dt * (3 + speed * 2.1);
-const sw = M.sin(p.phase) * zm(speed / 3.4, 0, 1) * 0.62;
-p.la.rotation.x = sw; p.ra.rotation.x = -sw;
-p.ll.rotation.x = -sw; p.rl.rotation.x = sw;
-p.inner.position.y = M.abs(M.sin(p.phase)) * 0.05 * zm(speed / 3, 0, 1);
-if (p.attackT > 0) { p.attackT -= dt; p.ra.rotation.x = -2 + (0.18 - p.attackT) * 6; }
+
+// Player damage: armor absorbs first, health takes the rest.
+function hurtPlayer(dmg) {
+  if (G.dead) return;
+  var absorbed = Math.min(G.armor, dmg);
+  G.armor -= absorbed;
+  G.hp -= (dmg - absorbed);
+  sfx('hurt');
+  if (G.hp <= 0) { G.hp = 0; respawn(false); }
 }
-function tSpr(text, color) {
-const cv = CE("canvas"); cv.width = 256; cv.height = 56;
-const c = cv.getContext("2d");
-c.font = "bold 34px Trebuchet MS, sans-serif"; c.textAlign = "center";
-c.lineWidth = 7; c.strokeStyle = "rgba(10,20,30,0.85)";
-c.strokeText(text, 128, 40); c.fillStyle = color || "#ffd94d"; c.fillText(text, 128, 40);
-const t = new CT(cv); t.colorSpace = SC;
-const s = new T3.Sprite(new T3.SpriteMaterial({ map: t, transparent: true, depthTest: false }));
-s.scale.set(7.5, 1.65, 1);
-return s;
+function respawn(arrested) {
+  G.dead = true;
+  setTimeout(function () { G.dead = false; }, 900);
+  G.armor = 0; G.hp = 100; G.wanted = 0; G.seenT = 99;
+  if (arrested) G.cash = Math.max(0, Math.floor(G.cash * 0.9));
+  if (G.inCar) { G.inCar.driver = null; G.inCar = null; }
+  var spot = arrested ? { x: 336, z: 336 } : { x: 44, z: 1100 };
+  G.player.x = spot.x; G.player.z = spot.z;
+  G.player.mesh.position.set(spot.x, 0, spot.z);
+  showToast(arrested ? 'BUSTED - the police take 10% of your cash' : 'You wake up at Bayview Clinic');
+  saveGame();
 }
-function bCst(scene) {
-const rico = mPer({ skin: 0xd99e63, shirtTex: 0, pants: 0xe8e4da, hat: "fedora", shades: true, chain: true, hair: 0x1c1410 });
-rico.mesh.position.set(SP.sH.x, 0, SP.sH.z);
-scene.add(rico.mesh);
-G.pl = rico; rico.heading = M.PI; rico.vy = 0; rico.y = 0; rico.attackT = 0;
-const gunDark = lam(0x1c1f24), gunGrip = lam(0x4a3423);
-function mGun(parts) {
-const g = new GR();
-for (const p of parts) {
-const m = new MS(p[0], p[5] ? gunGrip : gunDark);
-m.position.set(p[1], p[2], p[3]);
-if (p[4]) m.rotation.x = p[4];
-m.castShadow = true;
-g.add(m);
-}
-return g;
-}
-const gP = mGun([
-[new BG(0.07, 0.09, 0.44), 0, 0.05, 0.17],
-[new BG(0.06, 0.08, 0.24), 0, -0.03, 0.08],
-[new BG(0.028, 0.07, 0.13), 0, -0.07, 0.15],
-[new BG(0.065, 0.21, 0.1), 0, -0.15, -0.03, 0.28, 1],
-[new BG(0.05, 0.035, 0.05), 0, 0.11, -0.05],
-[new BG(0.03, 0.03, 0.03), 0, 0.105, 0.36],
-]);
-const gS = mGun([
-[new BG(0.085, 0.12, 0.55), 0, 0.03, 0.16],
-[new CY(0.032, 0.032, 0.34, 8), 0, 0.06, 0.58, M.PI / 2],
-[new BG(0.05, 0.07, 0.14), 0, 0, 0.44],
-[new BG(0.06, 0.25, 0.09), 0, -0.17, 0.12, 0.12, 1],
-[new BG(0.065, 0.2, 0.09), 0, -0.14, -0.1, 0.3, 1],
-[new BG(0.06, 0.09, 0.27), 0, 0.03, -0.3],
-[new BG(0.04, 0.05, 0.18), 0, 0.115, 0.18],
-]);
-const gunMesh = new GR();
-gunMesh.add(gP); gunMesh.add(gS);
-gunMesh.position.set(0, -0.82, 0.05); gunMesh.visible = false; rico.ra.add(gunMesh); G.gU = gunMesh;
-const plate = tSpr("Rico Solano", "#ffe9a3");
-plate.position.set(0, 3.35, 0); plate.scale.set(6.4, 1.4, 1);
-rico.mesh.add(plate); rico.nP = plate;
-function contact(key, style, spot, name) {
-const p = mPer(style); p.story = 1;
-p.mesh.position.set(spot.x, 0, spot.z);
-p.mesh.rotation.y = rand(0, 6.28);
-scene.add(p.mesh);
-const label = tSpr(name, "#ffffff");
-label.position.set(spot.x, 3.1, spot.z); scene.add(label);
-const beacon = beam(1.1, 34, 0xffd94d, 0.3);
-beacon.position.set(spot.x, 17, spot.z); scene.add(beacon);
-const ring = ringM(1.5, 2, 0xffd94d, 0.8);
-ring.position.set(spot.x, 0.15, spot.z); scene.add(ring);
-G.ct = G.ct || {};
-G.ct[key] = { person: p, beacon, ring, spot, name, label };
-return p;
-}
-contact("celia", { skin: 0xf2c09a, shirtTex: 5, skirt: 0xc93a2e, hair: 0x4a2a12 }, SP.ce, "Celia");
-contact("marco", { skin: 0xa96f3f, shirt: 0x2e4053, pants: 0x30343a, hat: "fedora", shades: true, chain: true }, SP.ma, "Marco");
-contact("don", { skin: 0xffd9b3, shirtTex: 3, pants: 0xe8e4da, hat: "panama", shades: true, chain: true }, SP.dn, "Don Falso");
-for (let i = 0; i < 32; i++) {
-const p = mPer({
-hat: rng() > 0.55 ? pick(["fedora", "panama"]) : null,
-shades: rng() > 0.6, chain: rng() > 0.8,
-skirt: rng() > 0.72 ? pick(SHIRT_COLORS) : null,
-});
-p.mesh.scale.setScalar(0.84 * (0.9 + (i % 9) * 0.0275));
-const s = sPt();
-p.mesh.position.set(s.x, 0, s.z);
-p.target = sPt();
-p.walkSpeed = rand(1.8, 3.1);
-scene.add(p.mesh); G.pd.push(p);
-}
-bDog(scene); bGul(scene); bPk(scene);
-}
-function sPt() {
-const r = rng();
-if (r < 0.16) return { x: rand(688, 812), z: rand(-800, 800) };
-if (r < 0.32) return { x: rand(-836, -596), z: rand(-344, 344) };
-const road = pick(RL), side = rng() > 0.5 ? 20.5 : -20.5, along = rand(-800, 800);
-return rng() > 0.5 ? { x: road + side, z: along } : { x: along, z: road + side };
-}
-function pnc(x, z, r) {
-for (const p of G.pd) {
-if (p.dead > 0) continue;
-if (d3(p.mesh.position.x, p.mesh.position.z, x, z) < r) {
-p.fleeT = M.max(p.fleeT, rand(1.6, 3)); p.fleeX = x; p.fleeZ = z;
-}
-}
-for (const k in G.ct) {
-const ct = G.ct[k];
-if (d3(ct.person.mesh.position.x, ct.person.mesh.position.z, x, z) < r) ct.duckT = 2.6;
-}
-}
-function bDog(scene) {
-G.dg = [];
-const spots = [{ x: 700, z: -300 }, { x: -700, z: 100 }, { x: 700, z: 420 }, { x: -620, z: -420 }];
-for (const s of spots) {
-const d = new GR();
-const mat = lam(pick([0xb08954, 0x6e4f30, 0xd8d3c3, 0x404040]));
-const body = new MS(new BG(0.95, 0.48, 0.42), mat); body.position.y = 0.52; d.add(body);
-const head = new MS(new BG(0.4, 0.36, 0.36), mat); head.position.set(0.62, 0.72, 0); d.add(head);
-const tail = new MS(new BG(0.4, 0.1, 0.1), mat); tail.position.set(-0.6, 0.78, 0); tail.rotation.z = 0.7; d.add(tail);
-d.position.set(s.x, 0, s.z);
-scene.add(d);
-G.dg.push({ mesh: d, target: { x: s.x + rand(-60, 60), z: s.z + rand(-60, 60) }, pauseT: rand(0, 3), phase: rand(0, 6) });
-}
-}
-function bGul(scene) {
-G.gu = [];
-for (let i = 0; i < 9; i++) {
-const g = new GR();
-const mat = lam(0xf4f6f8);
-const body = new MS(new BG(0.9, 0.28, 0.34), mat); g.add(body);
-const wlGeo = new BG(0.5, 0.06, 1.5); wlGeo.translate(0, 0, -0.78);
-const wrGeo = new BG(0.5, 0.06, 1.5); wrGeo.translate(0, 0, 0.78);
-const wl = new MS(wlGeo, mat); g.add(wl);
-const wr = new MS(wrGeo, mat); g.add(wr);
-g.userData = { wl, wr };
-scene.add(g);
-G.gu.push({ mesh: g, cx: -880 + rand(-50, 50), cz: rand(-260, 260), r: rand(35, 95), h: rand(22, 44), a: rand(0, 6.28), sp: rand(0.25, 0.5) * (rng() > 0.5 ? 1 : -1) });
-}
-}
-function bPk(scene) {
-const defs = [
-{ kind: "bat", x: -148, z: 52, color: 0xb08954 },
-{ kind: "pipe", x: 300, z: 296, color: 0x9aa0a3 },
-{ kind: "pistol", x: 88, z: 330, color: 0x30343a },
-{ kind: "smg", x: 424, z: 452, color: 0x23272e },
-{ kind: "pistol", x: -448, z: -330, color: 0x30343a },
-{ kind: "armor", x: 52, z: 296, color: 0x5aa2e8 },
-{ kind: "armor", x: -836, z: 66, color: 0x5aa2e8 },
-{ kind: "armor", x: 308, z: -148, color: 0x5aa2e8 },
-];
-for (const d of defs) {
-const grp = new GR();
-const item = new MS(new BG(d.kind === "pistol" ? 0.7 : d.kind === "smg" ? 0.95 : 1.1, 0.22, 0.22), lam(d.color));
-item.position.y = 1.1; grp.add(item);
-if (d.kind === "armor") item.scale.set(0.8, 3.6, 1.5);
-const glow = gDsc(0x2ee6c8, 0.9);
-glow.position.y = 0.1; grp.add(glow);
-grp.position.set(d.x, 0, d.z);
-scene.add(grp);
-G.pk.push({ kind: d.kind, grp, x: d.x, z: d.z, taken: false, respawnT: 0 });
-}
-}
-function uPds(dt) {
-const pp = G.pl.mesh.position;
-for (const p of G.pd) {
-if (p.dead > 0) {
-p.dead -= dt;
-const op = zm(p.dead / 2, 0, 1);
-p.mesh.traverse((o) => { if (o.material) { o.material.transparent = true; o.material.opacity = op; } });
-if (p.dead <= 0) {
-const s = sPt(); p.mesh.position.set(s.x, 0, s.z); p.mesh.rotation.x = 0; p.hp = 3; p.downT = 0;
-p.mesh.traverse((o) => { if (o.material) o.material.opacity = 1; });
-}
-continue;
-}
-if (p.downT > 0) {
-p.downT -= dt;
-if (p.downT <= 0) { p.mesh.rotation.x = 0; p.mesh.position.y = 0; }
-continue;
-}
-let tx = p.target.x, tz = p.target.z, sp = p.walkSpeed;
-if (!G.oF && G.vh && M.abs(G.vh.speed) > 6) {
-const vp = G.vh.mesh.position;
-if (d3(p.mesh.position.x, p.mesh.position.z, vp.x, vp.z) < 11) {
-p.fleeT = M.max(p.fleeT, 0.7); p.fleeX = vp.x; p.fleeZ = vp.z;
-}
-}
-if (p.fleeT > 0) {
-p.fleeT -= dt; sp = 6.4;
-const sx = p.fleeX !== undefined ? p.fleeX : pp.x, sz = p.fleeZ !== undefined ? p.fleeZ : pp.z;
-tx = p.mesh.position.x + (p.mesh.position.x - sx);
-tz = p.mesh.position.z + (p.mesh.position.z - sz);
-} else if (d3(p.mesh.position.x, p.mesh.position.z, tx, tz) < 2.5) {
-p.target = sPt(); continue;
-}
-mvP(p, tx, tz, sp, dt);
-}
-for (const key of ["celia", "marco", "don"]) {
-const ct = G.ct[key], cp = ct.person, mp = cp.mesh.position;
-cp.phase += dt * 1.4;
-if (ct.duckT > 0) {
-ct.duckT -= dt;
-mvP(cp, mp.x + (mp.x - pp.x) * 2, mp.z + (mp.z - pp.z) * 2, 2.6, dt);
-cp.inner.position.y = -0.5;
-} else if (d3(mp.x, mp.z, ct.spot.x, ct.spot.z) > 0.6) {
-mvP(cp, ct.spot.x, ct.spot.z, 2.4, dt);
-} else cp.inner.position.y = M.sin(cp.phase) * 0.02;
-ct.ring.rotation.z += dt * 0.8;
-const vis = cHJ(key) && !G.cs;
-ct.beacon.visible = vis; ct.ring.visible = vis;
-ct.label.visible = !G.cs && d3(pp.x, pp.z, ct.spot.x, ct.spot.z) < 25;
-}
-for (const d of G.dg) {
-if (d.pauseT > 0) { d.pauseT -= dt; continue; }
-const m = d.mesh, dx = d.target.x - m.position.x, dz = d.target.z - m.position.z;
-const dd = M.sqrt(dx * dx + dz * dz);
-if (dd < 3) { d.target = { x: zm(m.position.x + rand(-90, 90), -840, 840), z: zm(m.position.z + rand(-90, 90), -840, 840) }; d.pauseT = rand(1, 4); continue; }
-const a = M.atan2(dx, dz);
-m.rotation.y = aLp(m.rotation.y, a, dt * 6);
-m.position.x += M.sin(m.rotation.y) * 4.2 * dt;
-m.position.z += M.cos(m.rotation.y) * 4.2 * dt;
-d.phase += dt * 9; m.position.y = M.abs(M.sin(d.phase)) * 0.09;
-}
-for (const g of G.gu) {
-g.a += g.sp * dt;
-const x = g.cx + M.cos(g.a) * g.r, z = g.cz + M.sin(g.a) * g.r;
-g.mesh.position.set(x, g.h + M.sin(G.tm * 0.8 + g.r) * 2, z);
-g.mesh.rotation.y = -g.a - (g.sp > 0 ? 0 : M.PI);
-const flap = M.sin(G.tm * 7 + g.r) * 0.55;
-g.mesh.userData.wl.rotation.x = flap; g.mesh.userData.wr.rotation.x = -flap;
-}
-for (const pk of G.pk) {
-if (pk.taken) {
-pk.respawnT -= dt;
-if (pk.respawnT <= 0) { pk.taken = false; pk.grp.visible = true; }
-continue;
-}
-pk.grp.rotation.y += dt * 1.6;
-if (G.oF && d3(pp.x, pp.z, pk.x, pk.z) < 2.1) {
-pk.taken = true; pk.grp.visible = false; pk.respawnT = 30;
-if (isGun(pk.kind)) {
-const ak = pk.kind === "pistol" ? "ammoP" : "ammoS", amt = pk.kind === "pistol" ? 24 : 60;
-G[ak] += amt;
-if (!G.gn[pk.kind]) {
-G.gn[pk.kind] = true; G.wp = pk.kind;
-sToa(pk.kind === "pistol" ? "Picked up a PISTOL (" + amt + " rounds) — click to fire, Q holsters" : "Picked up an SMG (" + amt + " rounds) — hold click to fire, Q holsters");
-} else sToa((pk.kind === "pistol" ? "Pistol" : "SMG") + " ammo +" + amt + " (" + G[ak] + ")");
-} else if (pk.kind === "armor") {
-G.ar = M.min(100, G.ar + 50);
-sToa("Picked up BODY ARMOR (+50) — soaks damage before health");
-} else {
-G.wp = pk.kind;
-sToa("Picked up a " + pk.kind + " — F or click to swing");
-}
-sfxPickup(); sV(); uHud();
-}
-}
-}
-function mvP(p, tx, tz, sp, dt) {
-const m = p.mesh, dx = tx - m.position.x, dz = tz - m.position.z;
-const dd = M.sqrt(dx * dx + dz * dz);
-if (dd < 0.1) { aPrs(p, 0, dt); return; }
-const a = M.atan2(dx, dz);
-m.rotation.y = aLp(m.rotation.y, a, dt * 8);
-let nx = m.position.x + M.sin(m.rotation.y) * sp * dt;
-let nz = m.position.z + M.cos(m.rotation.y) * sp * dt;
-const fixed = colC(nx, nz, 0.55);
-nx = fixed.x; nz = fixed.z;
-if (!isLand(nx, nz)) { nx = m.position.x; nz = m.position.z; }
-m.position.x = nx; m.position.z = nz;
-p.speed = sp; aPrs(p, sp, dt);
-}
-function uPF(dt) {
-const p = G.pl, m = p.mesh;
-const camA = G.yW;
-let ix = 0, iz = 0;
-if (key("KeyW") || key("ArrowUp")) iz -= 1;
-if (key("KeyS") || key("ArrowDown")) iz += 1;
-if (key("KeyA") || key("ArrowLeft")) ix -= 1;
-if (key("KeyD") || key("ArrowRight")) ix += 1;
-const moving = (ix !== 0 || iz !== 0);
-const run = key("ShiftLeft") || key("ShiftRight");
-const sp = run ? 10.6 : 6.2;
-if (moving) {
-const a = M.atan2(ix, iz) + camA + M.PI;
-m.rotation.y = aLp(m.rotation.y, a, dt * 11);
-let nx = m.position.x + M.sin(m.rotation.y) * sp * dt;
-let nz = m.position.z + M.cos(m.rotation.y) * sp * dt;
-const fixed = colC(nx, nz, 0.55);
-nx = fixed.x; nz = fixed.z;
-if (isLand(nx, nz) || isLand(m.position.x, m.position.z) === false) { m.position.x = nx; m.position.z = nz; }
-aPrs(p, sp, dt);
-p.speed = sp;
-} else { p.speed = 0; aPrs(p, 0, dt); if (isGun(G.wp)) m.rotation.y = aLp(m.rotation.y, camA, dt * 11); }
-if (key("Space") && p.y <= 0) { p.vy = 7.4; }
-if (p.y > 0 || p.vy > 0) {
-p.vy -= 22 * dt; p.y += p.vy * dt;
-if (p.y <= 0) { p.y = 0; p.vy = 0; }
-}
-m.position.y = p.y;
-const near = nVeh(m.position.x, m.position.z, 4.2);
-if (near && near.alive) {
-sInt("E — Take the " + near.name);
-if (key("KeyE")) { G.ky["KeyE"] = false; eVeh(near); }
-} else if (G.gP) sInt(G.gP);
-else sInt(null);
-if (key("Digit1")) { G.ky["Digit1"] = false; if (G.gn.pistol && G.wp !== "pistol") { G.wp = "pistol"; sfxClick(); uHud(); } }
-if (key("Digit2")) { G.ky["Digit2"] = false; if (G.gn.smg && G.wp !== "smg") { G.wp = "smg"; sfxClick(); uHud(); } }
-if (key("Digit0") || key("KeyQ")) { G.ky["Digit0"] = false; G.ky["KeyQ"] = false; if (isGun(G.wp)) { G.wp = "fists"; sfxClick(); uHud(); } }
-if (key("KeyF")) { G.ky["KeyF"] = false; pAtk(); }
-}
-function isGun(w) { return w === "pistol" || w === "smg"; }
-let gunCd = 0, lastCrimeT = -9, flashMesh = null, flashT = 0, xhR = 0;
-function sFl(x, z, fx, fz) {
-if (!flashMesh) { flashMesh = new MS(new SG(0.16, 6, 5), BM(0xffd94d)); G.sc.add(flashMesh); }
-flashMesh.position.set(x + fx * 0.8, 1.55, z + fz * 0.8);
-flashMesh.visible = true; flashT = 0.045;
-}
-function fGun() {
-const p = G.pl, m = p.mesh, px = m.position.x, pz = m.position.z;
-if (gunCd > 0 || G.cs) return;
-const smg = G.wp === "smg", ak = smg ? "ammoS" : "ammoP";
-if (G[ak] <= 0) { gunCd = 0.3; sToa("Out of ammo — grab a glowing ammo pickup"); return; }
-G[ak]--; gunCd = smg ? 0.11 : 0.26; p.attackT = 0.18;
-sfxShot(smg ? "smg" : "pistol");
-const fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y), range = smg ? 42 : 34, cone = smg ? 0.9 : 0.93;
-let best = null, bestD = range;
-for (const q of G.pd) {
-if (q.dead > 0) continue;
-const dx = q.mesh.position.x - px, dz = q.mesh.position.z - pz;
-const d = M.sqrt(dx * dx + dz * dz);
-if (d < bestD && (dx * fx + dz * fz) / M.max(1, d) > cone) { best = q; bestD = d; }
-}
-let sHit = null;
-for (const k in G.ct) {
-const cp = G.ct[k].person, dx = cp.mesh.position.x - px, dz = cp.mesh.position.z - pz;
-const d = M.sqrt(dx * dx + dz * dz);
-if (d < bestD && (dx * fx + dz * fz) / M.max(1, d) > cone) { sHit = G.ct[k]; bestD = d; }
-}
-let vHit = null;
-for (const v of G.vs) {
-if (!v.alive || VKD[v.kind].heli) continue;
-const dx = v.mesh.position.x - px, dz = v.mesh.position.z - pz;
-const d = M.sqrt(dx * dx + dz * dz);
-if (d < bestD && (dx * fx + dz * fz) / M.max(1, d) > 0.85) { vHit = v; bestD = d; }
-}
-if (vHit) { best = null; sHit = null; }
-else if (sHit) best = null;
-let hitD = (best || sHit || vHit) ? bestD : range, copHit = false, witness = false;
-for (const c of G.po) {
-const dx = c.mesh.position.x - px, dz = c.mesh.position.z - pz;
-const d = M.sqrt(dx * dx + dz * dz);
-if (d < 100) witness = true;
-if (d < range + 2 && (dx * fx + dz * fz) / M.max(1, d) > 0.9) { copHit = true; if (d < hitD) hitD = d; }
-}
-sTrc(px, pz, fx, fz, hitD);
-sFl(px, pz, fx, fz);
-pnc(px, pz, 26);
-if (best) hPed(best, smg ? 1 : 2, true);
-if (sHit) sHit.duckT = 2.6;
-if (vHit) dmgV(vHit, smg ? 8 : 12, "shot");
-if ((best || sHit || copHit || witness || vHit) && G.tm - lastCrimeT > 1.1) { lastCrimeT = G.tm; sW(M.min(5, G.wn + 1)); G.wC = 0; }
-uHud();
-}
-function pAtk() {
-const p = G.pl;
-if (G.md !== "play" || !G.oF || G.cs) return;
-if (isGun(G.wp)) { fGun(); return; }
-p.attackT = 0.18;
-const m = p.mesh, fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y);
-sfxPunch();
-for (const q of G.pd) {
-if (q.dead > 0) continue;
-const dx = q.mesh.position.x - m.position.x, dz = q.mesh.position.z - m.position.z;
-if (dx * dx + dz * dz < 5.3 && dx * fx + dz * fz > 0) { hPed(q, G.wp === "fists" ? 1 : 2); break; }
-}
-}
-function hPed(q, dmg, gun) {
-if (q.story) { q.fleeT = 3; q.fleeX = G.pl.mesh.position.x; q.fleeZ = G.pl.mesh.position.z; return; }
-q.hp -= dmg; q.fleeT = 3; q.fleeX = G.pl.mesh.position.x; q.fleeZ = G.pl.mesh.position.z;
-pnc(q.mesh.position.x, q.mesh.position.z, 12);
-if (q.hp <= 0 && q.dead <= 0) {
-q.dead = 5; q.mesh.rotation.x = -M.PI / 2; q.mesh.position.y = 0.3;
-if (!gun) addCrime(1);
-sToa("You flattened a pedestrian!");
-}
-}
-function knockPed(q, dmg, byPlayer) {
-if (q.story || q.dead > 0) return;
-q.hp -= dmg;
-pnc(q.mesh.position.x, q.mesh.position.z, 10);
-q.mesh.rotation.x = -M.PI / 2; q.mesh.position.y = 0.3;
-if (q.hp <= 0) {
-q.dead = 5;
-if (byPlayer) { addCrime(1); sToa("You flattened a pedestrian!"); }
-} else {
-q.downT = 2.4; q.fleeT = 3; q.fleeX = G.pl.mesh.position.x; q.fleeZ = G.pl.mesh.position.z;
-}
-}
-let trcM = null, tracerT = 0;
-function sTrc(x, z, fx, fz, len) {
-if (!trcM) {
-trcM = new MS(new BG(0.06, 0.06, 1), BM(0xffe9a3));
-G.sc.add(trcM);
-}
-trcM.position.set(x + fx * len / 2, 1.6, z + fz * len / 2);
-trcM.scale.z = len;
-trcM.rotation.y = M.atan2(fx, fz);
-trcM.visible = true; tracerT = 0.06;
-}
-function uCFx(dt) {
-if (tracerT > 0) { tracerT -= dt; if (tracerT <= 0 && trcM) trcM.visible = false; }
-if (flashT > 0) { flashT -= dt; if (flashT <= 0 && flashMesh) flashMesh.visible = false; }
-if (gunCd > 0) gunCd -= dt;
-if (mouseDown && mouseMoved < 6 && G.wp === "smg" && G.md === "play" && G.oF && !G.cs) fGun();
-uXh();
-}
-function uXh() {
-const m = G.pl.mesh, fx = M.sin(m.rotation.y), fz = M.cos(m.rotation.y), smg = G.wp === "smg", rg = smg ? 42 : 34, cn = smg ? .9 : .93;
-let h = 0;
-const ck = (o, c, r) => { const dx = o.x - m.position.x, dz = o.z - m.position.z, d = M.sqrt(dx * dx + dz * dz); if (d < r && (dx * fx + dz * fz) / M.max(1, d) > c) h = 1; };
-if (isGun(G.wp) && G.oF && G.md === "play") {
-for (const q of G.pd) if (q.dead <= 0) ck(q.mesh.position, cn, rg);
-for (const k in G.ct) ck(G.ct[k].person.mesh.position, cn, rg);
-for (const v of G.vs) if (v.alive && !VKD[v.kind].heli) ck(v.mesh.position, .85, rg);
-for (const c of G.po) ck(c.mesh.position, .9, rg + 2);
-}
-if (h !== xhR) { xhR = h; el("crosshair").style.color = h ? "#ff5a4d" : ""; }
+
+// On-foot movement, driven from main.js input each frame.
+function tickPlayer(dt) {
+  var p = G.player;
+  if (G.inCar || G.dead) { animatePerson(p, 0, dt); return; }
+  var fwd = (G.keys.KeyW ? 1 : 0) - (G.keys.KeyS ? 1 : 0);
+  var str = (G.keys.KeyD ? 1 : 0) - (G.keys.KeyA ? 1 : 0);
+  var sprint = (G.keys.ShiftLeft || G.keys.ShiftRight) ? 1.55 : 1;
+  var sp = 7.2 * sprint, moving = 0;
+  if (fwd || str) {
+    var a = G.camYaw + Math.atan2(str, fwd);
+    p.x += Math.sin(a) * sp * dt; p.z += Math.cos(a) * sp * dt;
+    moving = sp;
+    if (G.aimT <= 0) p.angle = angLerp(p.angle, a, dt * 12);
+  }
+  if (G.aimT > 0) p.angle = angLerp(p.angle, G.camYaw, dt * 18);  // face the aim
+  var fixed = collideXZ(p.x, p.z, 0.55);
+  p.x = fixed[0]; p.z = fixed[1];
+  var sh = shoreClamp(p.x, p.z); p.x = sh[0]; p.z = sh[1];
+  p.x = clamp(p.x, -G.bounds, G.bounds); p.z = clamp(p.z, -G.bounds, G.bounds);
+  p.mesh.position.set(p.x, 0, p.z);
+  p.mesh.rotation.y = p.angle;
+  p.mesh.userData.gun.visible = G.weapon > 0;
+  if (moving > 0) {
+    p.stepT -= dt;
+    if (p.stepT <= 0) { p.stepT = sprint > 1 ? 0.3 : 0.42; sfx('step'); }
+  }
+  animatePerson(p, moving, dt);
 }
