@@ -116,9 +116,9 @@ function sfxUpdate(dt) {
 	const ctx = Sfx.ctx, now = ctx.currentTime;
 	let engineLevel = 0, engineFreq = 55;
 	if (!G.oF && G.vh && G.md === "play") {
-		const sp = M.abs(G.vh.speed || 0);
-		engineLevel = G.vh.kind === "heli" ? 0.05 : 0.075;
-		engineFreq = 50 + sp * 3.4 + (G.ky["KeyW"] ? 14 : 0);
+	const sp = M.abs(G.vh.speed || 0);
+	engineLevel = G.vh.kind === "heli" ? 0.05 : 0.075;
+	engineFreq = 50 + sp * 3.4 + (G.ky["KeyW"] ? 14 : 0);
 	}
 	Sfx.engineGain.gain.setTargetAtTime(engineLevel, now, 0.09);
 	Sfx.engineOsc.frequency.setTargetAtTime(engineFreq, now, 0.06);
@@ -127,12 +127,12 @@ function sfxUpdate(dt) {
 
 	let sirenLevel = 0;
 	if (G.wn > 0 && G.pl) {
-		let nearest = 1e9;
-		for (const c of G.po) {
-			const d = d3(c.mesh.position.x, c.mesh.position.z, G.pl.mesh.position.x, G.pl.mesh.position.z);
-			if (d < nearest) nearest = d;
-		}
-		if (nearest < 90) sirenLevel = zm(0.16 * (1 - nearest / 110), 0.02, 0.16);
+	let nearest = 1e9;
+	for (const c of G.po) {
+	const d = d3(c.mesh.position.x, c.mesh.position.z, G.pl.mesh.position.x, G.pl.mesh.position.z);
+	if (d < nearest) nearest = d;
+	}
+	if (nearest < 90) sirenLevel = zm(0.16 * (1 - nearest / 110), 0.02, 0.16);
 	}
 	Sfx.sirenGain.gain.setTargetAtTime(sirenLevel, now, 0.2);
 	Sfx.rainGain.gain.setTargetAtTime(G.we === "rain" ? 0.12 : 0, now, 0.4);
@@ -140,7 +140,7 @@ function sfxUpdate(dt) {
 	const radioWanted = G.rO && !G.oF && G.vh && G.vh.kind !== "bicycle" && G.md === "play";
 	Sfx.radioGain.gain.setTargetAtTime(radioWanted ? 0.5 : 0, now, 0.15);
 	if (radioWanted && now >= Sfx.radioNext) {
-		sfxRadioNote();
-		Sfx.radioNext = now + RST[G.rS % RST.length].tempo;
+	sfxRadioNote();
+	Sfx.radioNext = now + RST[G.rS % RST.length].tempo;
 	}
 }
