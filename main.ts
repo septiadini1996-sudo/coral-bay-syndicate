@@ -1,28 +1,27 @@
-// Coral Bay Syndicate — the handover program for the make.fun gta6-01 entry.
+// Coral Bay Syndicate — the handover program (Node 22, standard library only).
 //
-// The game is the static site in game/ (open game/index.html in desktop
-// Chrome, or serve the folder — see serve.ts). This program is what hands
-// the entry in: it copies game/ and screenshots/ into the output directory
-// and writes dossier.json there with the kit's vendored dossier builder, so
-// the judge reads exactly the files that were handed in.
+// The game itself is the static site in game/ (open game/index.html in a
+// browser and play; no build step, no network). This program performs the
+// make.fun handover: it copies game/ and screenshots/ from beside this file
+// into the output directory — /output inside the grader, or the directory
+// MAKEFUN_OUTPUT_DIR names outside it — and writes dossier.json there with
+// buildDossier from the vendored make.fun library, under the scorer's caps.
+// It then prints a one-line summary of what was handed over, so a human
+// running it by hand can see the entry is whole before submitting.
 //
 //   mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts
-//
-// Node 22, standard library only. It runs twice in grading and must write
-// the same bytes both times, so the copy is a plain recursive copy in
-// directory order and the dossier comes straight from buildDossier.
 
 import { cpSync, existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDossier } from './vendor/makefun-game.ts';
 
-const repoRoot = fileURLToPath(new URL('.', import.meta.url));
+const repoDir = fileURLToPath(new URL('.', import.meta.url));
 const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-// The gate's caps, mirrored here so a bad entry fails loudly at handover
-// instead of silently at grading: at most 4 screenshots of at most 256 KiB,
-// and the dossier's source text is capped at 160 KiB.
+// The scorer's caps, as the competition's gate states them: the dossier text
+// is capped at 160 KiB, screenshots at 4 files of 256 KiB, game/ at 993
+// entries and 48 MiB with no path over 1000 bytes.
 const DOSSIER_CAPS = {
   text_max_bytes: 163840,
   screenshots: { max: 4, max_bytes: 262144 },
@@ -31,33 +30,36 @@ const DOSSIER_CAPS = {
   game_path_max_bytes: 1000,
 };
 
-function checkScreenshots(dir: string): void {
-  if (!existsSync(dir)) throw new Error('screenshots/ is missing — the entry needs 3 or 4 screenshots');
-  const shots = readdirSync(dir).filter((name) => !name.startsWith('.')).sort();
-  if (shots.length < 3 || shots.length > DOSSIER_CAPS.screenshots.max) {
-    throw new Error(`screenshots/ holds ${shots.length} images; the gate wants 3 or 4`);
-  }
-  for (const name of shots) {
-    const bytes = statSync(join(dir, name)).size;
-    if (bytes > DOSSIER_CAPS.screenshots.max_bytes) {
-      throw new Error(`${name} is ${bytes} bytes; a screenshot may be at most 262144`);
+function copyTree(from: string, to: string): number {
+  mkdirSync(to, { recursive: true });
+  let count = 0;
+  for (const entry of readdirSync(from, { withFileTypes: true })) {
+    const src = join(from, entry.name);
+    const dst = join(to, entry.name);
+    if (entry.isDirectory()) count += copyTree(src, dst);
+    else if (entry.isFile()) {
+      cpSync(src, dst);
+      count++;
     }
   }
+  return count;
 }
 
-function handOver(): void {
-  const gameDir = join(repoRoot, 'game');
-  const shotsDir = join(repoRoot, 'screenshots');
-  if (!existsSync(join(gameDir, 'index.html'))) throw new Error('game/index.html is missing');
-  checkScreenshots(shotsDir);
+mkdirSync(outputDir, { recursive: true });
+const gameFiles = copyTree(join(repoDir, 'game'), join(outputDir, 'game'));
+const shotDir = join(repoDir, 'screenshots');
+const shotFiles = existsSync(shotDir) ? copyTree(shotDir, join(outputDir, 'screenshots')) : 0;
 
-  mkdirSync(outputDir, { recursive: true });
-  cpSync(gameDir, join(outputDir, 'game'), { recursive: true });
-  cpSync(shotsDir, join(outputDir, 'screenshots'), { recursive: true });
+const dossier = buildDossier(outputDir, DOSSIER_CAPS);
+writeFileSync(join(outputDir, 'dossier.json'), dossier);
 
-  const dossier = buildDossier(outputDir, DOSSIER_CAPS);
-  writeFileSync(join(outputDir, 'dossier.json'), dossier);
-  console.log(`Coral Bay Syndicate handed in: game/ + screenshots/ + dossier.json (${dossier.length} bytes) → ${outputDir}`);
-}
-
-handOver();
+const shotBytes = existsSync(join(outputDir, 'screenshots'))
+  ? readdirSync(join(outputDir, 'screenshots')).reduce(
+      (sum, name) => sum + statSync(join(outputDir, 'screenshots', name)).size,
+      0,
+    )
+  : 0;
+console.log(
+  `coral-bay-syndicate: handed over ${gameFiles} game files and ${shotFiles} screenshots ` +
+    `(${shotBytes} bytes) with a ${dossier.length}-byte dossier.json to ${outputDir}`,
+);

@@ -1,53 +1,68 @@
-// Coral Bay Syndicate — zero-dependency static server (Node ≥ 18, TypeScript
-// syntax kept to erasable types so `node --experimental-strip-types serve.ts`
-// works, as does any TS runner). Prefer main.ts under Deno; this is the
-// fallback for a plain Node install:
+// serve.ts — a pocket static server for playing Coral Bay Syndicate locally.
 //
-//   node serve.ts                                    → http://localhost:8080
+//   node serve.ts [--port 8080]
 //
-// Serves game/ only, refuses path escapes, and never touches the network
-// beyond the local listener.
+// It serves the game/ folder (and nothing outside it) over 127.0.0.1 with the
+// handful of MIME types a browser game needs. Development convenience only:
+// the entry itself is plain static files and any static host will do.
+import { createReadStream, statSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { extname, join, normalize, resolve, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-import { createServer } from "node:http";
-import { readFile } from "node:fs/promises";
-import { extname, join, normalize } from "node:path";
-import { fileURLToPath } from "node:url";
+const gameRoot = resolve(fileURLToPath(new URL('./game', import.meta.url)));
 
-const GAME_DIR = join(fileURLToPath(new URL(".", import.meta.url)), "game");
-const PORT = 8080;
+const args = process.argv.slice(2);
+const portFlag = args.indexOf('--port');
+const wanted = portFlag >= 0 ? Number(args[portFlag + 1]) : 8080;
+const port = Number.isInteger(wanted) && wanted > 0 && wanted < 65536 ? wanted : 8080;
 
-const MIME: Record<string, string> = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".jpg": "image/jpeg",
-  ".png": "image/png",
+const TYPES: Record<string, string> = {
+  '.html': 'text/html; charset=utf-8',
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.wasm': 'application/wasm',
+  '.txt': 'text/plain; charset=utf-8',
 };
 
-export function resolveInside(urlPath: string): string | null {
-  const clean = normalize(decodeURIComponent(urlPath)).replace(/^[/\\]+/, "");
-  const target = join(GAME_DIR, clean === "" ? "index.html" : clean);
-  return target.startsWith(GAME_DIR) ? target : null;
-}
-
-const server = createServer(async (req, res) => {
-  const target = resolveInside(new URL(req.url ?? "/", "http://x").pathname);
-  if (!target) {
-    res.writeHead(403).end("Forbidden");
+const server = createServer((req, res) => {
+  let path: string;
+  try {
+    path = decodeURIComponent(new URL(req.url ?? '/', 'http://127.0.0.1').pathname);
+  } catch {
+    res.writeHead(400).end('bad request');
     return;
   }
-  try {
-    const data = await readFile(target);
-    res.writeHead(200, {
-      "content-type": MIME[extname(target)] ?? "application/octet-stream",
-      "cache-control": "no-store",
-    });
-    res.end(data);
-  } catch {
-    res.writeHead(404).end("Not found");
+  if (path.endsWith('/')) path += 'index.html';
+  const file = resolve(join(gameRoot, normalize(path)));
+  if (file !== gameRoot && !file.startsWith(gameRoot + sep)) {
+    res.writeHead(403).end('forbidden');
+    return;
   }
+  let size: number;
+  try {
+    const st = statSync(file);
+    if (!st.isFile()) throw new Error('directory');
+    size = st.size;
+  } catch {
+    res.writeHead(404).end('not found');
+    return;
+  }
+  res.writeHead(200, {
+    'content-type': TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream',
+    'content-length': size,
+    'cache-control': 'no-store',
+  });
+  createReadStream(file).pipe(res);
 });
 
-server.listen(PORT, () => {
-  console.log("Coral Bay Syndicate → http://localhost:" + PORT);
+server.listen(port, '127.0.0.1', () => {
+  console.log(`Coral Bay Syndicate is playable at http://localhost:${port}`);
 });
