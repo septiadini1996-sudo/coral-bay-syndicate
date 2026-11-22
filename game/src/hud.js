@@ -163,7 +163,7 @@ function updateHUD(dt) {
   el('vehicle').style.display = inCar ? 'block' : 'none';
   el('radioRow').style.display = inCar ? 'block' : 'none';
   if (inCar) {
-    el('vehName').textContent = (p.car.kind === 'police' ? 'CBPD Cruiser' : p.car.kind[0].toUpperCase() + p.car.kind.slice(1)) + (p.car.spiked ? ' — TYRES SHREDDED' : '');
+    el('vehName').textContent = (p.car.label || 'Car') + (p.car.spiked ? ' — TYRES SHREDDED' : '');
     el('vehSpeed').textContent = Math.round(Math.abs(p.car.speed) * 3.6) + ' km/h';
     el('vehHealth').style.width = clamp(p.car.hp, 0, 100) + '%';
     el('radioStation').textContent = (W.radioOn() ? '♪ ' : '✕ ') + W.stationName();
@@ -173,7 +173,7 @@ function updateHUD(dt) {
   let prompt = W.prompt || '';
   if (!prompt && !p.car) {
     const car = nearestEnterableCar();
-    if (car) prompt = 'Press E — take the ' + (car.kind === 'police' ? 'police cruiser' : car.kind);
+    if (car) prompt = 'Press E — take the ' + (car.label || 'car');
   }
   if (!prompt && p.car) prompt = 'E exit · R radio · Space handbrake';
   el('prompt').textContent = prompt;

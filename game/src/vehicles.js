@@ -6,12 +6,12 @@
 'use strict';
 
 const CAR_TYPES = {
-  hatch:  { len: 3.9, wid: 1.8, hgt: 1.05, top: 30, acc: 11, col: [0xd94f3d, 0x3d7bd9, 0xe8b93d, 0x59b06b, 0xd9d9d9, 0x7a4fd0] },
-  sedan:  { len: 4.6, wid: 1.9, hgt: 0.95, top: 34, acc: 12, col: [0x2b3a4a, 0x8a1f1f, 0xc0c6cc, 0x274e13, 0x5b2a86, 0xd97c2b] },
-  coupe:  { len: 4.4, wid: 1.9, hgt: 0.8,  top: 43, acc: 17, col: [0xffcf3f, 0xff5a3c, 0x22242a, 0x37c8d9, 0xf2f2f2] },
-  van:    { len: 5.2, wid: 2.1, hgt: 1.7,  top: 27, acc: 9,  col: [0xe8e8e8, 0x9db3c8, 0xd9a03d] },
-  pickup: { len: 5.0, wid: 2.0, hgt: 1.25, top: 31, acc: 12, col: [0x707880, 0x39536b, 0xa03a2a, 0x3f6212] },
-  police: { len: 4.7, wid: 1.95, hgt: 0.95, top: 40, acc: 16, col: [0x1c2733] },
+  hatch:  { name: 'Hatchback', len: 3.9, wid: 1.8, hgt: 1.05, top: 30, acc: 11, col: [0xd94f3d, 0x3d7bd9, 0xe8b93d, 0x59b06b, 0xd9d9d9, 0x7a4fd0] },
+  sedan:  { name: 'Sedan', len: 4.6, wid: 1.9, hgt: 0.95, top: 34, acc: 12, col: [0x2b3a4a, 0x8a1f1f, 0xc0c6cc, 0x274e13, 0x5b2a86, 0xd97c2b] },
+  coupe:  { name: 'Coupe', len: 4.4, wid: 1.9, hgt: 0.8,  top: 43, acc: 17, col: [0xffcf3f, 0xff5a3c, 0x22242a, 0x37c8d9, 0xf2f2f2] },
+  van:    { name: 'Van', len: 5.2, wid: 2.1, hgt: 1.7,  top: 27, acc: 9,  col: [0xe8e8e8, 0x9db3c8, 0xd9a03d] },
+  pickup: { name: 'Pickup', len: 5.0, wid: 2.0, hgt: 1.25, top: 31, acc: 12, col: [0x707880, 0x39536b, 0xa03a2a, 0x3f6212] },
+  police: { name: 'CBPD Cruiser', len: 4.7, wid: 1.95, hgt: 0.95, top: 40, acc: 16, col: [0x1c2733] },
 };
 let carSerial = 0;
 
@@ -82,7 +82,7 @@ function makeCar(kind, color, x, z, h) {
   mesh.position.set(x, 0, z); mesh.rotation.y = h;
   W.scene.add(mesh);
   const car = {
-    id: carSerial++, kind, mesh, x, z, h: h || 0, speed: 0, steer: 0,
+    id: carSerial++, kind, label: t.name, mesh, x, z, h: h || 0, speed: 0, steer: 0,
     len: t.len, wid: t.wid, top: t.top, acc: t.acc,
     hp: 100, dead: false, spiked: false, driver: null, isPlayer: false,
     route: null, routeI: 0, cruise: rand(10.5, 14), waitT: 0, smokeT: 0,
@@ -197,7 +197,14 @@ function initParticles() {
   pGeo = new THREE.BufferGeometry();
   pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   pGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
-  pPts = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.55, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false }));
+  pPts = new THREE.Points(pGeo, new THREE.PointsMaterial({
+    size: 0.55, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false,
+    map: canvasTex(64, 64, (g) => {
+      const gr = g.createRadialGradient(32, 32, 2, 32, 32, 30);
+      gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.fillRect(0, 0, 64, 64);
+    }),
+  }));
   pPts.frustumCulled = false;
   W.scene.add(pPts);
 }
@@ -300,6 +307,15 @@ function updatePlayerCar(dt) {
   const car = W.player.car;
   if (!car) return;
   let throttle = 0, steer = 0;
+  if (W.shotDrive) {
+    // Screenshot staging drives the car itself: hold the staged speed and
+    // heading so a chase stays a chase for the whole capture.
+    throttle = car.speed < 16.5 ? 0.9 : 0;
+    if (car.speed > 18) car.speed -= car.speed * 1.4 * dt;
+    steer = clamp(angDiff(car.h, W.shotHeading ?? car.h) * 1.6, -0.5, 0.5);
+    stepCar(car, dt, throttle, steer);
+    return;
+  }
   if (W.keys['KeyW'] || W.keys['ArrowUp']) throttle = 1;
   if (W.keys['KeyS'] || W.keys['ArrowDown']) throttle = -1;
   if (W.keys['KeyA'] || W.keys['ArrowLeft']) steer = 1;

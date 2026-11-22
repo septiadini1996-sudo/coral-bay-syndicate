@@ -16,7 +16,7 @@ function boot() {
   W.camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 2600);
   W.renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: !!W.shot });
   W.renderer.setSize(innerWidth, innerHeight);
-  W.renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  W.renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   W.renderer.shadowMap.enabled = true;
   W.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   W.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -140,7 +140,11 @@ function wireInput() {
 
 function lockPointer() {
   const c = W.renderer.domElement;
-  if (c.requestPointerLock) c.requestPointerLock();
+  if (!c.requestPointerLock) return;
+  try {
+    const r = c.requestPointerLock();
+    if (r && r.catch) r.catch(() => { /* a re-click will lock it */ });
+  } catch (e) { /* headless or blocked: mouse still works unlocked */ }
 }
 
 function startGame(keepSave) {
@@ -253,45 +257,53 @@ function stageShot(name, seed) {
   const steps = (n) => { for (let i = 0; i < n; i++) stepGame(1 / 30); };
   const cam = (x, y, z, lx, ly, lz) => { W.camera.position.set(x, y, z); W.camera.lookAt(lx, ly, lz); };
   if (name === 'cover') {
-    const car = makeCar('coupe', 0xff5a3c, 96, COAST_Z, -Math.PI / 2);
+    const car = makeCar('coupe', 0xff5a3c, 120, COAST_Z, -Math.PI / 2);
     enterCar(car);
     car.speed = 16.5;
+    W.shotDrive = true; W.shotHeading = -Math.PI / 2;
     startMission(1);
     W.dialogue.length = 0;
     addHeat(4);
-    for (const back of [13, 21, 30]) {
+    for (const back of [18, 27, 36]) {
       const cop = spawnCopCar();
-      cop.x = car.x + back; cop.z = COAST_Z + (back % 2 ? -2.5 : 2.5); cop.h = -Math.PI / 2; cop.speed = 17;
+      cop.x = car.x + back; cop.z = COAST_Z + (back % 2 ? -2.5 : 2.5); cop.h = -Math.PI / 2; cop.speed = 16.5;
     }
     if (!W.heli) W.heli = buildHelicopter();
     W.heli.active = true; W.heli.mesh.visible = true;
-    W.heli.x = car.x - 14; W.heli.z = car.z - 20;
-    steps(95);
+    W.heli.x = car.x - 22; W.heli.z = car.z - 6;
+    steps(60);
     const c = p.car;
-    cam(c.x + 11.5, 3.6, c.z + 6.5, c.x - 14, 1.1, c.z - 1);
+    // Park the helicopter up-frame for the final render: far enough ahead
+    // that its altitude fits inside the camera's field of view.
+    W.heli.x = c.x + 24; W.heli.z = c.z + 22;
+    W.heli.mesh.position.set(W.heli.x, 22.8, W.heli.z);
+    W.heli.mesh.rotation.y = 0.6;
+    W.heli.mesh.userData.cone.visible = false; // the beam reads as a white pillar in daylight stills
+    cam(c.x - 13.5, 2.7, c.z - 9.5, c.x + 7, 1.5, c.z + 1.5);
   } else if (name === 'marina') {
-    p.x = 152; p.z = 151; p.yaw = 2.55; p.h = 2.55;
+    p.x = 158; p.z = 146; p.yaw = 2.8; p.h = 2.8;
     p.mesh.position.set(p.x, 0, p.z);
     spawnPed(146, 148); spawnPed(168, 144); spawnPed(158, 158);
     const car = makeCar('sedan', 0x274e13, 128, COAST_Z - 3, Math.PI / 2);
     car.driver = 'traffic'; trafficRouteFrom(car);
     steps(70);
-    cam(136, 3.4, 130, 172, 1.2, 168);
+    cam(170, 2.6, 131, 151, 1.2, 156);
   } else if (name === 'mission') {
-    p.x = 158; p.z = 154.5; p.yaw = Math.PI; p.h = Math.PI;
+    p.x = 161.5; p.z = 147.5; p.yaw = -1.17; p.h = -1.17;
     p.mesh.position.set(p.x, 0, p.z);
     startMission(2);
     steps(55);
-    cam(154.5, 2.3, 160.5, 158.5, 1.4, 146);
+    cam(166, 2.2, 143, 157, 1.3, 149.5);
   } else if (name === 'roadblock') {
     const car = makeCar('sedan', 0x8a1f1f, 58, COAST_Z, -Math.PI / 2);
     enterCar(car);
     car.speed = 14;
+    W.shotDrive = true; W.shotHeading = -Math.PI / 2;
     addHeat(3.2);
     placeRoadblock();
-    steps(48);
+    steps(75);
     const c = p.car;
-    cam(c.x + 10.5, 3.8, c.z - 6.8, c.x - 16, 1.0, c.z + 1);
+    cam(c.x + 10.5, 3.6, c.z + 7.5, c.x - 18, 1.0, c.z);
   }
   updateHUD(0.016);
   W.renderer.render(W.scene, W.camera);

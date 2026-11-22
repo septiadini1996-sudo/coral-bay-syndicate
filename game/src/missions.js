@@ -22,9 +22,9 @@ W.showDialogue = showDialogue;
 
 function buildBeacon() {
   const g = new THREE.Group();
-  const beam = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 16, 12, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xffc93f, transparent: true, opacity: 0.34, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  beam.position.y = 8; g.add(beam);
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 9, 10, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xf5a623, transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.y = 4.5; g.add(beam);
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.7, 2.3, 24),
     new THREE.MeshBasicMaterial({ color: 0xffc93f, transparent: true, opacity: 0.8, side: THREE.DoubleSide }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.12; g.add(ring);
@@ -305,7 +305,7 @@ function buildMissions() {
   beacon = buildBeacon();
   veraNpc = spawnPed(LOC.vera.x, LOC.vera.z, 'npc');
   veraNpc.name = FIXER;
-  veraNpc.mesh.children[0].children[0].material = new THREE.MeshLambertMaterial({ color: 0xd92662 });
+  veraNpc.mesh.children[0].children[0].material = new THREE.MeshLambertMaterial({ color: 0x5e2a84 });
   tomasNpc = spawnPed(LOC.dock.x - 3, LOC.dock.z - 2, 'npc');
   tomasNpc.name = DOCKHAND;
 }

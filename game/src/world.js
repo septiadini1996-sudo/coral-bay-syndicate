@@ -162,13 +162,13 @@ function buildWorld() {
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({
     map: canvasTex(256, 256, (g) => {
       const gr = g.createRadialGradient(128, 128, 8, 128, 128, 128);
-      gr.addColorStop(0, 'rgba(255,236,190,1)'); gr.addColorStop(0.25, 'rgba(255,190,110,0.55)');
+      gr.addColorStop(0, 'rgba(255,240,200,0.5)'); gr.addColorStop(0.3, 'rgba(255,196,110,0.2)');
       gr.addColorStop(1, 'rgba(255,160,80,0)');
       g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
     }),
     blending: THREE.AdditiveBlending, depthWrite: false, fog: false,
   }));
-  glow.position.copy(sunDir).multiplyScalar(1350); glow.scale.setScalar(620);
+  glow.position.copy(sunDir).multiplyScalar(1350); glow.scale.setScalar(190);
   scene.add(glow);
 
   const sun = new THREE.DirectionalLight(0xffb066, 3.1);
@@ -180,8 +180,8 @@ function buildWorld() {
   sun.shadow.camera.far = 900; sun.shadow.bias = -0.0006;
   scene.add(sun); scene.add(sun.target);
   W.sun = sun;
-  scene.add(new THREE.HemisphereLight(0xffd9a8, 0x3d4a5a, 0.95));
-  scene.add(new THREE.AmbientLight(0xff9a5c, 0.35));
+  scene.add(new THREE.HemisphereLight(0xffd9a8, 0x3d4a5a, 0.5));
+  scene.add(new THREE.AmbientLight(0xff9a5c, 0.14));
 
   // Ground and sea.
   const ground = new THREE.Mesh(

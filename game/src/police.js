@@ -156,12 +156,17 @@ function buildSpikeStrip(x, z, h) {
 
 function placeRoadblock() {
   const p = W.player;
-  if (!p.car) return;
-  // A node ahead of the player's line of travel, on the road they are on.
-  const aheadX = p.car.x + fwdX(p.car.h) * 55, aheadZ = p.car.z + fwdZ(p.car.h) * 55;
-  const ni = nearestNode(W.graph, aheadX, aheadZ);
-  const node = W.graph[ni];
-  if (dist(p.car.x, p.car.z, node.x, node.z) < 30) return;
+  if (!p.car) return false;
+  // A node ahead of the player's line of travel, on the road they are on;
+  // if the snap lands too close, project further and snap again.
+  let node = null;
+  for (const reach of [55, 95]) {
+    const ni = nearestNode(W.graph, p.car.x + fwdX(p.car.h) * reach, p.car.z + fwdZ(p.car.h) * reach);
+    node = W.graph[ni];
+    if (dist(p.car.x, p.car.z, node.x, node.z) >= 30) break;
+    node = null;
+  }
+  if (!node) return false;
   const h = p.car.h;
   const block = { x: node.x, z: node.z, h, cars: [], strip: null, officers: [] };
   const gapSide = chance(0.5) ? 1 : -1;
@@ -178,6 +183,7 @@ function placeRoadblock() {
     block.officers.push(cop);
   }
   W.roadblocks.push(block);
+  return true;
 }
 
 function clearRoadblock(block) {
@@ -193,8 +199,7 @@ function updateRoadblocks(dt) {
   const p = W.player;
   blockTimer -= dt;
   if (stars() >= 3 && p.car && blockTimer <= 0 && W.roadblocks.length < 2) {
-    blockTimer = rand(11, 17);
-    placeRoadblock();
+    blockTimer = placeRoadblock() ? rand(11, 17) : 2.5;
   }
   for (let i = W.roadblocks.length - 1; i >= 0; i--) {
     const b = W.roadblocks[i];
@@ -237,9 +242,9 @@ function buildHelicopter() {
       new THREE.MeshLambertMaterial({ color: 0x333333 }));
     skid.rotation.x = Math.PI / 2; skid.position.set(sx * 1.05, -1.25, 0); g.add(skid);
   }
-  const cone = new THREE.Mesh(new THREE.ConeGeometry(7.5, 36, 20, 1, true),
-    new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.13, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
-  cone.position.y = -19; cone.rotation.x = Math.PI;
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(5, 26, 20, 1, true),
+    new THREE.MeshBasicMaterial({ color: 0xffe9b0, transparent: true, opacity: 0.05, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.FrontSide }));
+  cone.position.y = -14; cone.rotation.x = Math.PI;
   g.add(cone);
   const spot = new THREE.SpotLight(0xffe2a8, 2.4, 90, 0.32, 0.5, 0.6);
   spot.position.set(0, -1, 0);
@@ -262,7 +267,7 @@ function updateHelicopter(dt) {
   heli.x = lerp(heli.x, tx, 1 - Math.exp(-dt * 0.9));
   heli.z = lerp(heli.z, tz, 1 - Math.exp(-dt * 0.9));
   heli.h = angTurn(heli.h, headingTo(heli.x, heli.z, p.x, p.z), dt * 1.4);
-  heli.mesh.position.set(heli.x, 34 + Math.sin(W.time * 0.8) * 1.2, heli.z);
+  heli.mesh.position.set(heli.x, 22 + Math.sin(W.time * 0.8) * 1.2, heli.z);
   heli.mesh.rotation.y = heli.h;
   heli.mesh.userData.rotor.rotation.y += dt * 28;
   heli.mesh.userData.tailRotor.rotation.x += dt * 34;
@@ -312,7 +317,7 @@ function updatePolice(dt) {
     if (!nearUnit) for (const cop of W.officers) if (dist2(cop.x, cop.z, px, pz) < 49) { nearUnit = true; break; }
   }
   if (nearUnit) {
-    W.bust += dt / 2.4;
+    if (!W.shot) W.bust += dt / 2.4;
     if (W.bust >= 1 && W.onPlayerDown) { W.bust = 0; W.onPlayerDown('busted'); }
   } else W.bust = Math.max(0, W.bust - dt * 0.7);
 }
