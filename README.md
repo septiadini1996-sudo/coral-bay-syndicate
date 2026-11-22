@@ -4,67 +4,65 @@
 [![rank](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 [![reward](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
 
-An original open-world crime game for the make.fun "Make GTA 6" bounty,
-written from scratch for this entry. No Rockstar IP: the city, characters,
-vehicles, names, story, art and music are all invented for Coral Bay.
+**Coral Bay Syndicate** is an original open-world crime game built from scratch for the make.fun "Make GTA 6" bounty (competition `gta6-01`). Everything in it was invented for Coral Bay — the city, the characters, the vehicles, the names, the story, the art and the music. It contains no Rockstar IP.
 
-The sun is going down on a coastal city of some sixty-five road junctions,
-and Vera Lark — marina fixer, violet suit, gold blouse — is hiring. Run her
-six-job story chain (exactly $6,150 across the chain), take courier work off
-the silver beacons, climb from Harbour Runner to Kingpin of Coral Bay, and
-mind the Coral Bay PD: cruisers that hunt in packs, officers who shoot from
-two stars, roadblocks with spike strips at three, and the AIR-1 "Kestrel"
-helicopter with its searchlight at four.
+## The city
 
-## Play it
+Coral Bay is a coastal city caught in golden hour: a low, warm sun, long shadows, and a palm-lined coast road. The road network runs to some sixty-three junctions, and the shoreline is anchored by a marina with moored boats and a harbormaster's hut, with beaches running along the coast.
 
-```sh
-node serve.ts          # then open http://localhost:8080
-```
+## The story
 
-Any static file server pointed at `game/` works just as well — the game is
-plain static files (three.js vendored under `game/vendor/`) with no build
-step and no network requests. Desktop Chrome, keyboard and mouse.
+Vera Lark — a marina fixer in a violet suit and a gold blouse — hires you for the kind of work the harbour would rather not put in writing. Her six-job story chain pays exactly **$6,150** across the chain. Between story jobs, courier work is offered at silver beacons around the city. Every paid job moves you up the ladder, from **Harbour Runner** to **Kingpin of Coral Bay**.
 
-**Controls** — WASD move/drive · mouse look, right mouse aim, left mouse
-fire · **E** talk / enter & exit cars · **Shift** sprint · **1/2/3** fists,
-pistol, SMG · **R** reload on foot, change radio station in a car ·
-**Space** handbrake · **M** mute · **Esc/P** pause. Progress saves to
-localStorage after every paid job; pause freezes game time completely.
+## The Coral Bay PD
 
-## What's in the bay
+The police are not decoration. Coral Bay PD cruisers hunt in packs, and the police response panel tracks each unit by name, with its live distance to you. Officers open fire from two wanted stars. At three stars the PD starts setting **roadblocks**: cruisers parked across the road behind **spike strips** that shred your tyres and wreck the car's handling until you ditch it and take another vehicle. At four stars the **AIR-1 "Kestrel"** helicopter joins the pursuit, sweeping the streets with its searchlight.
 
-- **A living city** — lane-correct right-hand traffic that queues at red
-  lights, ~38 cars (traffic, parked, police), ~22 pedestrians who stroll,
-  gather at the marina and flee from trouble, traffic lights, palms, towers.
-- **A golden-hour look** — low warm sun with one crisp 2048 shadow map,
-  gradient peach sky, warm fog, ACES tone mapping, pixel ratio capped at 1.5.
-- **Crime and response** — a 0–5 star wanted system that cools while you are
-  unseen, pursuit steering with target lead, a bust meter, tyre-shredding
-  spike strips, vehicle damage and explosions, armour and health.
-- **Story and side work** — six named jobs from Vera ("First Errand",
-  "Dockside Run", "Glass Eels", "Cold Storage", "Harbour Lights", "The Long
-  Goodbye") plus repeatable courier runs.
-- **A full HUD** — mission panel with live step distances, a police response
-  panel naming every unit and its distance, minimap with GPS route and
-  flashing police blips, weapon bar, vehicle status, radio row, ranks.
-- **Synthesized sound** — five WebAudio radio stations (pop, synthwave,
-  jazz, talk, rock), engine, sirens that swell as units close in, rotor
-  wash, gunfire and booms. No audio files.
+## Features
 
-## Layout
+- A three.js open world rendered in warm golden-hour light
+- Lane-correct traffic with working traffic lights and car-following behaviour
+- GPS routing drawn on a minimap with a pre-rendered base map
+- A rich HUD: a weapon bar with ammunition, a mission panel, the police response panel, vehicle status, a rank bar, money, a clock and a radio row
+- Five synthesized radio stations to flip through while driving
+- 3D-modeled guns, vehicle damage and explosions, and player armour
+- A pause that truly freezes game time — nothing ticks behind the menu
+- Progress saved in your browser's localStorage
 
-- `game/index.html` — page, CSS and all HUD markup.
-- `game/src/` — one file per job: `util.js` (maths, Dijkstra), `city.js`
-  (world, road graph, golden-hour rig), `vehicles.js` (cars, traffic,
-  damage), `people.js` (pedestrians, Vera), `police.js` (wanted system,
-  roadblocks, helicopter), `story.js` (missions, saving), `audio.js`
-  (synth radio and SFX), `hud.js` (every overlay), `main.js` (loop, input,
-  cameras, gunplay, staged screenshot scenes via `?shot=1..4`).
-- `main.ts` — the handover program: copies `game/` and `screenshots/` to
-  the output directory and writes `dossier.json` with the vendored library.
-- `screenshots/` — four real renders of the game (see `shots.json`).
+## How to play
+
+You need desktop Chrome. Either:
+
+- serve the repo with the bundled dev server — run `node serve.ts`, then open <http://localhost:8080>; or
+- open `game/index.html` directly in the browser.
+
+You can also play online, with nothing to install, via GitHub Pages: <https://septiadini1996-sudo.github.io/coral-bay-syndicate/game/>
+
+**Good to know:** click the game view once to capture the mouse (pointer lock); Esc or P pauses the game and releases it. Money, rank and story progress persist between sessions in localStorage, so you can close the tab mid-campaign and pick the chain back up later — clearing the browser's site data is what resets them.
+
+## Controls
+
+| Input | Action |
+| --- | --- |
+| WASD | Walk / drive |
+| Mouse (pointer lock) | Look and aim |
+| E | Interact; enter and exit vehicles |
+| Shift | Sprint |
+| Esc or P | Pause |
+
+## Screenshots
+
+All four shots are real renders of the game itself.
+
+- `screenshots/1-cover.jpg` — a golden-hour chase along the coast road, the Kestrel overhead
+- `screenshots/2-marina.jpg` — Vera at the marina
+- `screenshots/3-mission.jpg` — the "Glass Eels" story beat
+- `screenshots/4-roadblock.jpg` — approaching a police roadblock
+
+## Tech
+
+Coral Bay Syndicate is plain static files: no build step, and the game makes no network requests at runtime. The root `main.ts` is a Node 22 handover program that packages `game/` and `screenshots/` together with a dossier for the bounty judges.
 
 ## License
 
-MIT — see `LICENSE`.
+MIT — see [LICENSE](LICENSE).
