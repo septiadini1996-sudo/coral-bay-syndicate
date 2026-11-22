@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coral Bay Syndicate</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1210; }
+  body { font-family: "Avenir Next", "Segoe UI", Verdana, sans-serif; color: #fff; }
+  canvas.webgl { display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  .panel { background: rgba(12, 16, 24, 0.62); border: 1px solid rgba(255, 201, 63, 0.35);
+           border-radius: 10px; padding: 8px 11px; backdrop-filter: blur(3px);
+           box-shadow: 0 2px 14px rgba(0,0,0,0.35); }
+  #missionPanel { position: absolute; top: 14px; left: 14px; max-width: 330px; }
+  #missionTitle { font-size: 15px; font-weight: 700; color: #ffc93f; letter-spacing: 0.3px; }
+  #missionStep { font-size: 12.5px; margin-top: 2px; color: #e8ecf2; }
+  #missionDist { font-size: 12px; color: #9fd8ff; margin-top: 1px; font-weight: 700; }
+  #stats { position: absolute; top: 14px; right: 14px; text-align: right; min-width: 208px; }
+  #stars { font-size: 21px; color: #ffc93f; text-shadow: 0 0 7px rgba(255,160,0,0.8); line-height: 1; }
+  #stars .dim { color: rgba(255,255,255,0.22); text-shadow: none; }
+  #money { font-size: 24px; font-weight: 800; color: #7be495; margin-top: 2px; }
+  #clock { font-size: 13px; color: #ffd9a0; font-weight: 700; }
+  #rankName { font-size: 11.5px; color: #cfd8e3; margin-top: 3px; }
+  .bar { height: 6px; background: rgba(255,255,255,0.16); border-radius: 3px; margin-top: 3px; overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 3px; }
+  #rankFill { background: linear-gradient(90deg, #b06bff, #ffc93f); width: 0%; }
+  #healthFill { background: #e5484d; width: 100%; }
+  #armorFill { background: #57a8e8; width: 50%; }
+  .barLabel { font-size: 10px; color: #aeb9c6; letter-spacing: 1px; margin-top: 5px; text-align: left; }
+  #police { position: absolute; top: 178px; right: 14px; width: 218px; display: none;
+            border-color: rgba(255, 90, 80, 0.55); }
+  #police h4 { font-size: 11px; letter-spacing: 1.6px; color: #ff7a6e; margin-bottom: 4px; }
+  .prow { display: flex; justify-content: space-between; font-size: 12px; padding: 1.5px 0; color: #eef2f7; }
+  .prow b { color: #9fd8ff; font-weight: 700; }
+  #minimapWrap { position: absolute; left: 14px; bottom: 14px; border-radius: 50%;
+                 border: 2px solid rgba(255,201,63,0.5); overflow: hidden;
+                 box-shadow: 0 2px 16px rgba(0,0,0,0.5); width: 190px; height: 190px; }
+  #minimap { width: 190px; height: 190px; display: block; }
+  #weapons { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 6px; }
+  .wslot { background: rgba(12,16,24,0.62); border: 1px solid rgba(255,255,255,0.25); border-radius: 8px;
+           padding: 5px 9px; font-size: 12px; min-width: 74px; }
+  .wslot b { color: #ffc93f; }
+  .wslot span { display: block; font-size: 11px; color: #9fd8ff; text-align: right; }
+  .wslot.on { border-color: #ffc93f; background: rgba(80,58,0,0.55); }
+  .wslot.locked { opacity: 0.42; }
+  #vehicle { position: absolute; right: 14px; bottom: 86px; width: 208px; display: none; text-align: right; }
+  #vehName { font-size: 13px; font-weight: 700; color: #ffd9a0; }
+  #vehSpeed { font-size: 21px; font-weight: 800; }
+  #vehHealth { background: #e5a13d; height: 100%; width: 100%; }
+  #radioRow { position: absolute; right: 14px; bottom: 178px; display: none; font-size: 12.5px;
+              color: #9fd8ff; text-align: right; background: none; border: none; box-shadow: none; }
+  #prompt { position: absolute; bottom: 108px; left: 50%; transform: translateX(-50%);
+            font-size: 15px; font-weight: 700; color: #fff; text-shadow: 0 1px 6px #000, 0 0 2px #000;
+            background: rgba(12,16,24,0.45); padding: 5px 14px; border-radius: 16px; white-space: nowrap; }
+  #prompt:empty { display: none; }
+  #subtitle { position: absolute; bottom: 56px; left: 50%; transform: translateX(-50%); max-width: 640px;
+              text-align: center; font-size: 16.5px; line-height: 1.35; display: none;
+              background: rgba(0,0,0,0.55); padding: 7px 16px; border-radius: 8px; }
+  #subtitle b { color: #ffc93f; }
+  #notify { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); text-align: center; }
+  .note { background: rgba(12,16,24,0.72); border: 1px solid rgba(123,228,149,0.5); color: #dff5e3;
+          font-size: 14px; font-weight: 700; padding: 6px 16px; border-radius: 16px; margin-bottom: 6px;
+          transition: opacity 0.6s; }
+  .note.fade { opacity: 0; }
+  #bustWrap { position: absolute; top: 84px; left: 50%; transform: translateX(-50%); width: 260px; display: none; text-align: center; }
+  #bustWrap .lbl { color: #ff7a6e; font-weight: 800; letter-spacing: 2px; font-size: 13px; text-shadow: 0 1px 4px #000; }
+  #bustBar { height: 9px; background: rgba(255,255,255,0.2); border-radius: 4px; overflow: hidden; margin-top: 3px; }
+  #bustFill { height: 100%; background: #ff5147; width: 0%; }
+  #crosshair { position: absolute; top: 50%; left: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; display: none; }
+  #crosshair:before, #crosshair:after { content: ""; position: absolute; background: rgba(255,255,255,0.9); box-shadow: 0 0 3px #000; }
+  #crosshair:before { left: 10px; top: 0; width: 2px; height: 22px; }
+  #crosshair:after { top: 10px; left: 0; height: 2px; width: 22px; }
+  #dmg { position: fixed; inset: 0; background: radial-gradient(ellipse at center, transparent 42%, rgba(200,10,10,0.55) 100%);
+         opacity: 0; pointer-events: none; z-index: 6; }
+  .screen { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+            background: linear-gradient(160deg, rgba(24,10,4,0.88), rgba(8,14,28,0.92)); text-align: center; }
+  .screen .card { max-width: 620px; padding: 30px 40px; }
+  .screen h1 { font-size: 52px; letter-spacing: 1px; color: #ffc93f; text-shadow: 0 3px 0 #a33c14, 0 6px 24px rgba(0,0,0,0.6); }
+  .screen h2 { font-size: 15px; letter-spacing: 4px; color: #9fd8ff; margin-bottom: 10px; font-weight: 600; }
+  .screen p { font-size: 15px; line-height: 1.55; color: #e8ecf2; margin: 12px 0; }
+  .screen .controls { font-size: 13px; color: #b9c6d4; line-height: 1.9; }
+  .screen .controls b { color: #ffc93f; }
+  .btn { pointer-events: auto; display: inline-block; margin: 10px 6px 0; padding: 12px 30px; font-size: 17px; font-weight: 800;
+         color: #201304; background: linear-gradient(180deg, #ffd964, #f0a13c); border: none; border-radius: 10px; cursor: pointer;
+         box-shadow: 0 4px 0 #a35c14, 0 8px 20px rgba(0,0,0,0.45); }
+  .btn:hover { filter: brightness(1.07); }
+  .btn.ghost { background: rgba(255,255,255,0.12); color: #fff; box-shadow: none; border: 1px solid rgba(255,255,255,0.4); }
+  #downScreen h1 { color: #ff5147; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="hud">
+  <div id="missionPanel" class="panel">
+    <div id="missionTitle">Coral Bay Syndicate</div>
+    <div id="missionStep"></div>
+    <div id="missionDist"></div>
+  </div>
+  <div id="stats" class="panel">
+    <div id="stars"></div>
+    <div id="money">$0</div>
+    <div id="clock">17:20</div>
+    <div id="rankName">Rookie</div>
+    <div class="bar"><div id="rankFill"></div></div>
+    <div class="barLabel">HEALTH</div>
+    <div class="bar"><div id="healthFill"></div></div>
+    <div class="barLabel">ARMOUR</div>
+    <div class="bar"><div id="armorFill"></div></div>
+  </div>
+  <div id="police" class="panel"><h4>⚠ POLICE RESPONSE</h4><div id="policeRows"></div></div>
+  <div id="minimapWrap"><canvas id="minimap" width="190" height="190"></canvas></div>
+  <div id="vehicle" class="panel">
+    <div id="vehName">Car</div>
+    <div id="vehSpeed">0 km/h</div>
+    <div class="bar"><div id="vehHealth"></div></div>
+  </div>
+  <div id="radioRow" class="panel">📻 <span id="radioStation"></span> · R next</div>
+  <div id="weapons"></div>
+  <div id="prompt"></div>
+  <div id="subtitle"></div>
+  <div id="notify"></div>
+  <div id="bustWrap"><div class="lbl">BUSTED</div><div id="bustBar"><div id="bustFill"></div></div></div>
+  <div id="crosshair"></div>
+</div>
+<div id="dmg"></div>
+
+<div id="startScreen" class="screen">
+  <div class="card">
+    <h2>CORAL BAY · EST. TROUBLE</h2>
+    <h1>Coral Bay Syndicate</h1>
+    <p>You are <b style="color:#ffc93f">Jules Cordero</b>, a driver with empty pockets and a full tank.
+       Fixer <b style="color:#ffc93f">Vera Lark</b> runs the marina — and, quietly, the whole bay.
+       Run her six jobs, outrun the Coral Bay PD, and take the crown. The whole story pays $6,150.</p>
+    <p class="controls">
+      <b>W A S D</b> move / drive · <b>Mouse</b> look · <b>Right mouse</b> aim over the shoulder<br>
+      <b>Left mouse</b> fire · <b>1–4</b> weapons · <b>E</b> talk / enter &amp; exit cars · <b>Shift</b> run<br>
+      <b>Space</b> handbrake · <b>R</b> radio station · <b>P</b> pause · Progress saves itself
+    </p>
+    <button class="btn" id="btnPlay">▶ &nbsp;Play</button>
+    <button class="btn ghost hidden" id="btnContinue">Continue saved game</button>
+    <p style="font-size:12px;color:#8fa0b3">An original open-world crime game. Best with sound on.</p>
+  </div>
+</div>
+
+<div id="pauseScreen" class="screen hidden">
+  <div class="card">
+    <h2>PAUSED</h2>
+    <h1 style="font-size:38px">The bay waits</h1>
+    <p id="pauseStats"></p>
+    <button class="btn" id="btnResume">Resume</button>
+    <button class="btn ghost" id="btnRestart">Restart story</button>
+  </div>
+</div>
+
+<div id="downScreen" class="screen hidden">
+  <div class="card">
+    <h1 id="downTitle">WASTED</h1>
+    <p id="downText"></p>
+    <button class="btn" id="btnRespawn">Back to the marina</button>
+  </div>
+</div>
+
+<script src="vendor/three.min.js"></script>
+<script src="src/util.js"></script>
+<script src="src/world.js"></script>
+<script src="src/vehicles.js"></script>
+<script src="src/people.js"></script>
+<script src="src/police.js"></script>
+<script src="src/story.js"></script>
+<script src="src/missions.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/hud.js"></script>
+<script src="src/main.js"></script>
+</body>
+</html>
