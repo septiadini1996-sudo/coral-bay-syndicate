@@ -1,328 +1,342 @@
-// Coral Bay Syndicate - vehicles.js
-// Every car in the game: one builder makes sedans, taxis and pickups
-// (police.js reuses it for cruisers). Traffic cars drive the road
-// graph, keep to their lane and stop at red lights. Cars have real
-// health: gunfire damages them, they smoke under 45 health, and a car
-// destroyed by gunfire or an explosion blows up with fire and area
-// damage. A car wrecked by collisions alone never explodes.
+// vehicles.js — every car in Coral Bay: the mesh factory (hatches, coupes,
+// vans, pickups, police cruisers), traffic that follows lanes, keeps gaps and
+// obeys the lights, the player's driving physics, damage, fire, explosions,
+// and the spike-strip tyre state roadblocks inflict.
 
 'use strict';
 
-var CAR_COLORS = [0xd84f4f, 0x3f7fbf, 0xf2f2f2, 0x2fbf9f, 0xf7d774, 0x8e6cc8, 0x444a52, 0xff8c42];
-var wheelGeo = null, smokeTex = null, fireTex = null;
+const CAR_TYPES = {
+  hatch:  { len: 3.9, wid: 1.8, hgt: 1.05, top: 30, acc: 11, col: [0xd94f3d, 0x3d7bd9, 0xe8b93d, 0x59b06b, 0xd9d9d9, 0x7a4fd0] },
+  sedan:  { len: 4.6, wid: 1.9, hgt: 0.95, top: 34, acc: 12, col: [0x2b3a4a, 0x8a1f1f, 0xc0c6cc, 0x274e13, 0x5b2a86, 0xd97c2b] },
+  coupe:  { len: 4.4, wid: 1.9, hgt: 0.8,  top: 43, acc: 17, col: [0xffcf3f, 0xff5a3c, 0x22242a, 0x37c8d9, 0xf2f2f2] },
+  van:    { len: 5.2, wid: 2.1, hgt: 1.7,  top: 27, acc: 9,  col: [0xe8e8e8, 0x9db3c8, 0xd9a03d] },
+  pickup: { len: 5.0, wid: 2.0, hgt: 1.25, top: 31, acc: 12, col: [0x707880, 0x39536b, 0xa03a2a, 0x3f6212] },
+  police: { len: 4.7, wid: 1.95, hgt: 0.95, top: 40, acc: 16, col: [0x1c2733] },
+};
+let carSerial = 0;
 
-function carName(type, colorName) { return colorName + ' ' + type; }
-var COLOR_NAMES = {};
-[[0xd84f4f, 'Red'], [0x3f7fbf, 'Blue'], [0xf2f2f2, 'White'], [0x2fbf9f, 'Teal'],
- [0xf7d774, 'Yellow'], [0x8e6cc8, 'Purple'], [0x444a52, 'Grey'], [0xff8c42, 'Orange'],
-].forEach(function (p) { COLOR_NAMES[String(p[0])] = p[1]; });
-
-function makeCarMesh(color, type) {
-  if (!wheelGeo) wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.3, 10);
-  var g = new THREE.Group();
-  var bodyMat = lam(color);
-  var body = part(new THREE.BoxGeometry(2.0, 0.62, 4.4), bodyMat, 0, 0.62, 0, g);
-  var hood = part(new THREE.BoxGeometry(1.9, 0.3, 1.0), bodyMat, 0, 0.78, 1.85, g);
-  var cabinMat = lam(0x22303c);
-  if (type === 'Pickup') {
-    part(new THREE.BoxGeometry(1.9, 0.62, 1.5), cabinMat, 0, 1.2, 0.7, g);
-    part(new THREE.BoxGeometry(1.9, 0.4, 1.9), lam(0x333a42), 0, 0.95, -1.2, g);   // open bed walls
-  } else {
-    part(new THREE.BoxGeometry(1.8, 0.55, 2.2), cabinMat, 0, 1.18, -0.2, g);
+function carMesh(kind, color) {
+  const t = CAR_TYPES[kind], g = new THREE.Group();
+  const paint = new THREE.MeshPhongMaterial({ color, shininess: 90, specular: 0x888888 });
+  const body = new THREE.Mesh(new THREE.BoxGeometry(t.wid, t.hgt * 0.62, t.len), paint);
+  body.position.y = 0.42 + t.hgt * 0.28; body.castShadow = true; g.add(body);
+  const hood = new THREE.Mesh(new THREE.BoxGeometry(t.wid * 0.92, t.hgt * 0.3, t.len * 0.24), paint);
+  hood.position.set(0, 0.5 + t.hgt * 0.42, t.len * 0.36); g.add(hood);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(t.wid * 0.86, t.hgt * 0.5, t.len * 0.42),
+    new THREE.MeshPhongMaterial({ color: 0x1a2634, shininess: 140, specular: 0xbbddff }));
+  glass.position.set(0, 0.62 + t.hgt * 0.52, -t.len * 0.04); g.add(glass);
+  if (kind === 'van') { glass.position.z = t.len * 0.28; glass.scale.z = 0.4; }
+  if (kind === 'pickup') {
+    const bed = new THREE.Mesh(new THREE.BoxGeometry(t.wid * 0.94, t.hgt * 0.34, t.len * 0.4),
+      new THREE.MeshLambertMaterial({ color: 0x33383c }));
+    bed.position.set(0, 0.55 + t.hgt * 0.4, -t.len * 0.28); g.add(bed);
   }
-  if (type === 'Taxi') {
-    part(new THREE.BoxGeometry(1.0, 0.28, 0.4), lam(0xffd75e), 0, 1.6, -0.2, g);  // roof sign
-  }
-  part(new THREE.BoxGeometry(1.7, 0.16, 0.06), new THREE.MeshBasicMaterial({ color: 0xfff6c9 }), 0, 0.66, 2.21, g);
-  part(new THREE.BoxGeometry(1.7, 0.16, 0.06), new THREE.MeshBasicMaterial({ color: 0xff4444 }), 0, 0.66, -2.21, g);
-  var wheels = [];
-  var spots = [[-0.95, 1.45], [0.95, 1.45], [-0.95, -1.45], [0.95, -1.45]];
-  for (var i = 0; i < 4; i++) {
-    var w = part(wheelGeo, lam(0x14161a), spots[i][0], 0.42, spots[i][1], g);
+  const wheelGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.28, 12);
+  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x14161a });
+  const hubMat = new THREE.MeshLambertMaterial({ color: 0xb9c0c7 });
+  g.userData.wheels = []; g.userData.frontAxle = new THREE.Group();
+  for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+    const w = new THREE.Mesh(wheelGeo, wheelMat);
     w.rotation.z = Math.PI / 2;
-    wheels.push(w);
+    const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 0.3, 8), hubMat);
+    hub.rotation.z = Math.PI / 2; w.add(hub);
+    w.position.set(sx * (t.wid / 2 - 0.05), 0.36, sz * (t.len / 2 - 0.85));
+    if (sz > 0) { const pivot = new THREE.Group(); pivot.position.copy(w.position); w.position.set(0, 0, 0); pivot.add(w); g.add(pivot); g.userData.wheels.push(w); if (sz > 0) g.userData['pivotF' + (sx < 0 ? 'L' : 'R')] = pivot; }
+    else { g.add(w); g.userData.wheels.push(w); }
   }
-  g.userData = { wheels: wheels, body: body, bodyMat: bodyMat };
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xfff2b0 });
+  for (const sx of [-1, 1]) {
+    const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.16, 0.06), lampMat);
+    lamp.position.set(sx * t.wid * 0.32, 0.78, t.len / 2 + 0.01); g.add(lamp);
+    const tail = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.14, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xd92020 }));
+    tail.position.set(sx * t.wid * 0.32, 0.82, -t.len / 2 - 0.01); g.add(tail);
+  }
+  if (kind === 'police') {
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(t.wid + 0.03, 0.3, t.len * 0.7),
+      new THREE.MeshLambertMaterial({ color: 0xf2f5f7 }));
+    stripe.position.y = 0.72; g.add(stripe);
+    const bar = new THREE.Group();
+    const base = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.1, 0.4),
+      new THREE.MeshLambertMaterial({ color: 0x222222 }));
+    bar.add(base);
+    const red = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.2, 0.34),
+      new THREE.MeshBasicMaterial({ color: 0xff2222 }));
+    red.position.set(-0.34, 0.14, 0); bar.add(red);
+    const blue = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.2, 0.34),
+      new THREE.MeshBasicMaterial({ color: 0x2255ff }));
+    blue.position.set(0.34, 0.14, 0); bar.add(blue);
+    bar.position.set(0, 1.32, -0.2);
+    g.add(bar);
+    g.userData.lightBar = { red, blue };
+    const bumper = new THREE.Mesh(new THREE.BoxGeometry(t.wid * 0.9, 0.34, 0.18),
+      new THREE.MeshLambertMaterial({ color: 0x111417 }));
+    bumper.position.set(0, 0.55, t.len / 2 + 0.1); g.add(bumper);
+  }
   return g;
 }
 
-function createCar(x, z, angle, type, color) {
-  var mesh = makeCarMesh(color, type);
-  mesh.position.set(x, 0, z); mesh.rotation.y = angle;
-  G.scene.add(mesh);
-  var car = {
-    mesh: mesh, x: x, z: z, angle: angle, speed: 0,
-    hp: 100, maxHp: 100, type: type, color: color,
-    name: carName(type, COLOR_NAMES[String(color)] || 'Custom'),
-    driver: 'ai', route: [], ri: 0, dead: false, exploded: false,
-    smokeT: 0, steer: 0, police: false, targetNode: null,
+function makeCar(kind, color, x, z, h) {
+  const t = CAR_TYPES[kind];
+  const mesh = carMesh(kind, color);
+  mesh.position.set(x, 0, z); mesh.rotation.y = h;
+  W.scene.add(mesh);
+  const car = {
+    id: carSerial++, kind, mesh, x, z, h: h || 0, speed: 0, steer: 0,
+    len: t.len, wid: t.wid, top: t.top, acc: t.acc,
+    hp: 100, dead: false, spiked: false, driver: null, isPlayer: false,
+    route: null, routeI: 0, cruise: rand(10.5, 14), waitT: 0, smokeT: 0,
+    unit: null, target: null,
   };
-  G.cars.push(car);
+  W.cars.push(car);
   return car;
 }
 
-function spawnTraffic() {
-  var types = ['Sedan', 'Sedan', 'Sedan', 'Taxi', 'Pickup', 'Sedan', 'Taxi'];
-  for (var i = 0; i < 22; i++) {
-    var node = pick(G.nodes);
-    var type = types[i % types.length];
-    var car = createCar(node.x + rr(-3, 3), node.z + rr(-3, 3), ri(0, 3) * Math.PI / 2, type, type === 'Taxi' ? 0xf7d774 : pick(CAR_COLORS));
-    planRoute(car, null);
-  }
-  // A few parked cars to steal, on the promenade and a corner.
-  createCar(10, 1270, Math.PI / 2, 'Sedan', 0xd84f4f).driver = 'parked';
-  createCar(-10, 1270, -Math.PI / 2, 'Pickup', 0x3f7fbf).driver = 'parked';
-  createCar(166, 166, 0, 'Sedan', 0x2fbf9f).driver = 'parked';
-}
-
-// Give an AI car a fresh set of waypoints: a chain of road nodes that
-// prefers going straight and never U-turns at an intersection.
-function planRoute(car, fromNode) {
-  var cur = nearestNode(car.x, car.z);
-  var prev = fromNode || null;
-  car.route = [];
-  for (var s = 0; s < 6; s++) {
-    var options = [];
-    var dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    for (var d = 0; d < 4; d++) {
-      var ni = cur.i + dirs[d][0], nj = cur.j + dirs[d][1];
-      if (ni < 0 || nj < 0 || ni > 16 || nj > 16) continue;
-      var nb = G.nodes[G.nodeAt[ni + ',' + nj]];
-      if (prev && nb === prev) continue;
-      var straight = prev && (nb.i - cur.i) === (cur.i - prev.i) && (nb.j - cur.j) === (cur.j - prev.j);
-      options.push({ n: nb, w: straight ? 3 : 1 });
-    }
-    if (!options.length) break;
-    var total = 0, o;
-    for (o = 0; o < options.length; o++) total += options[o].w;
-    var roll = rnd() * total, chosen = options[0].n;
-    for (o = 0; o < options.length; o++) { roll -= options[o].w; if (roll <= 0) { chosen = options[o].n; break; } }
-    car.route.push(chosen); prev = cur; cur = chosen;
-  }
-  car.ri = 0;
-}
-
-function lanePoint(car, node) {
-  // Drive on the right: offset the target node to this car's lane.
-  var dx = node.x - car.x, dz = node.z - car.z;
-  var d = Math.sqrt(dx * dx + dz * dz) || 1;
-  var px = dz / d, pz = -dx / d;
-  return { x: node.x + px * 4.2, z: node.z + pz * 4.2 };
-}
-
-function carAhead(car) {
-  for (var i = 0; i < G.cars.length; i++) {
-    var o = G.cars[i];
-    if (o === car || o.dead) continue;
-    var dx = o.x - car.x, dz = o.z - car.z;
-    var fx = Math.sin(car.angle), fz = Math.cos(car.angle);
-    var fwd = dx * fx + dz * fz, side = Math.abs(dx * fz - dz * fx);
-    if (fwd > 0 && fwd < 15 && side < 2.6) return o;
-  }
-  return null;
-}
-
-function tickTrafficCar(car, dt) {
-  if (!car.route.length || car.ri >= car.route.length) planRoute(car, null);
-  var node = car.route[car.ri];
-  var lp = lanePoint(car, node);
-  var dx = lp.x - car.x, dz = lp.z - car.z;
-  var d = Math.sqrt(dx * dx + dz * dz);
-  if (d < 7) { car.ri++; return; }
-  var want = Math.atan2(dx, dz);
-  car.angle = angLerp(car.angle, want, clamp(dt * 2.2, 0, 1));
-  var target = 13.5;
-  // Stop at red lights on approach to a lit intersection.
-  if (d < 26 && lightIsRed(node.x, node.z, Math.sin(car.angle), Math.cos(car.angle))) target = 0;
-  var ahead = carAhead(car);
-  if (ahead) target = Math.min(target, ahead.speed * 0.9);
-  car.speed = lerp(car.speed, target, clamp(dt * (target > car.speed ? 1.2 : 3.5), 0, 1));
-  car.x += Math.sin(car.angle) * car.speed * dt;
-  car.z += Math.cos(car.angle) * car.speed * dt;
-  var fixed = collideXZ(car.x, car.z, 1.6);
-  car.x = fixed[0]; car.z = fixed[1];
-}
-
-function tickPlayerCar(car, dt) {
-  var accel = (G.keys.KeyW ? 1 : 0) - (G.keys.KeyS ? 1 : 0);
-  var steer = (G.keys.KeyA ? 1 : 0) - (G.keys.KeyD ? 1 : 0);
-  var maxF = car.type === 'Pickup' ? 30 : 36;
-  if (accel > 0) car.speed = Math.min(car.speed + 16 * dt, maxF);
-  else if (accel < 0) car.speed = Math.max(car.speed - (car.speed > 1 ? 26 * dt : 8 * dt), -10);
-  else car.speed = lerp(car.speed, 0, clamp(dt * 0.7, 0, 1));
-  car.steer = lerp(car.steer, steer, clamp(dt * 8, 0, 1));
-  if (Math.abs(car.speed) > 0.2) {
-    car.angle += car.steer * clamp(car.speed / 14, -1.4, 1.4) * dt * 1.15;
-  }
-  var nx = car.x + Math.sin(car.angle) * car.speed * dt;
-  var nz = car.z + Math.cos(car.angle) * car.speed * dt;
-  var fixed = collideXZ(nx, nz, 2.0);
-  if (Math.abs(fixed[0] - nx) > 0.01 || Math.abs(fixed[1] - nz) > 0.01) {
-    if (Math.abs(car.speed) > 9) { damageCar(car, 6, 'crash'); sfx('crash'); }
-    car.speed *= 0.35;
-  }
-  car.x = fixed[0]; car.z = fixed[1];
-  var sh = shoreClamp(car.x, car.z); car.x = sh[0]; car.z = sh[1];
-  car.x = clamp(car.x, -G.bounds, G.bounds); car.z = clamp(car.z, -G.bounds, G.bounds);
-  // Running into a pedestrian knocks them down.
-  if (Math.abs(car.speed) > 3) {
-    for (var i = 0; i < G.peds.length; i++) {
-      var p = G.peds[i];
-      if (!p.dead && p.state !== 'down' && dist2(car.x, car.z, p.x, p.z) < 2.6) {
-        knockPed(p, car.x, car.z);
-        addCrime(1, p.x, p.z);
-        if (Math.abs(car.speed) > 10) car.speed *= 0.8;
-      }
-    }
-  }
+// One physics step shared by traffic, police and the player: throttle and
+// steer in, position and heading out, with building and car collisions.
+function stepCar(car, dt, throttle, steer) {
+  if (car.dead) { car.speed = 0; syncCarMesh(car, dt); return; }
+  const topSpeed = car.spiked ? 9 : car.top;
+  if (throttle > 0) car.speed += car.acc * throttle * dt * (1 - car.speed / (topSpeed * 1.25));
+  else if (throttle < 0) car.speed += (car.speed > 0.5 ? -26 : -8) * dt * -throttle * (car.speed > 0.5 ? 1 : (car.speed > -9 ? 1 : 0));
+  car.speed -= car.speed * 0.35 * dt;
+  if (car.spiked) car.speed = Math.min(car.speed, topSpeed + Math.max(0, car.speed - topSpeed) * 0.9);
+  car.speed = clamp(car.speed, -10, car.top);
+  const steerTarget = clamp(steer, -1, 1) * 0.55 / (1 + Math.abs(car.speed) * 0.055);
+  car.steer = lerp(car.steer, steerTarget, 1 - Math.exp(-dt * 7));
+  if (car.spiked && Math.abs(car.speed) > 2) car.steer += Math.sin(W.time * 9 + car.id * 3) * 0.05; // shredded tyres wander
+  car.h += car.steer * car.speed * dt * 0.42;
+  let nx = car.x + fwdX(car.h) * car.speed * dt;
+  let nz = car.z + fwdZ(car.h) * car.speed * dt;
+  const [cx, cz] = collideBuildings(nx, nz, 1.7);
+  if (cx !== nx || cz !== nz) { car.speed *= 0.55; damageCar(car, Math.abs(car.speed) * 0.7, nx, nz); }
+  nx = clamp(cx, -216, 216); nz = clamp(cz, -188, 200);
+  if (isWater(nx, nz) && car.speed > 0) { car.speed *= 0.9; }
+  car.x = nx; car.z = nz;
+  carCarCollisions(car, dt);
+  syncCarMesh(car, dt);
 }
 
 function syncCarMesh(car, dt) {
-  car.mesh.position.set(car.x, car.dead ? 0.02 : 0, car.z);
-  car.mesh.rotation.y = car.angle;
-  car.mesh.rotation.z = car.dead ? 0.06 : 0;
-  var w = car.mesh.userData.wheels;
-  for (var i = 0; i < w.length; i++) {
-    w[i].rotation.x += car.speed * dt / 0.42;
-    if (i < 2) w[i].rotation.y = car.steer * 0.4;
+  car.mesh.position.set(car.x, car.dead ? -0.12 : 0, car.z);
+  car.mesh.rotation.y = car.h;
+  car.mesh.rotation.z = car.dead ? 0.06 : clamp(-car.steer * car.speed * 0.006, -0.05, 0.05);
+  const spin = car.speed * dt / 0.36;
+  for (const w of car.mesh.userData.wheels) w.rotation.x += spin;
+  for (const key of ['pivotFL', 'pivotFR']) {
+    const p = car.mesh.userData[key];
+    if (p) p.rotation.y = car.steer * 1.4;
   }
-  // Smoke once health drops to 45 or below.
-  if (!car.dead && car.hp <= 45) {
+  if (car.mesh.userData.lightBar) {
+    const phase = Math.floor(W.time * 2.4 + car.id) % 2 === 0;
+    car.mesh.userData.lightBar.red.material.color.setHex(phase ? 0xff2222 : 0x661111);
+    car.mesh.userData.lightBar.blue.material.color.setHex(phase ? 0x112266 : 0x3377ff);
+  }
+  if (car.hp < 50 && !car.dead) {
     car.smokeT -= dt;
-    if (car.smokeT <= 0) { car.smokeT = 0.12; spawnPuff(car.x, 1.4, car.z, 0x555c64, 1.6); }
+    if (car.smokeT <= 0) {
+      car.smokeT = car.hp < 22 ? 0.05 : 0.14;
+      spawnParticles(car.x, 1.1, car.z, car.hp < 22 ? 'fire' : 'smoke', 1);
+    }
+  }
+  if (car.spiked && Math.abs(car.speed) > 3 && chance(0.5))
+    spawnParticles(car.x - fwdX(car.h) * 1.6, 0.3, car.z - fwdZ(car.h) * 1.6, 'spark', 1);
+}
+
+function carCarCollisions(car, dt) {
+  for (const o of W.cars) {
+    if (o === car) continue;
+    const d2 = dist2(car.x, car.z, o.x, o.z);
+    if (d2 > 36) continue;
+    const d = Math.sqrt(d2) || 0.01, min = (car.len + o.len) / 4 + 1.1;
+    if (d < min) {
+      const push = (min - d) / 2, ux = (car.x - o.x) / d, uz = (car.z - o.z) / d;
+      car.x += ux * push; car.z += uz * push;
+      if (!o.isPlayer && o.kind !== 'parked') { o.x -= ux * push; o.z -= uz * push; }
+      const impact = Math.abs(car.speed - o.speed);
+      if (impact > 3) {
+        damageCar(car, impact * 1.1, car.x, car.z);
+        damageCar(o, impact * 1.1, o.x, o.z);
+        spawnParticles((car.x + o.x) / 2, 0.7, (car.z + o.z) / 2, 'spark', 7);
+        playCrash(impact);
+        if (W.onCarsHit) W.onCarsHit(car, o, impact);
+      }
+      car.speed *= 0.72; if (!o.dead) o.speed *= 0.8;
+    }
   }
 }
 
-// Damage with a cause: 'shot' and 'boom' can blow the car up at zero
-// health; 'crash' damage only ever wrecks it.
-function damageCar(car, dmg, cause) {
-  if (car.dead) return;
-  car.hp -= dmg;
-  if (car.hp > 0) return;
-  car.hp = 0; car.dead = true; car.speed = 0;
-  car.mesh.userData.bodyMat.color.setHex(0x23262b);
-  if (cause === 'shot' || cause === 'boom') explodeCar(car);
-  if (G.inCar === car) {
-    hurtPlayer(12);
-    exitCar();
-    showToast('Your ride is wrecked!');
-  }
+function damageCar(car, amount, x, z) {
+  if (car.dead || amount <= 0) return;
+  car.hp -= amount;
+  if (car.hp <= 0) explodeCar(car);
 }
 
 function explodeCar(car) {
-  if (car.exploded) return;
-  car.exploded = true;
-  sfx('boom');
-  spawnFire(car.x, car.z);
-  // Area damage: pedestrians close in die, cars nearby chain-damage.
-  for (var i = 0; i < G.peds.length; i++) {
-    var p = G.peds[i], d = dist2(car.x, car.z, p.x, p.z);
-    if (d < 3) hurtPed(p, 999, car.x, car.z);
-    else if (d < 6.5) hurtPed(p, 45, car.x, car.z);
+  if (car.dead) return;
+  car.dead = true; car.hp = 0; car.speed = 0;
+  car.mesh.traverse(o => { if (o.material && o.material.color) o.material = new THREE.MeshLambertMaterial({ color: 0x1b1b1e }); });
+  spawnParticles(car.x, 1, car.z, 'boom', 42);
+  spawnParticles(car.x, 0.6, car.z, 'smoke', 16);
+  playExplosion();
+  for (const o of W.cars) {
+    if (o !== car && dist2(car.x, car.z, o.x, o.z) < 90) damageCar(o, 26, o.x, o.z);
   }
-  for (var j = 0; j < G.cars.length; j++) {
-    var o = G.cars[j];
-    if (o !== car && !o.dead && dist2(car.x, car.z, o.x, o.z) < 4.5) damageCar(o, 55, 'boom');
-  }
-  for (var c = 0; c < G.cops.length; c++) {
-    var cop = G.cops[c];
-    if (!cop.dead && dist2(car.x, car.z, cop.x, cop.z) < 4.5) damageCar(cop, 55, 'boom');
-  }
-  var pd = dist2(car.x, car.z, G.player.x, G.player.z);
-  if (!G.inCar && pd < 6.5) hurtPlayer(Math.round(30 * (1 - pd / 7)));
-  if (G.inCar && pd < 6.5 && G.inCar !== car) hurtPlayer(8);
-  addCrime(2, car.x, car.z);
+  if (W.player && W.player.car === car) { if (W.onPlayerCarWrecked) W.onPlayerCarWrecked(); }
+  else if (W.player && !W.player.car && dist2(car.x, car.z, W.player.x, W.player.z) < 90) hurtPlayer(20);
+  if (W.onCarExploded) W.onCarExploded(car);
 }
 
-// Fire and smoke sprite pools --------------------------------------
-function radialTex(inner, outer) {
-  var cv = document.createElement('canvas'); cv.width = cv.height = 64;
-  var c = cv.getContext('2d');
-  var gr = c.createRadialGradient(32, 32, 2, 32, 32, 30);
-  gr.addColorStop(0, inner); gr.addColorStop(1, outer);
-  c.fillStyle = gr; c.fillRect(0, 0, 64, 64);
-  return new THREE.CanvasTexture(cv);
+// --- particles: one pooled Points cloud for sparks, smoke, fire, blasts ---
+const PMAX = 900;
+let pGeo, pPts, pData;
+function initParticles() {
+  pData = [];
+  const pos = new Float32Array(PMAX * 3), col = new Float32Array(PMAX * 3);
+  for (let i = 0; i < PMAX; i++) { pData.push({ life: 0, vx: 0, vy: 0, vz: 0, x: 0, y: -50, z: 0, grow: 0 }); pos[i * 3 + 1] = -50; }
+  pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  pGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  pPts = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 0.55, vertexColors: true, transparent: true, opacity: 0.9, depthWrite: false }));
+  pPts.frustumCulled = false;
+  W.scene.add(pPts);
 }
-function spawnFire(x, z) {
-  if (!fireTex) fireTex = radialTex('rgba(255,220,120,1)', 'rgba(255,80,0,0)');
-  var group = [];
-  for (var i = 0; i < 13; i++) {
-    var sm = new THREE.SpriteMaterial({ map: fireTex, blending: THREE.AdditiveBlending, depthWrite: false });
-    var sp = new THREE.Sprite(sm);
-    sp.position.set(x + rr(-1.6, 1.6), rr(0.5, 2), z + rr(-1.6, 1.6));
-    var sc = rr(1.6, 3.4); sp.scale.set(sc, sc, 1);
-    G.scene.add(sp); group.push(sp);
+const P_COL = { spark: [1, 0.75, 0.25], smoke: [0.22, 0.22, 0.24], fire: [1, 0.45, 0.12], boom: [1, 0.6, 0.2] };
+function spawnParticles(x, y, z, kind, n) {
+  if (!pData) return;
+  const col = pGeo.attributes.color.array, c = P_COL[kind];
+  let made = 0;
+  for (let i = 0; i < PMAX && made < n; i++) {
+    const p = pData[i];
+    if (p.life > 0) continue;
+    made++;
+    p.life = kind === 'smoke' ? rand(0.7, 1.4) : kind === 'boom' ? rand(0.4, 0.9) : rand(0.25, 0.6);
+    p.x = x + rand(-0.4, 0.4); p.y = y + rand(-0.2, 0.3); p.z = z + rand(-0.4, 0.4);
+    const sp = kind === 'boom' ? 11 : kind === 'spark' ? 6 : 2.2;
+    p.vx = rand(-sp, sp); p.vz = rand(-sp, sp);
+    p.vy = kind === 'smoke' ? rand(1.5, 3) : rand(1, sp * 0.8);
+    col[i * 3] = c[0]; col[i * 3 + 1] = c[1]; col[i * 3 + 2] = c[2];
   }
-  G.fires.push({ sprites: group, t: 6, x: x, z: z });
+  pGeo.attributes.color.needsUpdate = true;
 }
-var puffPool = [];
-function spawnPuff(x, y, z, color, size) {
-  if (!smokeTex) smokeTex = radialTex('rgba(200,200,200,0.85)', 'rgba(200,200,200,0)');
-  var sp = null;
-  for (var i = 0; i < puffPool.length; i++) if (!puffPool[i].visible) { sp = puffPool[i]; break; }
-  if (!sp) {
-    if (puffPool.length > 70) return;
-    sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: smokeTex, depthWrite: false, transparent: true }));
-    G.scene.add(sp); puffPool.push(sp);
+function updateParticles(dt) {
+  if (!pData) return;
+  const pos = pGeo.attributes.position.array;
+  for (let i = 0; i < PMAX; i++) {
+    const p = pData[i];
+    if (p.life <= 0) continue;
+    p.life -= dt;
+    p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+    p.vy -= (p.vy > 2 ? 2.5 : -0.6) * dt;
+    if (p.life <= 0) p.y = -50;
+    pos[i * 3] = p.x; pos[i * 3 + 1] = p.y; pos[i * 3 + 2] = p.z;
   }
-  sp.visible = true;
-  sp.material.color.setHex(color);
-  sp.material.opacity = 0.55;
-  sp.position.set(x, y, z);
-  sp.scale.set(size, size, 1);
-  sp.userData = { t: 0, life: 1.4, size: size };
+  pGeo.attributes.position.needsUpdate = true;
 }
-function tickEffects(dt) {
-  for (var i = G.fires.length - 1; i >= 0; i--) {
-    var f = G.fires[i]; f.t -= dt;
-    for (var j = 0; j < f.sprites.length; j++) {
-      var sp = f.sprites[j];
-      sp.material.opacity = clamp(f.t / 2, 0, 1);
-      var flick = 2.4 + Math.sin(G.t * 31 + j * 2.7) * 0.7;
-      sp.scale.set(flick, flick * 1.15, 1);
-      sp.position.y = 1 + Math.sin(G.t * 9 + j * 1.3) * 0.35;
-    }
-    if (f.t <= 0) {
-      for (var k = 0; k < f.sprites.length; k++) G.scene.remove(f.sprites[k]);
-      G.fires.splice(i, 1);
-    }
+
+// --- traffic -----------------------------------------------------------------
+function trafficRouteFrom(car) {
+  const from = nearestNode(W.graph, car.x, car.z);
+  let to = randi(0, W.graph.length - 1);
+  if (to === from) to = (to + 7) % W.graph.length;
+  car.route = findRoute(W.graph, from, to);
+  car.routeI = 0;
+}
+
+// The point a driver aims for: the next route node, shifted into the
+// right-hand lane for the direction of travel along this segment.
+function lanePoint(car, nodeIdx) {
+  const node = W.graph[nodeIdx];
+  const prev = car.routeI > 0 ? W.graph[car.route[car.routeI - 1]] : null;
+  if (!prev) return node;
+  const h = headingTo(prev.x, prev.z, node.x, node.z);
+  return { x: node.x + rightX(h) * 3.1, z: node.z + rightZ(h) * 3.1, h };
+}
+
+function carAhead(car, range) {
+  let best = null, bd = range;
+  for (const o of W.cars) {
+    if (o === car) continue;
+    const rx = o.x - car.x, rz = o.z - car.z;
+    const f = rx * fwdX(car.h) + rz * fwdZ(car.h);
+    const lat = Math.abs(rx * rightX(car.h) + rz * rightZ(car.h));
+    if (f > 0.5 && f < bd && lat < 2.1) { bd = f; best = o; }
   }
-  for (var q = 0; q < puffPool.length; q++) {
-    var pf = puffPool[q];
-    if (!pf.visible) continue;
-    pf.userData.t += dt;
-    pf.position.y += dt * 1.6;
-    var s = pf.userData.size * (1 + pf.userData.t);
-    pf.scale.set(s, s, 1);
-    pf.material.opacity = 0.55 * (1 - pf.userData.t / pf.userData.life);
-    if (pf.userData.t >= pf.userData.life) pf.visible = false;
+  return best;
+}
+
+function updateTrafficCar(car, dt) {
+  if (car.driver !== 'traffic') return;
+  if (!car.route || car.routeI >= car.route.length) trafficRouteFrom(car);
+  const node = W.graph[car.route[car.routeI]];
+  const lp = lanePoint(car, car.route[car.routeI]);
+  const dNode = dist(car.x, car.z, node.x, node.z);
+  if (dNode < 6.5) {
+    car.routeI++;
+    if (car.routeI >= car.route.length) { trafficRouteFrom(car); return; }
+  }
+  let want = car.cruise, throttle = 0.7;
+  // Stop lines: hold at a red or late-yellow light for our axis.
+  const axis = axisOf(car.h);
+  const ls = lightState(axis);
+  if (dNode < 12 && dNode > 4 && (ls === 'red' || (ls === 'yellow' && dNode > 8))) {
+    want = 0; throttle = car.speed > 0.4 ? -0.8 : 0;
+    if (car.speed < 0.4) car.speed = 0;
+  }
+  const ahead = carAhead(car, 9);
+  if (ahead) {
+    want = Math.min(want, ahead.speed * 0.92);
+    if (dist(car.x, car.z, ahead.x, ahead.z) < 5.2) { want = 0; throttle = car.speed > 0.3 ? -0.9 : 0; }
+  }
+  if (car.speed < want) throttle = Math.max(throttle, 0.55); else if (car.speed > want + 1) throttle = -0.5;
+  if (want === 0 && car.speed < 0.4) throttle = 0;
+  const steerTo = headingTo(car.x, car.z, lp.x, lp.z);
+  const steer = clamp(angDiff(steerTo, car.h) * 1.7, -1, 1);
+  stepCar(car, dt, throttle, steer);
+}
+
+// --- the player's driving ------------------------------------------------------
+function updatePlayerCar(dt) {
+  const car = W.player.car;
+  if (!car) return;
+  let throttle = 0, steer = 0;
+  if (W.keys['KeyW'] || W.keys['ArrowUp']) throttle = 1;
+  if (W.keys['KeyS'] || W.keys['ArrowDown']) throttle = -1;
+  if (W.keys['KeyA'] || W.keys['ArrowLeft']) steer = 1;
+  if (W.keys['KeyD'] || W.keys['ArrowRight']) steer = -1;
+  if (W.keys['Space']) { car.speed -= car.speed * 2.6 * dt; throttle = 0; }
+  stepCar(car, dt, throttle, steer);
+  if (W.audioTick) W.audioTick.carSound(Math.abs(car.speed) / car.top, throttle !== 0);
+}
+
+function buildVehicles() {
+  initParticles();
+  const kinds = ['hatch', 'sedan', 'coupe', 'van', 'pickup'];
+  for (let i = 0; i < 18; i++) { // live traffic, spread over the graph
+    const node = W.graph[randi(0, W.graph.length - 1)];
+    const kind = pick(kinds);
+    const car = makeCar(kind, pick(CAR_TYPES[kind].col), node.x + rand(-3, 3), node.z + rand(-3, 3), rand(0, 6.28));
+    car.driver = 'traffic';
+    trafficRouteFrom(car);
+  }
+  // Parked cars along curbs and at the marina — the player's supply.
+  const parkSpots = [];
+  for (const x of ROAD_VX) for (const z of [-120, -60, 0, 60]) parkSpots.push([x + 5.6, z + rand(-8, 8), Math.PI]);
+  parkSpots.push([160, 146, 0], [168, 146, 0], [188, 146, 0], [60, 121, Math.PI / 2], [-30, 121, Math.PI / 2]);
+  for (const [x, z, h] of parkSpots) {
+    if (chance(0.45)) continue;
+    const kind = pick(kinds);
+    const car = makeCar(kind, pick(CAR_TYPES[kind].col), x, z, h + rand(-0.05, 0.05));
+    car.driver = null; car.kind = 'parked';
   }
 }
 
-function enterCar(car) {
-  G.inCar = car; car.driver = 'player';
-  G.player.mesh.visible = false;
-  showToast(car.name + ' - CONDITION ' + Math.max(0, Math.round(car.hp)) + '%');
-}
-function exitCar() {
-  var car = G.inCar; if (!car) return;
-  car.driver = 'parked'; car.speed = 0;
-  G.inCar = null;
-  var side = car.angle + Math.PI / 2;
-  G.player.x = car.x + Math.sin(side) * 3; G.player.z = car.z + Math.cos(side) * 3;
-  var fixed = collideXZ(G.player.x, G.player.z, 0.55);
-  G.player.x = fixed[0]; G.player.z = fixed[1];
-  G.player.mesh.visible = true;
-  G.player.mesh.position.set(G.player.x, 0, G.player.z);
-}
-
-function tickCars(dt) {
-  for (var i = 0; i < G.cars.length; i++) {
-    var car = G.cars[i];
-    if (car.dead) { syncCarMesh(car, dt); continue; }
-    if (car.driver === 'ai') tickTrafficCar(car, dt);
-    else if (car.driver === 'player') tickPlayerCar(car, dt);
-    syncCarMesh(car, dt);
+function updateVehicles(dt) {
+  for (const car of W.cars) {
+    if (car.driver === 'traffic') updateTrafficCar(car, dt);
+    else if (car.isPlayer) updatePlayerCar(dt);
+    else if (car.driver === 'police') { /* police.js steers its own cars */ }
+    else syncCarMesh(car, dt);
   }
-  tickEffects(dt);
+  updateParticles(dt);
 }
