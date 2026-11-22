@@ -1,5 +1,9 @@
 # Coral Bay Syndicate
 
+[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![rank](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![reward](https://make.fun/badge/gta6-01/septiadini1996-sudo/coral-bay-syndicate/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+
 An original open-world crime game for the make.fun "Make GTA 6" bounty,
 written from scratch for this entry. No Rockstar IP: the city, characters,
 vehicles, names, story, art and music are all invented for Coral Bay.
