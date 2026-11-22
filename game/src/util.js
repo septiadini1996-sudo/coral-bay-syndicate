@@ -1,99 +1,93 @@
-// util.js — shared helpers for Coral Bay Syndicate: seeded randomness, maths,
-// vectors on the ground plane, and the road-graph search the GPS runs on.
-// Everything hangs off one global state object, W, created here and filled in
-// by the other files as the world boots.
+// util.js — shared mathematics for Coral Bay Syndicate: clamping, interpolation,
+// a seeded random generator (so staged screenshot scenes are deterministic),
+// angle helpers and Dijkstra shortest paths over the city's road graph.
+(function () {
+  'use strict';
 
-'use strict';
+  const CBS = (window.CBS = window.CBS || {});
 
-// mulberry32: a small deterministic generator. The world is built from one
-// seed so a staged screenshot is the same scene every time it is taken.
-function makeRng(seed) {
-  let a = seed >>> 0;
-  return function () {
-    a |= 0; a = (a + 0x6D2B79F5) | 0;
-    let t = Math.imul(a ^ (a >>> 15), 1 | a);
-    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
+  const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const TAU = Math.PI * 2;
 
-let rng = makeRng(20261122);
-function reseed(seed) { rng = makeRng(seed); }
-function rand(a, b) { return a + rng() * (b - a); }
-function randi(a, b) { return Math.floor(rand(a, b + 1)); }
-function pick(list) { return list[Math.floor(rng() * list.length) % list.length]; }
-function chance(p) { return rng() < p; }
+  // Wrap an angle to [-PI, PI) so steering always turns the short way.
+  function wrapAngle(a) {
+    a = (a + Math.PI) % TAU;
+    if (a < 0) a += TAU;
+    return a - Math.PI;
+  }
 
-const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
-const lerp = (a, b, t) => a + (b - a) * t;
-const dist2 = (ax, az, bx, bz) => { const dx = ax - bx, dz = az - bz; return dx * dx + dz * dz; };
-const dist = (ax, az, bx, bz) => Math.sqrt(dist2(ax, az, bx, bz));
+  function angleLerp(a, b, t) {
+    return a + wrapAngle(b - a) * clamp(t, 0, 1);
+  }
 
-// Headings are angles where 0 faces +z (south, toward the water) and the
-// forward vector is (sin h, cos h) on the ground plane.
-const fwdX = h => Math.sin(h), fwdZ = h => Math.cos(h);
-// Right of a forward vector: driving east, your right hand points south.
-const rightX = h => Math.cos(h), rightZ = h => -Math.sin(h);
+  // Seeded linear congruential generator; reset() makes scenes reproducible.
+  let seed = 1877;
+  function rng() {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  }
+  function rngReset(s) {
+    seed = s >>> 0 || 1;
+  }
+  const rand = (lo, hi) => lo + rng() * (hi - lo);
+  const randInt = (lo, hi) => Math.floor(rand(lo, hi + 1));
+  const pick = (arr) => arr[Math.floor(rng() * arr.length) % arr.length];
 
-function angDiff(a, b) {
-  let d = (a - b) % (Math.PI * 2);
-  if (d > Math.PI) d -= Math.PI * 2;
-  if (d < -Math.PI) d += Math.PI * 2;
-  return d;
-}
-function angTurn(cur, want, maxStep) {
-  const d = angDiff(want, cur);
-  return cur + clamp(d, -maxStep, maxStep);
-}
-const headingTo = (ax, az, bx, bz) => Math.atan2(bx - ax, bz - az);
+  const dist2D = (ax, az, bx, bz) => Math.hypot(ax - bx, az - bz);
 
-// Dijkstra over the road graph: nodes are {x, z, edges: [{to, len}]}.
-// Returns the list of node indices from start to goal, or null.
-function findRoute(graph, start, goal) {
-  const n = graph.length;
-  const d = new Array(n).fill(Infinity), prev = new Array(n).fill(-1), done = new Array(n).fill(false);
-  d[start] = 0;
-  for (let k = 0; k < n; k++) {
-    let u = -1, best = Infinity;
-    for (let i = 0; i < n; i++) if (!done[i] && d[i] < best) { best = d[i]; u = i; }
-    if (u < 0) break;
-    done[u] = true;
-    if (u === goal) break;
-    for (const e of graph[u].edges) {
-      const nd = d[u] + e.len;
-      if (nd < d[e.to]) { d[e.to] = nd; prev[e.to] = u; }
+  // Dijkstra over { nodes: [{x, z, edges: [nodeIndex...] }] }.
+  // Returns an array of node indices from start to goal (inclusive), or null.
+  function shortestPath(graph, start, goal) {
+    if (start === goal) return [start];
+    const n = graph.nodes.length;
+    const dist = new Float64Array(n).fill(Infinity);
+    const prev = new Int32Array(n).fill(-1);
+    const done = new Uint8Array(n);
+    dist[start] = 0;
+    for (let iter = 0; iter < n; iter++) {
+      let u = -1;
+      let best = Infinity;
+      for (let i = 0; i < n; i++) {
+        if (!done[i] && dist[i] < best) {
+          best = dist[i];
+          u = i;
+        }
+      }
+      if (u === -1 || u === goal) break;
+      done[u] = 1;
+      const un = graph.nodes[u];
+      for (const v of un.edges) {
+        const vn = graph.nodes[v];
+        const w = dist[u] + Math.hypot(un.x - vn.x, un.z - vn.z);
+        if (w < dist[v]) {
+          dist[v] = w;
+          prev[v] = u;
+        }
+      }
     }
+    if (!isFinite(dist[goal])) return null;
+    const path = [];
+    for (let cur = goal; cur !== -1; cur = prev[cur]) path.push(cur);
+    path.reverse();
+    return path;
   }
-  if (d[goal] === Infinity) return null;
-  const path = [];
-  for (let u = goal; u !== -1; u = prev[u]) path.push(u);
-  return path.reverse();
-}
 
-function nearestNode(graph, x, z) {
-  let bi = 0, bd = Infinity;
-  for (let i = 0; i < graph.length; i++) {
-    const dd = dist2(x, z, graph[i].x, graph[i].z);
-    if (dd < bd) { bd = dd; bi = i; }
+  // $1,250 style money formatting for the HUD.
+  function fmtMoney(v) {
+    return '$' + Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
-  return bi;
-}
 
-// The one shared world state. Files add their systems to it as they load.
-const W = {
-  time: 0,            // game seconds since boot (frozen while paused)
-  clockMin: 17 * 60 + 20, // the HUD clock starts in the golden hour
-  paused: false,
-  started: false,
-  over: false,
-  scene: null, camera: null, renderer: null,
-  graph: [], buildings: [], lights: [],
-  cars: [], peds: [], cops: [], bullets: [],
-  player: null, heli: null, roadblocks: [],
-  wanted: 0, heatSeen: 0, bust: 0,
-  money: 250, earned: 0,
-  missionIndex: 0, mission: null, sideJob: null,
-  save: null,
-  keys: {}, mouseDX: 0, mouseDY: 0, firing: false, aiming: false,
-  shot: null,
-};
+  // 17:22 style clock formatting from minutes since midnight.
+  function fmtClock(minutes) {
+    const m = Math.floor(minutes);
+    const hh = String(Math.floor(m / 60) % 24).padStart(2, '0');
+    const mm = String(m % 60).padStart(2, '0');
+    return hh + ':' + mm;
+  }
+
+  CBS.util = {
+    clamp, lerp, wrapAngle, angleLerp, rng, rngReset, rand, randInt, pick,
+    dist2D, shortestPath, fmtMoney, fmtClock, TAU,
+  };
+})();
